@@ -11,7 +11,7 @@ def haversine(lon1, lat1, lon2, lat2):
     R = 6371.0  # Earth radius in kilometers
     lon1, lat1, lon2, lat2 = map(math.radians, [lon1, lat1, lon2, lat2])
     dlon = lon2 - lon1
-    dlat = lon2 - lat1
+    dlat = lat2 - lat1
     a = math.sin(dlat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
     distance = R * c * 0.539957  # Convert to nautical miles
@@ -23,9 +23,9 @@ def get_airports_within_radius(base_lat, base_lon, radius_nm):
     for airport in airports:
         distance = haversine(base_lon, base_lat, airport['lon'], airport['lat'])
         if distance <= radius_nm:
-            nearby_airports.append(airport)
-        # Print distances for debugging
-        print(f"Distance from {base_lat}, {base_lon} to {airport['lat']}, {airport['lon']}: {distance} NM")
+            nearby_airports.append((airport, distance))
+    # Sort airports by distance
+    nearby_airports.sort(key=lambda x: x[1])
     return nearby_airports
 
 # Function to fetch METAR and TAF data
@@ -126,11 +126,11 @@ nearby_airports = get_airports_within_radius(selected_base['lat'], selected_base
 
 # Display nearby airports and check weather
 st.subheader(f'Airports within {radius_nm} NM of {selected_base_name}')
-for airport in nearby_airports:
+for airport, distance in nearby_airports:
     metar, taf = fetch_weather(airport['icao'])
     weather_ok = check_weather_criteria(metar, taf)
     
-    st.markdown(f"### {airport['name']} ({airport['icao']})")
+    st.markdown(f"### {airport['name']} ({airport['icao']}) - {distance:.1f} NM")
     st.text(f"METAR: {metar}")
     st.text(f"TAF: {taf}")
     
