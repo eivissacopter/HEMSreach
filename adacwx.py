@@ -245,7 +245,7 @@ selected_base_name = st.selectbox('Select Home Base', base_names)
 selected_base = next(base for base in helicopter_bases if base['name'] == selected_base_name)
 
 # Get airports within radius
-radius_nm = 200
+radius_nm = 150
 nearby_airports = get_airports_within_radius(selected_base['lat'], selected_base['lon'], radius_nm)
 
 # Display nearby airports and check weather
