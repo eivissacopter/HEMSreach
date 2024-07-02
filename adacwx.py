@@ -3,10 +3,22 @@ import pandas as pd
 import requests
 import math
 
-# Sample data: List of rescue helicopter bases (should be replaced with actual data)
-bases = [
-    {'name': 'Christoph 77 Mainz', 'lat': 49.992, 'lon': 8.247},
-    {'name': 'Christoph 18 Ochsenfurt', 'lat': 49.662, 'lon': 10.052}
+# Helicopter bases data
+helicopter_bases = [
+    {"name": "Christoph 1 Munich", "lat": 48.3539, "lon": 11.7861},
+    {"name": "Christoph 2 Frankfurt", "lat": 50.0333, "lon": 8.5706},
+    {"name": "Christoph 3 Cologne", "lat": 50.8659, "lon": 7.1427},
+    # Add all other ADAC Luftrettung helicopter bases here
+]
+
+# Airports with IFR approaches data
+airports = [
+    {"name": "Frankfurt Airport", "icao": "EDDF", "lat": 50.0379, "lon": 8.5622},
+    {"name": "Munich Airport", "icao": "EDDM", "lat": 48.3538, "lon": 11.7861},
+    {"name": "Berlin Brandenburg Airport", "icao": "EDDB", "lat": 52.3667, "lon": 13.5033},
+    {"name": "Hamburg Airport", "icao": "EDDH", "lat": 53.6303, "lon": 9.9883},
+    {"name": "Stuttgart Airport", "icao": "EDDS", "lat": 48.6899, "lon": 9.2219},
+    # Add more airports with IFR approaches as needed
 ]
 
 # Function to calculate distance between two points using the Haversine formula
@@ -20,15 +32,8 @@ def haversine(lon1, lat1, lon2, lat2):
     distance = R * c * 0.539957  # Convert to nautical miles
     return distance
 
-# Placeholder function to get airports within a certain radius (should be replaced with actual data retrieval)
+# Function to get airports within a certain radius
 def get_airports_within_radius(base_lat, base_lon, radius_nm):
-    # This is a placeholder list of airports with instrument approaches
-    airports = [
-        {'name': 'Frankfurt Airport', 'icao': 'EDDF', 'lat': 50.037, 'lon': 8.562},
-        {'name': 'Munich Airport', 'icao': 'EDDM', 'lat': 48.353, 'lon': 11.786},
-        # Add more airports as needed
-    ]
-    
     nearby_airports = [airport for airport in airports if haversine(base_lon, base_lat, airport['lon'], airport['lat']) <= radius_nm]
     return nearby_airports
 
@@ -37,15 +42,16 @@ def fetch_weather(icao_code):
     metar_url = f'https://tgftp.nws.noaa.gov/data/observations/metar/stations/{icao_code}.TXT'
     taf_url = f'https://tgftp.nws.noaa.gov/data/forecasts/taf/stations/{icao_code}.TXT'
     
-    metar = requests.get(metar_url).text.split('\n')[1] if requests.get(metar_url).status_code == 200 else "No data"
-    taf = requests.get(taf_url).text.split('\n')[1] if requests.get(taf_url).status_code == 200 else "No data"
+    metar_response = requests.get(metar_url)
+    taf_response = requests.get(taf_url)
+    
+    metar = metar_response.text.split('\n')[1] if metar_response.status_code == 200 else "No data"
+    taf = taf_response.text.split('\n')[1] if taf_response.status_code == 200 else "No data"
     
     return metar, taf
 
 # Function to check weather criteria
 def check_weather_criteria(metar, taf):
-    # Placeholder logic to check weather criteria
-    # In practice, you would parse the METAR/TAF strings and apply your criteria
     visibility_ok = '3000' in metar or '3000' in taf
     ceiling_ok = '700' in metar or '700' in taf
     return visibility_ok and ceiling_ok
@@ -54,9 +60,9 @@ def check_weather_criteria(metar, taf):
 st.title('Aviation Weather Checker')
 
 # Select base
-base_names = [base['name'] for base in bases]
+base_names = [base['name'] for base in helicopter_bases]
 selected_base_name = st.selectbox('Select Home Base', base_names)
-selected_base = next(base for base in bases if base['name'] == selected_base_name)
+selected_base = next(base for base in helicopter_bases if base['name'] == selected_base_name)
 
 # Get airports within radius
 radius_nm = 250
