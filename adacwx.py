@@ -142,7 +142,7 @@ def haversine(lon1, lat1, lon2, lat2):
     R = 6371.0  # Earth radius in kilometers
     lon1, lat1, lon2, lat2 = map(math.radians, [lon1, lat1, lon2, lat2])
     dlon = lon2 - lon1
-    dlat = lon2 - lat1
+    dlat = lat2 - lat1
     a = math.sin(dlat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
     distance = R * c * 0.539957  # Convert to nautical miles
@@ -150,7 +150,13 @@ def haversine(lon1, lat1, lon2, lat2):
 
 # Function to get airports within a certain radius
 def get_airports_within_radius(base_lat, base_lon, radius_nm):
-    nearby_airports = [airport for airport in airports if haversine(base_lon, base_lat, airport['lon'], airport['lat']) <= radius_nm]
+    nearby_airports = []
+    for airport in airports:
+        distance = haversine(base_lon, base_lat, airport['lon'], airport['lat'])
+        if distance <= radius_nm:
+            nearby_airports.append(airport)
+        # Print distances for debugging
+        print(f"Distance from {base_lat}, {base_lon} to {airport['lat']}, {airport['lon']}: {distance} NM")
     return nearby_airports
 
 # Function to fetch METAR and TAF data
