@@ -124,6 +124,11 @@ with st.sidebar:
 # Get airports within radius
 nearby_airports = get_airports_within_radius(selected_base['lat'], selected_base['lon'], radius_nm)
 
+# Debugging output
+st.write(f"Selected base: {selected_base_name}")
+st.write(f"Radius: {radius_nm} NM")
+st.write(f"Nearby airports: {len(nearby_airports)} found")
+
 # Display nearby airports and check weather
 st.subheader(f'Airports within {radius_nm} NM of {selected_base_name}')
 for airport, distance in nearby_airports:
