@@ -69,7 +69,8 @@ helicopter_bases = [
     {"name": "Christoph 64 Bielefeld", "lat": 51.9667, "lon": 8.5333},
     {"name": "Christoph 65 Greifswald", "lat": 54.0797, "lon": 13.405},
     {"name": "Christoph 66 Augsburg", "lat": 48.425, "lon": 10.925},
-    {"name": "Christoph 67 Ansbach", "lat": 49.2808, "lon": 10.5717}
+    {"name": "Christoph 67 Ansbach", "lat": 49.2808, "lon": 10.5717},
+    {'name': 'Christoph 77 Mainz', 'lat': 49.992, 'lon': 8.247}
 ]
 
 # Airports with IFR approaches data
