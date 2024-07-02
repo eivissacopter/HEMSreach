@@ -160,14 +160,66 @@ def fetch_weather(icao_code):
     taf_response = requests.get(taf_url)
     
     metar = metar_response.text.split('\n')[1] if metar_response.status_code == 200 else "No data"
-    taf = taf_response.text.split('\n')[1] if taf_response.status_code == 200 else "No data"
+    taf = taf_response.text if taf_response.status_code == 200 else "No data"
     
     return metar, taf
 
+# Function to parse METAR visibility and cloud base
+def parse_metar(metar):
+    visibility_match = re.search(r'\s(\d{4})\s', metar)
+    visibility = int(visibility_match.group(1)) if visibility_match else None
+    
+    cloud_base_match = re.search(r'\sBKN(\d{3})\s|FEW(\d{3})\s|SCT(\d{3})\s|OVC(\d{3})\s', metar)
+    cloud_base = int(cloud_base_match.group(1)) * 100 if cloud_base_match else None
+    
+    return visibility, cloud_base
+
+# Function to parse TAF visibility and cloud base
+def parse_taf(taf):
+    forecast_blocks = taf.split(" FM")
+    forecasts = []
+    now = datetime.utcnow()
+    
+    for block in forecast_blocks[1:]:
+        time_match = re.match(r'(\d{2})(\d{2})/(\d{2})(\d{2})', block)
+        if time_match:
+            start_hour = int(time_match.group(1))
+            start_minute = int(time_match.group(2))
+            start_time = now.replace(hour=start_hour, minute=start_minute, second=0, microsecond=0)
+            
+            visibility_match = re.search(r'\s(\d{4})\s', block)
+            visibility = int(visibility_match.group(1)) if visibility_match else None
+            
+            cloud_base_match = re.search(r'\sBKN(\d{3})\s|FEW(\d{3})\s|SCT(\d{3})\s|OVC(\d{3})\s', block)
+            cloud_base = int(cloud_base_match.group(1)) * 100 if cloud_base_match else None
+            
+            forecasts.append((start_time, visibility, cloud_base))
+    
+    return forecasts
+
 # Function to check weather criteria
 def check_weather_criteria(metar, taf):
-    visibility_ok = '3000' in metar or '3000' in taf
-    ceiling_ok = '700' in metar or '700' in taf
+    visibility_ok, ceiling_ok = True, True
+    metar_visibility, metar_ceiling = parse_metar(metar)
+    
+    if metar_visibility is not None:
+        visibility_ok = metar_visibility >= 3000
+    
+    if metar_ceiling is not None:
+        ceiling_ok = metar_ceiling >= 700
+    
+    forecasts = parse_taf(taf)
+    now = datetime.utcnow()
+    future_time = now + timedelta(hours=5)
+    
+    for forecast_time, forecast_visibility, forecast_ceiling in forecasts:
+        if forecast_time > future_time:
+            break
+        if forecast_visibility is not None:
+            visibility_ok = visibility_ok and (forecast_visibility >= 3000)
+        if forecast_ceiling is not None:
+            ceiling_ok = ceiling_ok and (forecast_ceiling >= 700)
+    
     return visibility_ok and ceiling_ok
 
 # Streamlit app layout
@@ -179,7 +231,7 @@ selected_base_name = st.selectbox('Select Home Base', base_names)
 selected_base = next(base for base in helicopter_bases if base['name'] == selected_base_name)
 
 # Get airports within radius
-radius_nm = 250
+radius_nm = 200
 nearby_airports = get_airports_within_radius(selected_base['lat'], selected_base['lon'], radius_nm)
 
 # Display nearby airports and check weather
