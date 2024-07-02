@@ -114,7 +114,24 @@ airports = [
     {"name": "Bratislava Airport", "icao": "LZIB", "lat": 48.1702, "lon": 17.2127},
     {"name": "Budapest Airport", "icao": "LHBP", "lat": 47.4299, "lon": 19.2616},
     {"name": "Ljubljana Airport", "icao": "LJLJ", "lat": 46.2231, "lon": 14.4567},
-    {"name": "Zagreb Airport", "icao": "LDZA", "lat": 45.7429, "lon": 16.0688}
+    {"name": "Zagreb Airport", "icao": "LDZA", "lat": 45.7429, "lon": 16.0688},
+    # Military airports
+    {"name": "Ramstein Air Base", "icao": "ETAR", "lat": 49.4369, "lon": 7.6003},
+    {"name": "Spangdahlem Air Base", "icao": "ETAD", "lat": 49.9727, "lon": 6.6925},
+    {"name": "Geilenkirchen Air Base", "icao": "ETNG", "lat": 50.9608, "lon": 6.0424},
+    {"name": "Wiesbaden Army Airfield", "icao": "ETOU", "lat": 50.0498, "lon": 8.3254},
+    {"name": "Schwäbisch Hall Airfield", "icao": "ETHL", "lat": 49.1181, "lon": 9.7831},
+    {"name": "Büchel Air Base", "icao": "ETSB", "lat": 50.1747, "lon": 7.0633},
+    {"name": "Kleine Brogel Air Base", "icao": "EBBL", "lat": 51.1681, "lon": 5.4708},
+    {"name": "Volkel Air Base", "icao": "EHVK", "lat": 51.6561, "lon": 5.7075},
+    {"name": "Nörvenich Air Base", "icao": "ETNN", "lat": 50.8311, "lon": 6.6583},
+    {"name": "Jagel Air Base", "icao": "ETNS", "lat": 54.4592, "lon": 9.5167},
+    {"name": "Laage Air Base", "icao": "ETNL", "lat": 53.9181, "lon": 12.2789},
+    {"name": "Holzdorf Air Base", "icao": "ETSH", "lat": 51.7678, "lon": 13.1672},
+    {"name": "Neuburg Air Base", "icao": "ETSN", "lat": 48.7111, "lon": 11.2167},
+    {"name": "Jever Air Base", "icao": "ETNJ", "lat": 53.5339, "lon": 7.8883},
+    {"name": "Wunstorf Air Base", "icao": "ETNW", "lat": 52.4575, "lon": 9.4278},
+    {"name": "Bückeburg Air Base", "icao": "ETHB", "lat": 52.2789, "lon": 9.0839}
 ]
 
 # Function to calculate distance between two points using the Haversine formula
