@@ -142,7 +142,7 @@ def haversine(lon1, lat1, lon2, lat2):
     R = 6371.0  # Earth radius in kilometers
     lon1, lat1, lon2, lat2 = map(math.radians, [lon1, lat1, lon2, lat2])
     dlon = lon2 - lon1
-    dlat = lat2 - lat1
+    dlat = lon2 - lat1
     a = math.sin(dlat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
     distance = R * c * 0.539957  # Convert to nautical miles
@@ -239,13 +239,14 @@ def check_weather_criteria(metar, taf):
 # Streamlit app layout
 st.title('Aviation Weather Checker')
 
-# Select base
-base_names = [base['name'] for base in helicopter_bases]
-selected_base_name = st.selectbox('Select Home Base', base_names)
-selected_base = next(base for base in helicopter_bases if base['name'] == selected_base_name)
+# Sidebar for base selection and radius filter
+with st.sidebar:
+    base_names = [base['name'] for base in helicopter_bases]
+    selected_base_name = st.selectbox('Select Home Base', base_names)
+    selected_base = next(base for base in helicopter_bases if base['name'] == selected_base_name)
+    radius_nm = st.slider('Select radius in nautical miles', min_value=50, max_value=500, value=200, step=10)
 
 # Get airports within radius
-radius_nm = 150
 nearby_airports = get_airports_within_radius(selected_base['lat'], selected_base['lon'], radius_nm)
 
 # Display nearby airports and check weather
