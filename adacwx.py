@@ -7,6 +7,13 @@ from datetime import datetime, timedelta
 from database import helicopter_bases, airports
 import folium
 from streamlit_folium import folium_static
+from pdf2image import convert_from_path
+import pytesseract
+import cv2
+import numpy as np
+import requests
+from PIL import Image
+from io import BytesIO
 
 # Set the page configuration at the very top
 st.set_page_config(layout="wide")
@@ -143,6 +150,57 @@ def check_weather_criteria(metar, taf):
         st.error(f"Error checking weather criteria: {e}")
         return False
 
+# Function to fetch 0°C altitude using OpenWeatherMap API
+def fetch_zero_deg_altitude(lat, lon, api_key):
+    url = f"http://api.openweathermap.org/data/2.5/onecall?lat={lat}&lon={lon}&appid={api_key}"
+    response = requests.get(url)
+    data = response.json()
+    
+    # Extract temperature profile from the response
+    current_temp = data['current']['temp'] - 273.15  # Convert from Kelvin to Celsius
+    
+    # Assume a simple lapse rate
+    lapse_rate = -6.5 / 1000  # Standard atmosphere lapse rate in °C/m
+    zero_deg_altitude = current_temp / lapse_rate  # Calculate the altitude where temperature is 0°C
+    
+    return zero_deg_altitude
+
+# Function to extract MVA data from an image URL using OCR
+def extract_mva_data_from_image_url(image_url):
+    response = requests.get(image_url)
+    img = Image.open(BytesIO(response.content))
+
+    # Convert image to array
+    img_array = np.array(img)
+    # Convert to grayscale
+    gray = cv2.cvtColor(img_array, cv2.COLOR_BGR2GRAY)
+    # Apply thresholding
+    _, thresh = cv2.threshold(gray, 150, 255, cv2.THRESH_BINARY_INV)
+    # Detect contours
+    contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    mva_data = []
+    for cnt in contours:
+        # Approximate the contour to reduce the number of points
+        epsilon = 0.02 * cv2.arcLength(cnt, True)
+        approx = cv2.approxPolyDP(cnt, epsilon, True)
+        # Use OCR to extract the text
+        x, y, w, h = cv2.boundingRect(cnt)
+        roi = gray[y:y+h, x:x+w]
+        text = pytesseract.image_to_string(roi, config='--psm 6')
+
+        # Clean and validate the text
+        try:
+            mva_value = int(re.search(r'\d+', text).group())
+            mva_data.append({
+                'polygon': approx.tolist(),
+                'mva': mva_value
+            })
+        except (ValueError, AttributeError):
+            continue
+
+    return mva_data
+
 # Sidebar for base selection and radius filter
 with st.sidebar:
     base_names = [base['name'] for base in helicopter_bases]
@@ -190,21 +248,28 @@ if show_geo_data:
 # Add Minimum Vectoring Altitudes (MVA) layer
 if show_mva_layer:
     # Add the MVA layer here
-    mva_data_url = "https://aip.dfs.de/BasicIFR/2024JUN13/pages/3B0A314B47BE175AAF92535E9A03CD13.html"
-    # Parse and add MVA data (placeholder)
-    folium.GeoJson(mva_data_url, name="Minimum Vectoring Altitudes").add_to(m)
+    pdf_path = "path_to_mva_chart.pdf"  # Replace with the actual path to the MVA chart PDF
+    mva_data = extract_mva_data_from_pdf(pdf_path)
+    for mva in mva_data:
+        folium.Polygon(
+            locations=[(point[0], point[1]) for point in mva['polygon']],
+            color='blue',
+            fill=True,
+            fill_color='blue',
+            fill_opacity=0.4,
+            popup=f"MVA: {mva['mva']} ft"
+        ).add_to(m)
 
 # Add 0°C Altitude Layer
 if show_zero_deg_layer:
-    # Fetch and add 0°C altitude data (placeholder)
-    zero_deg_data = fetch_zero_deg_data()  # Implement this function
-    folium.GeoJson(zero_deg_data, name="0°C Altitude Layer").add_to(m)
-
-# Add comparison layer for MVA and 0°C Altitude
-if show_mva_layer and show_zero_deg_layer:
-    # Compare and highlight areas where 0°C altitude is at or below MVA (placeholder)
-    comparison_layer = compare_mva_and_zero_deg(mva_data_url, zero_deg_data)  # Implement this function
-    folium.GeoJson(comparison_layer, name="MVA vs 0°C Altitude").add_to(m)
+    # Fetch and add 0°C altitude data
+    api_key = "912f77866083d8de4c3b1d830eabe804"  # Your OpenWeatherMap API key
+    zero_deg_altitude = fetch_zero_deg_altitude(selected_base['lat'], selected_base['lon'], api_key)
+    folium.Marker(
+        location=[selected_base['lat'], selected_base['lon']],
+        popup=f"0°C Altitude: {zero_deg_altitude:.2f} m",
+        icon=folium.Icon(color="blue", icon="info-sign"),
+    ).add_to(m)
 
 # Display map
 folium_static(m, width=1920, height=1080)
