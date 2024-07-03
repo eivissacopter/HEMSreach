@@ -230,7 +230,7 @@ with st.sidebar:
         st.table(df_fuel)
 
     # Expandable section for weather configuration
-    with st.expander("Weather Config"):
+    with st.expander("Weather Policy"):
         weather_time_window = st.slider('Weather Time Window (hours)', min_value=1, max_value=10, value=5, step=1)
 
         col1, col2 = st.columns(2)
@@ -281,25 +281,25 @@ folium.Marker(
     icon=folium.Icon(color="blue", icon="info-sign"),
 ).add_to(m)
 
-# Add reachable airports to map
-for airport, distance in reachable_airports:
+# Add all airports to map with color indicating reachability and METAR/TAF data in the popup
+for airport in airports:
+    distance, bearing = haversine(selected_base['lon'], selected_base['lat'], airport['lon'], airport['lat'])
+    ground_speed_kt = calculate_ground_speed(cruise_speed_kt, wind_speed, wind_direction, bearing)
+    time_to_airport_hours = distance / ground_speed_kt if ground_speed_kt > 0 else float('inf')
+
     metar_data, taf_data = fetch_metar_taf_data(airport['icao'])
     metar_report = parse_metar_data(metar_data)
     taf_reports = parse_taf_data(taf_data)
 
-    if not is_valid_for_time_window(metar_report, taf_reports, weather_time_window):
-        status = "INVALID DATA"
-        color = "gray"
+    if metar_report and taf_reports:
+        if time_to_airport_hours <= flight_time_hours:
+            color = "darkgrey"
+        else:
+            color = "lightgrey"
     else:
-        status, color = get_weather_status(
-            metar_report, taf_reports,
-            float(dest_ok_vis), float(dest_ok_ceiling),
-            float(alt_ok_vis), float(alt_ok_ceiling),
-            float(no_alt_vis), float(no_alt_ceiling),
-            float(nvfr_vis), float(nvfr_ceiling)
-        )
+        color = "lightgrey"
 
-    popup_text = f"{airport['name']} ({airport['icao']}) - {status}"
+    popup_text = f"{airport['name']} ({airport['icao']})\nMETAR: {metar_data}\nTAF: {taf_data}"
     folium.Marker(
         location=[airport['lat'], airport['lon']],
         popup=popup_text,
@@ -308,3 +308,41 @@ for airport, distance in reachable_airports:
 
 # Display map
 folium_static(m, width=1280, height=800)
+
+# Create table of reachable airports with METAR and TAF data
+reachable_airports_data = []
+for airport, distance in reachable_airports:
+    metar_data, taf_data = fetch_metar_taf_data(airport['icao'])
+    metar_report = parse_metar_data(metar_data)
+    taf_reports = parse_taf_data(taf_data)
+
+    if metar_report and taf_reports:
+        reachable_airports_data.append({
+            "Airport": f"{airport['name']} ({airport['icao']})",
+            "METAR": metar_data,
+            "TAF": taf_data
+        })
+
+df_reachable_airports = pd.DataFrame(reachable_airports_data)
+st.table(df_reachable_airports)
+
+# Function to highlight METAR and TAF based on visibility and ceiling
+def highlight_weather_conditions(text, vis_thresholds, ceil_thresholds):
+    for vis, color in vis_thresholds.items():
+        text = text.replace(vis, f"<span style='color:{color}'>{vis}</span>")
+    for ceil, color in ceil_thresholds.items():
+        text = text.replace(ceil, f"<span style='color:{color}'>{ceil}</span>")
+    return text
+
+# Highlight visibility and ceiling in the METAR and TAF columns
+vis_thresholds = {
+    "500": "red", "900": "yellow", "3000": "green", "5000": "blue"
+}
+ceil_thresholds = {
+    "200": "red", "400": "yellow", "700": "green", "1500": "blue"
+}
+
+df_reachable_airports['METAR'] = df_reachable_airports['METAR'].apply(lambda x: highlight_weather_conditions(x, vis_thresholds, ceil_thresholds))
+df_reachable_airports['TAF'] = df_reachable_airports['TAF'].apply(lambda x: highlight_weather_conditions(x, vis_thresholds, ceil_thresholds))
+
+st.table(df_reachable_airports)
