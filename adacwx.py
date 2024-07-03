@@ -95,22 +95,34 @@ with st.sidebar:
 
     # Expandable section for fuel breakdown
     with st.expander("Show Fuel Breakdown"):
-        approach_count = st.selectbox("Number of Approaches", [0, 1, 2], index=0)
         system_test_and_air_taxi = 37
         holding_final_reserve = 100
-        approach_fuel = approach_count * 30
         air_taxi_to_parking = 20
+        st.write("System Test and Air Taxi: 37 kg")
+        st.write("Holding/Final Reserve: 100 kg")
+        st.write("Air Taxi to Parking: 20 kg")
 
-        contingency_fuel = 0.1 * (total_fuel_kg - holding_final_reserve - system_test_and_air_taxi - air_taxi_to_parking - approach_fuel)
-        trip_fuel_kg = total_fuel_kg - (system_test_and_air_taxi + holding_final_reserve + approach_fuel + air_taxi_to_parking + contingency_fuel)
+        contingency_fuel = 0.1 * (total_fuel_kg - holding_final_reserve - system_test_and_air_taxi - air_taxi_to_parking)
+        st.write(f"Contingency Fuel (10%): {round(contingency_fuel)} kg")
+
+        alternate_required = st.checkbox("Alternate Required")
+        alternate_fuel = st.number_input("Alternate Fuel (kg)", value=0, step=10) if alternate_required else 0
+
+        trip_fuel_kg = total_fuel_kg - (system_test_and_air_taxi + holding_final_reserve + air_taxi_to_parking + contingency_fuel + alternate_fuel)
 
         fuel_data = {
-            "Fuel Component": ["System Test and Air Taxi", "Holding/Final Reserve", "Approach Fuel", "Air Taxi to Parking", "Contingency Fuel", "Trip Fuel"],
-            "Fuel (kg)": [system_test_and_air_taxi, holding_final_reserve, approach_fuel, air_taxi_to_parking, round(contingency_fuel), round(trip_fuel_kg)]
+            "Fuel Component": ["System Test and Air Taxi", "Holding/Final Reserve", "Air Taxi to Parking", "Contingency Fuel", "Alternate Fuel", "Trip Fuel"],
+            "Fuel (kg)": [system_test_and_air_taxi, holding_final_reserve, air_taxi_to_parking, round(contingency_fuel), round(alternate_fuel), round(trip_fuel_kg)]
         }
         df_fuel = pd.DataFrame(fuel_data)
         st.table(df_fuel)
-    
+
+    # Number of approaches
+    approach_count = st.selectbox("Number of Approaches", [0, 1, 2], index=0)
+    approach_fuel = approach_count * 30
+    trip_fuel_kg -= approach_fuel
+    st.write(f"Approach Fuel: {approach_fuel} kg")
+
     # Show calculated flight time below the fuel slider
     fuel_burn_kgph = H145D2_PERFORMANCE['fuel_burn_kgph']
     flight_time_hours = trip_fuel_kg / fuel_burn_kgph
