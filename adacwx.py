@@ -9,6 +9,7 @@ import folium
 from streamlit_folium import folium_static
 import metar
 import pytz
+from metar import Metar
 
 # Set the page configuration at the very top
 st.set_page_config(layout="wide")
@@ -103,17 +104,14 @@ def fetch_metar_taf_data(icao):
     response_metar = requests.get(base_url, params=params_metar)
     response_taf = requests.get(base_url, params=params_taf)
 
-    metar_data = response_metar.content.decode()
-    taf_data = response_taf.content.decode()
-
-    return metar_data, taf_data
+    return response_metar.text, response_taf.text
 
 # Function to parse METAR data
 def parse_metar_data(metar_data):
     try:
-        metar_report = metar.Metar(metar_data, strict=False)
-        return metar_report
-    except metar.ParserError:
+        report = metar.parse(metar_data)
+        return report
+    except Exception as e:
         return None
 
 # Function to parse TAF data
@@ -152,13 +150,13 @@ def get_weather_status(metar_report, taf_reports, dest_ok_vis, dest_ok_ceiling, 
     ceilings = []
 
     if metar_report:
-        visibilities.append(metar_report.vis)
-        ceilings.append(metar_report.sky)
+        visibilities.append(metar_report.vis.value())
+        ceilings.append(metar_report.sky_conditions[0].altitude() * 100)
 
     for taf in taf_reports:
         taf_parts = taf.split()
         for part in taf_parts:
-            if part.startswith("P6SM") or part.endswith("SM"):
+            if part.endswith("SM"):
                 visibilities.append(int(part.rstrip("SM")) * 1609.34)  # Convert statute miles to meters
             if part.startswith("BKN") or part.startswith("OVC"):
                 ceilings.append(int(part[3:]) * 100)  # Convert hundreds of feet to feet
