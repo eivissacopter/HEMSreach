@@ -99,11 +99,6 @@ with st.sidebar:
     with st.expander("Show Fuel Breakdown"):
         system_test_and_air_taxi = 37
         holding_final_reserve = 100
-        approach_fuel = 30
-        if alternate_required:
-            approach_fuel = 60
-        trip_fuel_kg -= approach_fuel
-        st.write(f"Approach Fuel: {approach_fuel} kg")
         air_taxi_to_parking = 20
 
         contingency_fuel = 0.1 * (total_fuel_kg - holding_final_reserve - system_test_and_air_taxi - air_taxi_to_parking)
@@ -120,6 +115,13 @@ with st.sidebar:
     alternate_required = st.checkbox("Alternate Required")
     alternate_fuel = st.number_input("Alternate Fuel (kg)", value=0, step=10) if alternate_required else 0
     trip_fuel_kg -= alternate_fuel
+
+    # Number of approaches and approach fuel logic
+    approach_fuel = 30
+    if alternate_required:
+        approach_fuel = 60
+    trip_fuel_kg -= approach_fuel
+    st.write(f"Approach Fuel: {approach_fuel} kg")
 
     # Show calculated flight time below the fuel slider
     fuel_burn_kgph = H145D2_PERFORMANCE['fuel_burn_kgph']
