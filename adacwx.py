@@ -166,7 +166,7 @@ def fetch_freezing_level_and_wind(lat, lon, altitude_ft):
     params = {
         "latitude": lat,
         "longitude": lon,
-        "hourly": f"freezing_level_height,wind_speed_{altitude_m}m,wind_direction_{altitude_m}m,cloudcover",
+        "hourly": f"freezing_level_height,wind_speed_{altitude_m},wind_direction_{altitude_m},cloudcover",
         "models": "dwd-icon",
         "timezone": "auto"
     }
@@ -176,8 +176,8 @@ def fetch_freezing_level_and_wind(lat, lon, altitude_ft):
         data = response.json()
         hourly = data['hourly']
         freezing_level_height = hourly['freezing_level_height'][0]  # Use the first value for now
-        wind_speed_mps = hourly[f'wind_speed_{altitude_m}m'][0]  # Use the first value for now
-        wind_direction = hourly[f'wind_direction_{altitude_m}m'][0]  # Use the first value for now
+        wind_speed_mps = hourly[f'wind_speed_{altitude_m}'][0]  # Use the first value for now
+        wind_direction = hourly[f'wind_direction_{altitude_m}'][0]  # Use the first value for now
         cloudcover = hourly['cloudcover'][0]  # Use the first value for now
 
         # Convert wind speed from m/s to knots
