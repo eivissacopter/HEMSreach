@@ -7,4 +7,5 @@ openmeteo_requests
 requests_cache
 retry_requests
 geopandas
-python-metar
+metar
+python-metar-taf-parser
