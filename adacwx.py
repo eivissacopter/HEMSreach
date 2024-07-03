@@ -5,6 +5,7 @@ import math
 import re
 from datetime import datetime, timedelta
 from database import helicopter_bases, airports
+from performance import H145D2_PERFORMANCE
 import folium
 from streamlit_folium import folium_static
 from PIL import Image, ImageEnhance, ImageFilter
@@ -166,9 +167,8 @@ def fetch_freezing_level_and_wind(lat, lon, altitude_ft):
     params = {
         "latitude": lat,
         "longitude": lon,
-        "hourly": "freezing_level_height,wind_speed_10m,wind_direction_10m",
-        "start": datetime.utcnow().isoformat(),
-        "end": (datetime.utcnow() + timedelta(hours=24)).isoformat()
+        "hourly": f"freezing_level_height,wind_speed_{altitude_m}m,wind_direction_{altitude_m}m",
+        "timezone": "auto"
     }
     try:
         response = requests.get(url, params=params)
@@ -176,8 +176,8 @@ def fetch_freezing_level_and_wind(lat, lon, altitude_ft):
         data = response.json()
         hourly = data['hourly']
         freezing_level_height = hourly['freezing_level_height'][0]  # Use the first value for now
-        wind_speed_mps = hourly['wind_speed_10m'][0]  # Use the first value for now
-        wind_direction = hourly['wind_direction_10m'][0]  # Use the first value for now
+        wind_speed_mps = hourly[f'wind_speed_{altitude_m}m'][0]  # Use the first value for now
+        wind_direction = hourly[f'wind_direction_{altitude_m}m'][0]  # Use the first value for now
 
         # Convert wind speed from m/s to knots
         wind_speed_knots = round(wind_speed_mps * 1.94384)
@@ -197,14 +197,17 @@ with st.sidebar:
     default_base = next(base for base in helicopter_bases if base['name'] == 'Christoph 77 Mainz')
     selected_base_name = st.selectbox('Select Home Base', base_names, index=base_names.index(default_base['name']))
     selected_base = next(base for base in helicopter_bases if base['name'] == selected_base_name)
-    radius_nm = st.slider('Select radius in nautical miles', min_value=50, max_value=500, value=200, step=10)
     cruise_altitude_ft = st.slider('Select cruise altitude in feet', min_value=1000, max_value=10000, value=5000, step=500)
+    fuel_kg = st.slider('Select fuel in tanks (kg)', min_value=300, max_value=723, value=500, step=1)
 
-    # Add switches for layers
-    show_freezing_level_layer = st.checkbox("Show Freezing Level Layer")
+# Calculate mission radius
+cruise_speed_kt = H145D2_PERFORMANCE['cruise_speed_kt']
+fuel_burn_kgph = H145D2_PERFORMANCE['fuel_burn_kgph']
+flight_time_hours = fuel_kg / fuel_burn_kgph
+mission_radius_nm = cruise_speed_kt * flight_time_hours
 
-# Get airports within radius
-nearby_airports = get_airports_within_radius(selected_base['lat'], selected_base['lon'], radius_nm)
+# Get airports within mission radius
+nearby_airports = get_airports_within_radius(selected_base['lat'], selected_base['lon'], mission_radius_nm)
 
 # Create map centered on selected base
 m = folium.Map(location=[selected_base['lat'], selected_base['lon']], zoom_start=7)
