@@ -168,9 +168,9 @@ def fetch_freezing_level_and_wind(lat, lon, altitude_ft):
     params = {
         "latitude": lat,
         "longitude": lon,
-        "hourly": f"freezing_level_height,wind_speed_{altitude_m}m,wind_direction_{altitude_m}m",
-        "start": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "end": (datetime.utcnow() + timedelta(hours=1)).strftime("%Y-%m-%dT%H:%M:%SZ")
+        "hourly": "freezing_level_height,wind_speed_10m,wind_direction_10m",
+        "start": datetime.utcnow().isoformat(),
+        "end": (datetime.utcnow() + timedelta(hours=24)).isoformat()
     }
     try:
         response = requests.get(url, params=params)
@@ -178,8 +178,8 @@ def fetch_freezing_level_and_wind(lat, lon, altitude_ft):
         data = response.json()
         hourly = data['hourly']
         freezing_level = hourly['freezing_level_height'][0]  # Use the first value for now
-        wind_speed = hourly[f'wind_speed_{altitude_m}m'][0]  # Use the first value for now
-        wind_direction = hourly[f'wind_direction_{altitude_m}m'][0]  # Use the first value for now
+        wind_speed = hourly['wind_speed_10m'][0]  # Use the first value for now
+        wind_direction = hourly['wind_direction_10m'][0]  # Use the first value for now
     except Exception as e:
         st.error(f"Error fetching data from OpenMeteo API: {e}")
         return None, None, None
