@@ -8,6 +8,7 @@ from performance import H145D2_PERFORMANCE
 import folium
 from streamlit_folium import folium_static
 from metar import Metar
+import pytz
 
 # Set the page configuration at the very top
 st.set_page_config(layout="wide")
@@ -160,16 +161,19 @@ def get_weather_status(metar_report, taf_reports, dest_ok_vis, dest_ok_ceiling, 
             if part.startswith("BKN") or part.startswith("OVC"):
                 ceilings.append(int(part[3:]) * 100)  # Convert hundreds of feet to feet
 
-    if any(vis < dest_ok_vis or ceil > dest_ok_ceiling for vis, ceil in zip(visibilities, ceilings)):
+    all_vis = visibilities + [10000]  # Default visibility if not available
+    all_ceils = ceilings + [0]        # Default ceiling if not available
+
+    if any(vis < dest_ok_vis or ceil > dest_ok_ceiling for vis, ceil in zip(all_vis, all_ceils)):
         status = "DEST OK"
         color = "red"
-    elif any(vis < alt_ok_vis or ceil > alt_ok_ceiling for vis, ceil in zip(visibilities, ceilings)):
+    elif any(vis < alt_ok_vis or ceil > alt_ok_ceiling for vis, ceil in zip(all_vis, all_ceils)):
         status = "ALT OK"
         color = "yellow"
-    elif any(vis < no_alt_vis or ceil > no_alt_ceiling for vis, ceil in zip(visibilities, ceilings)):
+    elif any(vis < no_alt_vis or ceil > no_alt_ceiling for vis, ceil in zip(all_vis, all_ceils)):
         status = "NO ALT REQ"
         color = "green"
-    elif any(vis < nvfr_vis or ceil > nvfr_ceiling for vis, ceil in zip(visibilities, ceilings)):
+    elif any(vis < nvfr_vis or ceil > nvfr_ceiling for vis, ceil in zip(all_vis, all_ceils)):
         status = "NVFR OK"
         color = "blue"
 
