@@ -159,14 +159,14 @@ def check_weather_criteria(metar, taf):
 @st.cache_data
 def fetch_freezing_level_and_wind(lat, lon, altitude_ft):
     altitude_m = round(altitude_ft * 0.3048)  # Convert feet to meters and round to the nearest meter
-    altitude_levels = ["1500", "3000", "5000"]  # Supported altitude levels in meters for wind
-    altitude_m = min(altitude_levels, key=lambda x: abs(int(x) - altitude_m))  # Find the closest supported level
+    altitude_levels = [1500, 3000, 5000]  # Supported altitude levels in meters for wind
+    altitude_m = min(altitude_levels, key=lambda x: abs(x - altitude_m))  # Find the closest supported level
     
     url = "https://api.open-meteo.com/v1/dwd-icon"
     params = {
         "latitude": lat,
         "longitude": lon,
-        "hourly": f"freezing_level_height,wind_speed_{altitude_m}m,wind_direction_{altitude_m}m,cloudcover,weather_code",
+        "hourly": f"freezing_level_height,wind_speed_{altitude_m},wind_direction_{altitude_m},cloudcover",
         "wind_speed_unit": "kn",
         "timezone": "auto"
     }
@@ -176,10 +176,9 @@ def fetch_freezing_level_and_wind(lat, lon, altitude_ft):
         data = response.json()
         hourly = data['hourly']
         freezing_level_height = hourly['freezing_level_height'][0]  # Use the first value for now
-        wind_speed_knots = hourly[f'wind_speed_{altitude_m}m'][0]  # Use the first value for now
-        wind_direction = hourly[f'wind_direction_{altitude_m}m'][0]  # Use the first value for now
+        wind_speed_knots = hourly[f'wind_speed_{altitude_m}'][0]  # Use the first value for now
+        wind_direction = hourly[f'wind_direction_{altitude_m}'][0]  # Use the first value for now
         cloudcover = hourly['cloudcover'][0]  # Use the first value for now
-        weather_code = hourly['weather_code'][0]  # Use the first value for now
 
         # Convert freezing level height from meters to feet
         freezing_level_altitude_ft = round(freezing_level_height * 3.28084)
@@ -190,14 +189,11 @@ def fetch_freezing_level_and_wind(lat, lon, altitude_ft):
         else:
             cloud_text = "Sky clear"
 
-        # Determine thunderstorm conditions
-        thunderstorm = "Yes" if weather_code in [95, 96, 99] else "No"
-
     except Exception as e:
         st.error(f"Error fetching data from OpenMeteo API: {e}")
-        return None, None, None, None, None
+        return None, None, None, None
 
-    return freezing_level_altitude_ft, wind_speed_knots, wind_direction, cloud_text, thunderstorm
+    return freezing_level_altitude_ft, wind_speed_knots, wind_direction, cloud_text
 
 
 # Sidebar for base selection and radius filter
@@ -220,14 +216,13 @@ with st.sidebar:
     )
     
     st.markdown("### Weather at Home Base")
-    freezing_level, wind_speed, wind_direction, cloud_text, thunderstorm = fetch_freezing_level_and_wind(
+    freezing_level, wind_speed, wind_direction, cloud_text = fetch_freezing_level_and_wind(
         selected_base['lat'], selected_base['lon'], cruise_altitude_ft
     )
     
     st.markdown(f"**Wind at {cruise_altitude_ft} ft:** {wind_direction}°/{wind_speed} kt")
     st.markdown(f"**Freezing Level (Altitude):** {freezing_level} ft")
     st.markdown(f"**Clouds:** {cloud_text}")
-    st.markdown(f"**Thunderstorm Forecast:** {thunderstorm}")
 
 
 # Calculate mission radius
@@ -271,7 +266,7 @@ for airport, distance in nearby_airports:
     
     color = "green" if weather_ok else "red"
     
-    freezing_level, wind_speed, wind_direction, cloud_text, thunderstorm = fetch_freezing_level_and_wind(
+    freezing_level, wind_speed, wind_direction, cloud_text = fetch_freezing_level_and_wind(
         airport['lat'], airport['lon'], cruise_altitude_ft
     )
     
@@ -280,8 +275,7 @@ for airport, distance in nearby_airports:
             f"{airport['name']} ({airport['icao']}) - {distance:.1f} NM\n"
             f"Freezing Level: {freezing_level} ft\n"
             f"Wind: {wind_direction}°/{wind_speed} kt\n"
-            f"Clouds: {cloud_text}\n"
-            f"Thunderstorm Forecast: {thunderstorm}"
+            f"Clouds: {cloud_text}"
         )
     else:
         popup_text = (
