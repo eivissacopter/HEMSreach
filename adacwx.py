@@ -114,6 +114,7 @@ def check_weather_criteria(metar, taf):
         return False
 
 # Streamlit app layout
+st.set_page_config(layout="wide")
 st.title('Aviation Weather Checker')
 
 # Sidebar for base selection and radius filter
@@ -126,8 +127,10 @@ with st.sidebar:
 # Get airports within radius
 nearby_airports = get_airports_within_radius(selected_base['lat'], selected_base['lon'], radius_nm)
 
-# Create map centered on selected base
-m = folium.Map(location=[selected_base['lat'], selected_base['lon']], zoom_start=7)
+# Create map centered on selected base with OpenFlightMaps
+m = folium.Map(location=[selected_base['lat'], selected_base['lon']], zoom_start=7, tiles=None)
+folium.TileLayer('https://{s}.tile.openflightmaps.org/{z}/{x}/{y}.png', 
+                 attr='OpenFlightMaps').add_to(m)
 
 # Add selected base to map
 folium.Marker(
