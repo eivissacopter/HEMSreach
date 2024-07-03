@@ -76,6 +76,34 @@ def calculate_ground_speed(cruise_speed_kt, wind_speed, wind_direction, flight_d
     ground_speed = cruise_speed_kt - wind_component  # Invert the calculation to correctly apply wind impact
     return ground_speed
 
+# Function to fetch weather data from API
+def fetch_weather_data(lat, lon, cruise_altitude_ft):
+    base_url = "https://api.open-meteo.com/v1/forecast"
+    params = {
+        "latitude": lat,
+        "longitude": lon,
+        "hourly": "temperature_2m,cloudcover,windspeed_10m,winddirection_10m",
+        "elevation": cruise_altitude_ft,
+        "current_weather": True,
+    }
+    response = requests.get(base_url, params=params)
+    data = response.json()
+
+    if "current_weather" in data:
+        current_weather = data["current_weather"]
+        wind_speed = current_weather["windspeed"]
+        wind_direction = current_weather["winddirection"]
+        freezing_level = current_weather["elevation"]
+        cloud_cover = data["hourly"]["cloudcover"][0] if data["hourly"]["cloudcover"] else "N/A"
+        icing_warning = "Moderate" if cloud_cover > 50 else "Light"
+    else:
+        wind_speed = "N/A"
+        wind_direction = "N/A"
+        freezing_level = "N/A"
+        icing_warning = "N/A"
+
+    return wind_speed, wind_direction, freezing_level, icing_warning
+
 # Sidebar for base selection and radius filter
 with st.sidebar:
     base_names = [base['name'] for base in helicopter_bases]
@@ -104,9 +132,15 @@ with st.sidebar:
         contingency_fuel = 0.1 * (total_fuel_kg - holding_final_reserve - system_test_and_air_taxi - air_taxi_to_parking)
         trip_fuel_kg = total_fuel_kg - (system_test_and_air_taxi + holding_final_reserve + air_taxi_to_parking + contingency_fuel)
 
+        # Number of approaches and approach fuel logic
+        approach_fuel = 30
+        if alternate_required:
+            approach_fuel = 60
+        trip_fuel_kg -= approach_fuel
+
         fuel_data = {
-            "Fuel Component": ["System Test and Air Taxi", "Holding/Final Reserve", "Air Taxi to Parking", "Contingency Fuel", "Trip Fuel"],
-            "Fuel (kg)": [system_test_and_air_taxi, holding_final_reserve, air_taxi_to_parking, round(contingency_fuel), round(trip_fuel_kg)]
+            "Fuel Component": ["System Test and Air Taxi", "Holding/Final Reserve", "Air Taxi to Parking", "Contingency Fuel", "Approach Fuel", "Trip Fuel"],
+            "Fuel (kg)": [system_test_and_air_taxi, holding_final_reserve, air_taxi_to_parking, round(contingency_fuel), approach_fuel, round(trip_fuel_kg)]
         }
         df_fuel = pd.DataFrame(fuel_data)
         st.table(df_fuel)
@@ -115,13 +149,6 @@ with st.sidebar:
     alternate_required = st.checkbox("Alternate Required")
     alternate_fuel = st.number_input("Alternate Fuel (kg)", value=0, step=10) if alternate_required else 0
     trip_fuel_kg -= alternate_fuel
-
-    # Number of approaches and approach fuel logic
-    approach_fuel = 30
-    if alternate_required:
-        approach_fuel = 60
-    trip_fuel_kg -= approach_fuel
-    st.write(f"Approach Fuel: {approach_fuel} kg")
 
     # Show calculated flight time below the fuel slider
     fuel_burn_kgph = H145D2_PERFORMANCE['fuel_burn_kgph']
@@ -134,20 +161,19 @@ with st.sidebar:
     auto_fetch = st.checkbox("Try to get weather values automatically via API", value=False)
     
     if auto_fetch:
-        # Placeholder for API function to fetch weather data
-        freezing_level = 0
-        wind_speed = 0
-        wind_direction = 0
-        cloud_text = "Fetched from API"
+        wind_speed, wind_direction, freezing_level, icing_warning = fetch_weather_data(selected_base['lat'], selected_base['lon'], cruise_altitude_ft)
     else:
         wind_direction = st.text_input("Wind Direction (°)", "360")
         wind_speed = st.text_input("Wind Speed (kt)", "0")
         freezing_level = st.text_input("Freezing Level (ft)", "0")
-        cloud_text = "Manual Input"
-    
+        icing_warning = "Manual Input"
+
     st.markdown(f"**Wind at {cruise_altitude_ft} ft:** {wind_direction}°/{wind_speed} kt")
     st.markdown(f"**Freezing Level (Altitude):** {freezing_level} ft")
-    st.markdown(f"**Clouds:** {cloud_text}")
+    st.markdown(f"**Expected Icing:** {icing_warning}")
+
+    # Manual input for Minimum Vectoring Altitude
+    min_vectoring_altitude = st.text_input("Minimum Vectoring Altitude below Freezing Level (ft)")
 
 # Calculate mission radius
 cruise_speed_kt = H145D2_PERFORMANCE['cruise_speed_kt']
@@ -183,4 +209,4 @@ for airport, distance in reachable_airports:
     ).add_to(m)
 
 # Display map
-folium_static(m, width=1920, height=1080)
+folium_static(m, width=1280, height=800)
