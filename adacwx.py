@@ -11,7 +11,7 @@ import pytz
 from metar import Metar
 from metar.Datatypes import temperature, speed, distance, pressure
 from metar.Metar import Metar as MetarParser
-from metar.TAF import TAF as TAFParser
+from metar_taf_parser import parse_taf
 
 # Set the page configuration at the very top
 st.set_page_config(layout="wide")
@@ -120,7 +120,7 @@ def parse_metar(metar_raw):
 # Function to parse and interpret TAF data
 def parse_taf(taf_raw):
     try:
-        taf = TAFParser(taf_raw)
+        taf = parse_taf(taf_raw)
         return taf
     except Exception as e:
         return None
@@ -139,8 +139,8 @@ def categorize_weather(metar, taf, time_window_hours):
             if report.sky_conditions:
                 ceilings.append(report.sky_conditions[0].altitude() * 100)
 
-        if isinstance(report, TAFParser):
-            for forecast in report.forecast:
+        if isinstance(report, list):  # Assuming list of TAF forecasts
+            for forecast in report:
                 visibilities.append(forecast.visibility)
                 ceilings.extend([layer[1] for layer in forecast.sky])
 
