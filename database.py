@@ -33,7 +33,7 @@ helicopter_bases = [
     {"name": "Christoph 75 Rheinland", "lat": 50.7686, "lon": 7.1829},
     {"name": "Christoph 77 Mainz", "lat": 50.0000, "lon": 8.2711},
     {"name": "Christoph Europa 1 Würselen", "lat": 50.8283, "lon": 6.1151},
-    {"name": "Christoph Europa 2 Rheine", "lat": 52.2711, "lon": 7.3829},
+    {"name": "Christoph Europa 2 Rheine", "lat": 52.2711, "lon": 7.3829}
 ]
 
 # Airports with IFR approaches data
