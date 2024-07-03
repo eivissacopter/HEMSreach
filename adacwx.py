@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import requests
 import math
-from datetime import datetime, timedelta
 from database import helicopter_bases, airports
 from performance import H145D2_PERFORMANCE
 import folium
@@ -76,33 +75,31 @@ def calculate_ground_speed(cruise_speed_kt, wind_speed, wind_direction, flight_d
     ground_speed = cruise_speed_kt - wind_component  # Invert the calculation to correctly apply wind impact
     return ground_speed
 
-# Function to fetch weather data from API
-def fetch_weather_data(lat, lon, cruise_altitude_ft):
+# Function to fetch weather data for IFR classification
+def fetch_weather_data(lat, lon):
     base_url = "https://api.open-meteo.com/v1/forecast"
     params = {
         "latitude": lat,
         "longitude": lon,
-        "hourly": "temperature_2m,cloudcover,windspeed_10m,winddirection_10m",
-        "elevation": cruise_altitude_ft,
+        "hourly": "visibility,cloudcover",
         "current_weather": True,
     }
     response = requests.get(base_url, params=params)
     data = response.json()
 
-    if "current_weather" in data:
-        current_weather = data["current_weather"]
-        wind_speed = current_weather["windspeed"]
-        wind_direction = current_weather["winddirection"]
-        freezing_level = current_weather["elevation"]
+    if "hourly" in data:
+        visibility = data["hourly"]["visibility"][0] if data["hourly"]["visibility"] else "N/A"
         cloud_cover = data["hourly"]["cloudcover"][0] if data["hourly"]["cloudcover"] else "N/A"
-        icing_warning = "Moderate" if cloud_cover > 50 else "Light"
+        if visibility == "N/A" or cloud_cover == "N/A":
+            ifr_status = "Unknown"
+        elif visibility < 5000 or cloud_cover > 50:
+            ifr_status = "Non-IFR"
+        else:
+            ifr_status = "IFR"
     else:
-        wind_speed = "N/A"
-        wind_direction = "N/A"
-        freezing_level = "N/A"
-        icing_warning = "N/A"
+        ifr_status = "Unknown"
 
-    return wind_speed, wind_direction, freezing_level, icing_warning
+    return ifr_status
 
 # Sidebar for base selection and radius filter
 with st.sidebar:
@@ -134,17 +131,22 @@ with st.sidebar:
         air_taxi_to_parking = 20
 
         contingency_fuel = 0.1 * (total_fuel_kg - holding_final_reserve - system_test_and_air_taxi - air_taxi_to_parking)
-        trip_fuel_kg = total_fuel_kg - (system_test_and_air_taxi + holding_final_reserve + air_taxi_to_parking + contingency_fuel + alternate_fuel)
+        trip_fuel_kg = total_fuel_kg - (system_test_and_air_taxi + holding_final_reserve + air_taxi_to_parking + contingency_fuel)
 
-        # Number of approaches and approach fuel logic
-        approach_fuel = 30
-        if alternate_required:
+        # 15 minutes fuel calculation if alternate is not required
+        if not alternate_required:
+            fifteen_min_fuel = H145D2_PERFORMANCE['fuel_burn_kgph'] * 0.25
+            trip_fuel_kg -= fifteen_min_fuel
+            approach_fuel = 30
+        else:
+            fifteen_min_fuel = 0
             approach_fuel = 60
-        trip_fuel_kg -= approach_fuel
+
+        trip_fuel_kg -= (alternate_fuel + approach_fuel)
 
         fuel_data = {
-            "Fuel Component": ["System Test and Air Taxi", "Trip Fuel", "Holding/Final Reserve", "Approach Fuel", "Air Taxi to Parking", "Contingency Fuel"],
-            "Fuel (kg)": [system_test_and_air_taxi, round(trip_fuel_kg), holding_final_reserve, approach_fuel, air_taxi_to_parking, round(contingency_fuel)]
+            "Fuel Component": ["System Test and Air Taxi", "Trip Fuel", "Holding/Final Reserve", "15 Minutes Fuel" if not alternate_required else "Alternate Fuel", "Approach Fuel", "Air Taxi to Parking", "Contingency Fuel"],
+            "Fuel (kg)": [system_test_and_air_taxi, round(trip_fuel_kg), holding_final_reserve, round(fifteen_min_fuel) if not alternate_required else round(alternate_fuel), approach_fuel, air_taxi_to_parking, round(contingency_fuel)]
         }
         df_fuel = pd.DataFrame(fuel_data)
         st.table(df_fuel)
@@ -157,15 +159,10 @@ with st.sidebar:
     st.markdown(f"### Calculated Flight Time: {flight_time_display}")
 
     st.markdown("### Weather at Home Base")
-    auto_fetch = st.checkbox("Try to get weather values automatically via API", value=False)
     
-    if auto_fetch:
-        wind_speed, wind_direction, freezing_level, icing_warning = fetch_weather_data(selected_base['lat'], selected_base['lon'], cruise_altitude_ft)
-    else:
-        wind_direction = st.text_input("Wind Direction (°)", "360")
-        wind_speed = st.text_input("Wind Speed (kt)", "0")
-        freezing_level = st.text_input("Freezing Level (ft)", "0")
-        icing_warning = "Manual Input"
+    wind_direction = st.text_input("Wind Direction (°)", "360")
+    wind_speed = st.text_input("Wind Speed (kt)", "0")
+    freezing_level = st.text_input("Freezing Level (ft)", "0")
 
     wind_direction = float(wind_direction) if wind_direction else 0
     wind_speed = float(wind_speed) if wind_speed else 0
@@ -200,12 +197,13 @@ folium.Marker(
 
 # Add reachable airports to map
 for airport, distance in reachable_airports:
-    color = "green"
-    popup_text = f"{airport['name']} ({airport['icao']}) - {distance:.1f} NM"
+    ifr_status = fetch_weather_data(airport['lat'], airport['lon'])
+    color = "blue" if ifr_status == "IFR" else "red"
+    popup_text = f"{airport['name']} ({airport['icao']}) - {distance:.1f} NM - {ifr_status}"
     folium.Marker(
         location=[airport['lat'], airport['lon']],
         popup=popup_text,
-        icon=folium.Icon(color=color),
+        icon=folium.Icon(color=color, icon="plane"),
     ).add_to(m)
 
 # Display map
