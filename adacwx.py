@@ -15,6 +15,7 @@ import openmeteo_requests
 import requests_cache
 from retry_requests import retry
 import geopandas as gpd
+from requests.exceptions import HTTPError
 
 # Set the page configuration at the very top
 st.set_page_config(layout="wide")
@@ -156,33 +157,26 @@ def check_weather_criteria(metar, taf):
         st.error(f"Error checking weather criteria: {e}")
         return False
 
-# Function to fetch 0°C altitude using OpenMeteo API
-def fetch_zero_deg_altitude(lat, lon):
+# Function to fetch freezing level using OpenMeteo API
+@st.cache
+def fetch_freezing_level(lat, lon):
     url = "https://api.open-meteo.com/v1/dwd-icon"
     params = {
         "latitude": lat,
         "longitude": lon,
         "hourly": "freezing_level_height"
     }
-    responses = openmeteo.weather_api(url, params=params)
-    response = responses[0]
-
-    if response is None:
-        st.error("Error fetching data from OpenMeteo API")
-        return None
-
-    # Print the data for debugging
-    st.write(response)
-
     try:
+        responses = openmeteo.weather_api(url, params=params)
+        response = responses[0]
         hourly = response.Hourly()
         hourly_freezing_level_height = hourly.Variables(0).ValuesAsNumpy()
-        zero_deg_altitude = hourly_freezing_level_height[0]  # Use the first value for now
-    except KeyError as e:
-        st.error(f"KeyError: {e}")
+        freezing_level = hourly_freezing_level_height[0]  # Use the first value for now
+    except Exception as e:
+        st.error(f"Error fetching data from OpenMeteo API: {e}")
         return None
 
-    return zero_deg_altitude
+    return freezing_level
 
 # Function to extract MVA data from an image URL using OCR
 def extract_mva_data_from_image_url(image_url):
@@ -220,9 +214,20 @@ def extract_mva_data_from_image_url(image_url):
     return mva_data
 
 # Function to fetch DFS geo layers using WFS
+@st.cache
 def fetch_dfs_geo_layers():
-    url = "https://haleconnect.com/ows/services/org.732.341f2791-919e-49de-8d86-3b18e040c430_wfs"
-    gdf = gpd.read_file(url)
+    url = "https://haleconnect.com/ows/services/org.732.341f2791-919e-49de-8d86-3b18e040c430_wfs?SERVICE=WFS&REQUEST=GetCapabilities&VERSION=2.0.0"
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        gdf = gpd.read_file(response.content)
+    except HTTPError as http_err:
+        st.error(f"HTTP error occurred: {http_err}")
+        return None
+    except Exception as err:
+        st.error(f"Other error occurred: {err}")
+        return None
+
     return gdf
 
 # Sidebar for base selection and radius filter
@@ -235,7 +240,7 @@ with st.sidebar:
     # Add switches for layers
     show_geo_data = st.checkbox("Show Geo-Data from DFS")
     show_mva_layer = st.checkbox("Show Minimum Vectoring Altitudes (MVA)")
-    show_zero_deg_layer = st.checkbox("Show 0°C Altitude Layer")
+    show_freezing_level_layer = st.checkbox("Show Freezing Level Layer")
 
 # Get airports within radius
 nearby_airports = get_airports_within_radius(selected_base['lat'], selected_base['lon'], radius_nm)
@@ -265,13 +270,12 @@ for airport, distance in nearby_airports:
 
 # Add Geo-Data from DFS
 if show_geo_data:
-    # Fetch and add the geo-data layer here
     gdf = fetch_dfs_geo_layers()
-    folium.GeoJson(gdf, name="Geo-Data from DFS").add_to(m)
+    if gdf is not None:
+        folium.GeoJson(gdf, name="Geo-Data from DFS").add_to(m)
 
 # Add Minimum Vectoring Altitudes (MVA) layer
 if show_mva_layer:
-    # Add the MVA layer here
     image_url = "https://aip.dfs.de/BasicIFR/pages/P00DD0.html"  # URL to the image
     mva_data = extract_mva_data_from_image_url(image_url)
     for mva in mva_data:
@@ -284,14 +288,13 @@ if show_mva_layer:
             popup=f"MVA: {mva['mva']} ft"
         ).add_to(m)
 
-# Add 0°C Altitude Layer
-if show_zero_deg_layer:
-    # Fetch and add 0°C altitude data
-    zero_deg_altitude = fetch_zero_deg_altitude(selected_base['lat'], selected_base['lon'])
-    if zero_deg_altitude is not None:
+# Add Freezing Level Layer
+if show_freezing_level_layer:
+    freezing_level = fetch_freezing_level(selected_base['lat'], selected_base['lon'])
+    if freezing_level is not None:
         folium.Marker(
             location=[selected_base['lat'], selected_base['lon']],
-            popup=f"0°C Altitude: {zero_deg_altitude:.2f} m",
+            popup=f"Freezing Level: {freezing_level:.2f} m",
             icon=folium.Icon(color="blue", icon="info-sign"),
         ).add_to(m)
 
