@@ -14,8 +14,6 @@ import pytesseract
 import openmeteo_requests
 import requests_cache
 from retry_requests import retry
-import geopandas as gpd
-from requests.exceptions import HTTPError
 
 # Set the page configuration at the very top
 st.set_page_config(layout="wide")
@@ -182,69 +180,16 @@ def fetch_freezing_level_and_wind(lat, lon, altitude_ft):
         wind_direction = hourly['wind_direction_10m'][0]  # Use the first value for now
 
         # Convert wind speed from m/s to knots
-        wind_speed_knots = wind_speed_mps * 1.94384
+        wind_speed_knots = round(wind_speed_mps * 1.94384)
 
         # Convert freezing level height from meters to feet
-        freezing_level_altitude_ft = freezing_level_height * 3.28084
+        freezing_level_altitude_ft = round(freezing_level_height * 3.28084)
 
     except Exception as e:
         st.error(f"Error fetching data from OpenMeteo API: {e}")
         return None, None, None
 
     return freezing_level_altitude_ft, wind_speed_knots, wind_direction
-
-
-# Function to extract MVA data from an image URL using OCR
-def extract_mva_data_from_image_url(image_url):
-    response = requests.get(image_url)
-    img = Image.open(BytesIO(response.content))
-
-    # Convert image to grayscale
-    gray = img.convert('L')
-    # Enhance image
-    enhancer = ImageEnhance.Contrast(gray)
-    gray = enhancer.enhance(2)
-    # Apply thresholding
-    bw = gray.point(lambda x: 0 if x < 128 else 255, '1')
-
-    mva_data = []
-    width, height = bw.size
-
-    # OCR processing
-    data = pytesseract.image_to_data(bw, output_type=pytesseract.Output.DICT)
-    n_boxes = len(data['level'])
-    for i in range(n_boxes):
-        if int(data['conf'][i]) > 60:  # Confidence threshold
-            text = data['text'][i]
-            try:
-                mva_value = int(re.search(r'\d+', text).group())
-                x, y, w, h = (data['left'][i], data['top'][i], data['width'][i], data['height'][i])
-                polygon = [(x, y), (x + w, y), (x + w, y + h), (x, y + h)]
-                mva_data.append({
-                    'polygon': polygon,
-                    'mva': mva_value
-                })
-            except (ValueError, AttributeError):
-                continue
-
-    return mva_data
-
-# Function to fetch DFS geo layers using WFS
-@st.cache_data
-def fetch_dfs_geo_layers():
-    url = "https://haleconnect.com/ows/services/org.732.341f2791-919e-49de-8d86-3b18e040c430_wfs?SERVICE=WFS&REQUEST=GetCapabilities&VERSION=2.0.0"
-    try:
-        response = requests.get(url)
-        response.raise_for_status()
-        gdf = gpd.read_file(response.content)
-    except HTTPError as http_err:
-        st.error(f"HTTP error occurred: {http_err}")
-        return None
-    except Exception as err:
-        st.error(f"Other error occurred: {err}")
-        return None
-
-    return gdf
 
 # Sidebar for base selection and radius filter
 with st.sidebar:
@@ -256,8 +201,6 @@ with st.sidebar:
     cruise_altitude_ft = st.slider('Select cruise altitude in feet', min_value=1000, max_value=10000, value=5000, step=500)
 
     # Add switches for layers
-    show_geo_data = st.checkbox("Show Geo-Data from DFS")
-    show_mva_layer = st.checkbox("Show Minimum Vectoring Altitudes (MVA)")
     show_freezing_level_layer = st.checkbox("Show Freezing Level Layer")
 
 # Get airports within radius
@@ -265,6 +208,13 @@ nearby_airports = get_airports_within_radius(selected_base['lat'], selected_base
 
 # Create map centered on selected base
 m = folium.Map(location=[selected_base['lat'], selected_base['lon']], zoom_start=7)
+
+# Add OpenFlightMap tiles
+folium.TileLayer(
+    tiles='https://{s}.tile.openflightmaps.org/{z}/{x}/{y}.png',
+    attr='&copy; <a href="https://www.openflightmaps.org">OpenFlightMaps</a>',
+    name='OpenFlightMaps'
+).add_to(m)
 
 # Add selected base to map
 folium.Marker(
@@ -282,33 +232,19 @@ for airport, distance in nearby_airports:
     
     freezing_level, wind_speed, wind_direction = fetch_freezing_level_and_wind(airport['lat'], airport['lon'], cruise_altitude_ft)
     
+    if freezing_level is not None and wind_speed is not None and wind_direction is not None:
+        popup_text = f"{airport['name']} ({airport['icao']}) - {distance:.1f} NM\n"
+        popup_text += f"Freezing Level: {freezing_level} ft\n"
+        popup_text += f"Wind: {wind_direction}°/{wind_speed} kt"
+    else:
+        popup_text = f"{airport['name']} ({airport['icao']}) - {distance:.1f} NM\n"
+        popup_text += "Weather data not available"
+
     folium.Marker(
         location=[airport['lat'], airport['lon']],
-        popup=f"{airport['name']} ({airport['icao']}) - {distance:.1f} NM\n"
-              f"Freezing Level: {freezing_level:.0f} ft\n"
-              f"Wind: {wind_speed} m/s from {wind_direction}°",
+        popup=popup_text,
         icon=folium.Icon(color=color),
     ).add_to(m)
-
-# Add Geo-Data from DFS
-if show_geo_data:
-    gdf = fetch_dfs_geo_layers()
-    if gdf is not None:
-        folium.GeoJson(gdf, name="Geo-Data from DFS").add_to(m)
-
-# Add Minimum Vectoring Altitudes (MVA) layer
-if show_mva_layer:
-    image_url = "https://aip.dfs.de/BasicIFR/pages/P00DD0.html"  # URL to the image
-    mva_data = extract_mva_data_from_image_url(image_url)
-    for mva in mva_data:
-        folium.Polygon(
-            locations=[(point[0], point[1]) for point in mva['polygon']],
-            color='blue',
-            fill=True,
-            fill_color='blue',
-            fill_opacity=0.4,
-            popup=f"MVA: {mva['mva']} ft"
-        ).add_to(m)
 
 # Display map
 folium_static(m, width=1920, height=1080)
