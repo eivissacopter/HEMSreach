@@ -3,3 +3,4 @@ streamlit-folium
 pdf2image
 pytesseract
 opencv-python
+openmeteo_requests
