@@ -99,9 +99,7 @@ airports = [
     {"name": "Sylt Airport", "icao": "EDXW", "lat": 54.9132, "lon": 8.3405},
     {"name": "Westerland/Sylt Airport", "icao": "EDXW", "lat": 54.9132, "lon": 8.3405},
     {"name": "Wilhelmshaven-Mariensiel Airport", "icao": "EDWI", "lat": 53.5333, "lon": 8.0522},
-    {"name": "Zweibrücken Airport", "icao": "EDRZ", "lat": 49.2094, "lon": 7.4008}
-]
-    # Military airports
+    {"name": "Zweibrücken Airport", "icao": "EDRZ", "lat": 49.2094, "lon": 7.4008},
     {"name": "Ramstein Air Base", "icao": "ETAR", "lat": 49.4369, "lon": 7.6003},
     {"name": "Spangdahlem Air Base", "icao": "ETAD", "lat": 49.9727, "lon": 6.6925},
     {"name": "Geilenkirchen Air Base", "icao": "ETNG", "lat": 50.9608, "lon": 6.0424},
