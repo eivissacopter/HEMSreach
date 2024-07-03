@@ -155,47 +155,6 @@ def check_weather_criteria(metar, taf):
         st.error(f"Error checking weather criteria: {e}")
         return False
 
-# Function to fetch freezing level, wind, cloud data, and thunderstorm forecast using OpenMeteo API
-@st.cache_data
-def fetch_freezing_level_and_wind(lat, lon, altitude_ft):
-    altitude_m = round(altitude_ft * 0.3048)  # Convert feet to meters and round to the nearest meter
-    altitude_levels = [1500, 3000, 5000]  # Supported altitude levels in meters for wind
-    altitude_m = min(altitude_levels, key=lambda x: abs(x - altitude_m))  # Find the closest supported level
-    
-    url = "https://api.open-meteo.com/v1/dwd-icon"
-    params = {
-        "latitude": lat,
-        "longitude": lon,
-        "hourly": f"freezing_level_height,wind_speed_{altitude_m},wind_direction_{altitude_m},cloudcover",
-        "wind_speed_unit": "kn",
-        "timezone": "auto"
-    }
-    try:
-        response = requests.get(url, params=params)
-        response.raise_for_status()
-        data = response.json()
-        hourly = data['hourly']
-        freezing_level_height = hourly['freezing_level_height'][0]  # Use the first value for now
-        wind_speed_knots = hourly[f'wind_speed_{altitude_m}'][0]  # Use the first value for now
-        wind_direction = hourly[f'wind_direction_{altitude_m}'][0]  # Use the first value for now
-        cloudcover = hourly['cloudcover'][0]  # Use the first value for now
-
-        # Convert freezing level height from meters to feet
-        freezing_level_altitude_ft = round(freezing_level_height * 3.28084)
-
-        # Determine cloud conditions
-        if cloudcover > 0:
-            cloud_text = f"Clouds present"
-        else:
-            cloud_text = "Sky clear"
-
-    except Exception as e:
-        st.error(f"Error fetching data from OpenMeteo API: {e}")
-        return None, None, None, None
-
-    return freezing_level_altitude_ft, wind_speed_knots, wind_direction, cloud_text
-
-
 # Sidebar for base selection and radius filter
 with st.sidebar:
     base_names = [base['name'] for base in helicopter_bases]
@@ -216,14 +175,21 @@ with st.sidebar:
     )
     
     st.markdown("### Weather at Home Base")
-    freezing_level, wind_speed, wind_direction, cloud_text = fetch_freezing_level_and_wind(
-        selected_base['lat'], selected_base['lon'], cruise_altitude_ft
-    )
+    auto_fetch = st.checkbox("Try to get weather values automatically via API", value=False)
+    
+    if auto_fetch:
+        freezing_level, wind_speed, wind_direction, cloud_text = fetch_freezing_level_and_wind(
+            selected_base['lat'], selected_base['lon'], cruise_altitude_ft
+        )
+    else:
+        wind_direction = st.text_input("Wind Direction (°)", "360")
+        wind_speed = st.text_input("Wind Speed (kt)", "0")
+        freezing_level = st.text_input("Freezing Level (ft)", "0")
+        cloud_text = "Manual Input"
     
     st.markdown(f"**Wind at {cruise_altitude_ft} ft:** {wind_direction}°/{wind_speed} kt")
     st.markdown(f"**Freezing Level (Altitude):** {freezing_level} ft")
     st.markdown(f"**Clouds:** {cloud_text}")
-
 
 # Calculate mission radius
 cruise_speed_kt = H145D2_PERFORMANCE['cruise_speed_kt']
@@ -231,6 +197,11 @@ fuel_burn_kgph = H145D2_PERFORMANCE['fuel_burn_kgph']
 flight_time_hours = fuel_kg / fuel_burn_kgph
 
 # Calculate ground speed considering wind
+if isinstance(wind_direction, str) and wind_direction.isnumeric():
+    wind_direction = int(wind_direction)
+if isinstance(wind_speed, str) and wind_speed.isnumeric():
+    wind_speed = int(wind_speed)
+
 if wind_direction is not None:
     wind_component = wind_speed * math.cos(math.radians(wind_direction))
     ground_speed_kt = cruise_speed_kt + wind_component
@@ -266,9 +237,15 @@ for airport, distance in nearby_airports:
     
     color = "green" if weather_ok else "red"
     
-    freezing_level, wind_speed, wind_direction, cloud_text = fetch_freezing_level_and_wind(
-        airport['lat'], airport['lon'], cruise_altitude_ft
-    )
+    if not auto_fetch:
+        wind_direction = st.text_input(f"Wind Direction (°) at {airport['icao']}", "360")
+        wind_speed = st.text_input(f"Wind Speed (kt) at {airport['icao']}", "0")
+        freezing_level = st.text_input(f"Freezing Level (ft) at {airport['icao']}", "0")
+        cloud_text = "Manual Input"
+    else:
+        freezing_level, wind_speed, wind_direction, cloud_text = fetch_freezing_level_and_wind(
+            airport['lat'], airport['lon'], cruise_altitude_ft
+        )
     
     if freezing_level is not None and wind_speed is not None and wind_direction is not None:
         popup_text = (
