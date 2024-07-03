@@ -173,7 +173,9 @@ with st.sidebar:
         dest_ok_vis = st.text_input("DEST OK Vis (m)", "500")
         dest_ok_ceiling = st.text_input("DEST OK Ceiling (ft)", "200")
 
-# Calculate mission radius
+# Ensure all necessary variables are defined before use
+fuel_burn_kgph = H145D2_PERFORMANCE['fuel_burn_kgph']
+flight_time_hours = trip_fuel_kg / fuel_burn_kgph
 cruise_speed_kt = H145D2_PERFORMANCE['cruise_speed_kt']
 
 # Get reachable airports
