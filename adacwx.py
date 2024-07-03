@@ -100,10 +100,21 @@ def fetch_metar_taf_data(icao):
         "stationString": icao
     }
 
-    response_metar = requests.get(base_url, params=params_metar)
-    response_taf = requests.get(base_url, params=params_taf)
+    try:
+        response_metar = requests.get(base_url, params=params_metar)
+        response_metar.raise_for_status()  # Raise an HTTPError for bad responses
+        metar_data = response_metar.text
+    except requests.exceptions.RequestException as e:
+        metar_data = f"Error fetching METAR data: {e}"
 
-    return response_metar.text, response_taf.text
+    try:
+        response_taf = requests.get(base_url, params=params_taf)
+        response_taf.raise_for_status()  # Raise an HTTPError for bad responses
+        taf_data = response_taf.text
+    except requests.exceptions.RequestException as e:
+        taf_data = f"Error fetching TAF data: {e}"
+
+    return metar_data, taf_data
 
 # Function to parse METAR data
 def parse_metar_data(metar_data):
