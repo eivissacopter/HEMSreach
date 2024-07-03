@@ -155,19 +155,19 @@ def check_weather_criteria(metar, taf):
         st.error(f"Error checking weather criteria: {e}")
         return False
 
-# Function to fetch freezing level, wind, and cloud data using OpenMeteo API
+# Function to fetch freezing level, wind, cloud data, and thunderstorm forecast using OpenMeteo API
 @st.cache_data
 def fetch_freezing_level_and_wind(lat, lon, altitude_ft):
     altitude_m = round(altitude_ft * 0.3048)  # Convert feet to meters and round to the nearest meter
     altitude_levels = [1500, 3000, 5000]  # Supported altitude levels in meters for wind
     altitude_m = min(altitude_levels, key=lambda x: abs(x - altitude_m))  # Find the closest supported level
     
-    url = "https://api.open-meteo.com/v1/forecast"
+    url = "https://api.open-meteo.com/v1/dwd-icon"
     params = {
         "latitude": lat,
         "longitude": lon,
-        "hourly": f"freezing_level_height,wind_speed_{altitude_m}m,wind_direction_{altitude_m}m,cloudcover",
-        "models": "icon_d2",
+        "hourly": f"freezing_level_height,wind_speed_{altitude_m}m,wind_direction_{altitude_m}m,cloudcover,weather_code",
+        "wind_speed_unit": "kn",
         "timezone": "auto"
     }
     try:
@@ -176,12 +176,10 @@ def fetch_freezing_level_and_wind(lat, lon, altitude_ft):
         data = response.json()
         hourly = data['hourly']
         freezing_level_height = hourly['freezing_level_height'][0]  # Use the first value for now
-        wind_speed_mps = hourly[f'wind_speed_{altitude_m}m'][0]  # Use the first value for now
+        wind_speed_knots = hourly[f'wind_speed_{altitude_m}m'][0]  # Use the first value for now
         wind_direction = hourly[f'wind_direction_{altitude_m}m'][0]  # Use the first value for now
         cloudcover = hourly['cloudcover'][0]  # Use the first value for now
-
-        # Convert wind speed from m/s to knots
-        wind_speed_knots = round(wind_speed_mps * 1.94384)
+        weather_code = hourly['weather_code'][0]  # Use the first value for now
 
         # Convert freezing level height from meters to feet
         freezing_level_altitude_ft = round(freezing_level_height * 3.28084)
@@ -192,11 +190,14 @@ def fetch_freezing_level_and_wind(lat, lon, altitude_ft):
         else:
             cloud_text = "Sky clear"
 
+        # Determine thunderstorm conditions
+        thunderstorm = "Yes" if weather_code in [95, 96, 99] else "No"
+
     except Exception as e:
         st.error(f"Error fetching data from OpenMeteo API: {e}")
-        return None, None, None, None
+        return None, None, None, None, None
 
-    return freezing_level_altitude_ft, wind_speed_knots, wind_direction, cloud_text
+    return freezing_level_altitude_ft, wind_speed_knots, wind_direction, cloud_text, thunderstorm
 
 # Sidebar for base selection and radius filter
 with st.sidebar:
