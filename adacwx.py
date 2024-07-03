@@ -8,6 +8,36 @@ from database import helicopter_bases, airports
 import folium
 from streamlit_folium import folium_static
 
+# Custom CSS to make the map full-screen
+st.markdown(
+    """
+    <style>
+    .reportview-container .main .block-container {
+        padding-top: 0;
+        padding-right: 0;
+        padding-left: 0;
+        padding-bottom: 0;
+    }
+    .reportview-container .main {
+        color: black;
+        background-color: white;
+    }
+    .stApp {
+        height: 100vh;
+        width: 100vw;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+    #map {
+        height: 100vh;
+        width: 100vw;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
 # Function to calculate distance between two points using the Haversine formula
 def haversine(lon1, lat1, lon2, lat2):
     R = 6371.0  # Earth radius in kilometers
@@ -129,8 +159,10 @@ nearby_airports = get_airports_within_radius(selected_base['lat'], selected_base
 
 # Create map centered on selected base with OpenFlightMaps
 m = folium.Map(location=[selected_base['lat'], selected_base['lon']], zoom_start=7, tiles=None)
-folium.TileLayer('https://{s}.tile.openflightmaps.org/{z}/{x}/{y}.png?tileSet=airspaces&tileFormat=png', 
-                 attr='OpenFlightMaps').add_to(m)
+folium.TileLayer(
+    'https://{s}.tile.openflightmaps.org/{z}/{x}/{y}.png?tileSet=airspaces&tileFormat=png',
+    attr='OpenFlightMaps'
+).add_to(m)
 
 # Add selected base to map
 folium.Marker(
@@ -153,4 +185,4 @@ for airport, distance in nearby_airports:
     ).add_to(m)
 
 # Display map
-folium_static(m, width=1500, height=800)
+folium_static(m)
