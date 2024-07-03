@@ -11,30 +11,26 @@ from streamlit_folium import folium_static
 # Set the page configuration at the very top
 st.set_page_config(layout="wide")
 
-# Custom CSS to make the map full-screen
+# Custom CSS to make the map full-screen and as the background
 st.markdown(
     """
     <style>
-    .reportview-container .main .block-container {
-        padding-top: 0;
-        padding-right: 0;
-        padding-left: 0;
-        padding-bottom: 0;
-    }
-    .reportview-container .main {
-        color: black;
-        background-color: white;
-    }
     .stApp {
+        background-color: #ffffff;
         height: 100vh;
         width: 100vw;
         display: flex;
         justify-content: center;
         align-items: center;
+        overflow: hidden;
     }
-    #map {
-        height: 100vh;
-        width: 100vw;
+    .fullScreenMap {
+        position: absolute;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        z-index: 0;
     }
     </style>
     """,
@@ -46,7 +42,7 @@ def haversine(lon1, lat1, lon2, lat2):
     R = 6371.0  # Earth radius in kilometers
     lon1, lat1, lon2, lat2 = map(math.radians, [lon1, lat1, lon2, lat2])
     dlon = lon2 - lon1
-    dlat = lon2 - lat1
+    dlat = lat2 - lat1
     a = math.sin(dlat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
     distance = R * c * 0.539957  # Convert to nautical miles
@@ -159,12 +155,8 @@ with st.sidebar:
 # Get airports within radius
 nearby_airports = get_airports_within_radius(selected_base['lat'], selected_base['lon'], radius_nm)
 
-# Create map centered on selected base with OpenFlightMaps
-m = folium.Map(location=[selected_base['lat'], selected_base['lon']], zoom_start=7, tiles=None)
-folium.TileLayer(
-    'https://{s}.tile.openflightmaps.org/{z}/{x}/{y}.png?tileSet=airspaces&tileFormat=png',
-    attr='OpenFlightMaps'
-).add_to(m)
+# Create map centered on selected base
+m = folium.Map(location=[selected_base['lat'], selected_base['lon']], zoom_start=7)
 
 # Add selected base to map
 folium.Marker(
@@ -187,4 +179,4 @@ for airport, distance in nearby_airports:
     ).add_to(m)
 
 # Display map
-folium_static(m, width=1500, height=900)
+folium_static(m, width=1920, height=1080)
