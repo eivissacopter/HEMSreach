@@ -40,7 +40,7 @@ st.markdown(
     }
     .small-label {
         font-size: 12px;
-        margin-bottom: -10px;
+        margin-bottom: 0px;  /* Reduced space between label and input field */
     }
     </style>
     """,
@@ -166,20 +166,21 @@ def get_weather_status(metar_report, taf_reports, dest_ok_vis, dest_ok_ceiling, 
             if part.startswith("BKN") or part.startswith("OVC"):
                 ceilings.append(int(part[3:]) * 100)  # Convert hundreds of feet to feet
 
-    for vis, ceil in zip(visibilities, ceilings):
-        if vis < nvfr_vis or ceil > nvfr_ceiling:
-            status = "NVFR OK"
-            color = "blue"
-        if vis < no_alt_vis or ceil > no_alt_ceiling:
-            status = "NO ALT REQ"
-            color = "green"
-        if vis < alt_ok_vis or ceil > alt_ok_ceiling:
-            status = "ALT OK"
-            color = "yellow"
-        if vis < dest_ok_vis or ceil > dest_ok_ceiling:
-            status = "DEST OK"
-            color = "red"
-            break  # Exit loop on the first condition met
+    all_vis = visibilities + [10000]  # Default visibility if not available
+    all_ceils = ceilings + [0]        # Default ceiling if not available
+
+    if any(vis < dest_ok_vis or ceil > dest_ok_ceiling for vis, ceil in zip(all_vis, all_ceils)):
+        status = "DEST OK"
+        color = "red"
+    elif any(vis < alt_ok_vis or ceil > alt_ok_ceiling for vis, ceil in zip(all_vis, all_ceils)):
+        status = "ALT OK"
+        color = "yellow"
+    elif any(vis < no_alt_vis or ceil > no_alt_ceiling for vis, ceil in zip(all_vis, all_ceils)):
+        status = "NO ALT REQ"
+        color = "green"
+    elif any(vis < nvfr_vis or ceil > nvfr_ceiling for vis, ceil in zip(all_vis, all_ceils)):
+        status = "NVFR OK"
+        color = "blue"
 
     return status, color
 
