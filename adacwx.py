@@ -131,13 +131,23 @@ except ValueError:
     wind_direction = 0
     wind_speed = 0
 
-wind_component = wind_speed * math.cos(math.radians(wind_direction))
-ground_speed_kt = cruise_speed_kt + wind_component
+# Function to calculate the effective ground speed in a given direction
+def calculate_ground_speed(cruise_speed_kt, wind_speed, wind_direction, flight_direction):
+    relative_wind_direction = math.radians(wind_direction - flight_direction)
+    wind_component = wind_speed * math.cos(relative_wind_direction)
+    ground_speed = cruise_speed_kt + wind_component
+    return ground_speed
 
-mission_radius_nm = ground_speed_kt * (flight_time_hours + flight_time_minutes / 60)
+# Calculate the maximum mission radius by iterating through all directions (0 to 360 degrees)
+max_mission_radius = 0
+for direction in range(360):
+    ground_speed_kt = calculate_ground_speed(cruise_speed_kt, wind_speed, wind_direction, direction)
+    mission_radius_nm = ground_speed_kt * flight_time_hours
+    if mission_radius_nm > max_mission_radius:
+        max_mission_radius = mission_radius_nm
 
 # Get airports within mission radius
-nearby_airports = get_airports_within_radius(selected_base['lat'], selected_base['lon'], mission_radius_nm)
+nearby_airports = get_airports_within_radius(selected_base['lat'], selected_base['lon'], max_mission_radius)
 
 # Create map centered on selected base
 m = folium.Map(location=[selected_base['lat'], selected_base['lon']], zoom_start=7)
