@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import requests
 import math
-import re
 from datetime import datetime, timedelta
 from database import helicopter_bases, airports
 from performance import H145D2_PERFORMANCE
@@ -27,12 +26,7 @@ st.markdown(
         background-color: #f8f9fa;
     }
     .fullScreenMap {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        z-index: 0;
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0;
     }
     .stSlider {
         height: 100%;
@@ -60,92 +54,8 @@ def get_airports_within_radius(base_lat, base_lon, radius_nm):
         distance = haversine(base_lon, base_lat, airport['lon'], airport['lat'])
         if distance <= radius_nm:
             nearby_airports.append((airport, distance))
-    # Sort airports by distance
     nearby_airports.sort(key=lambda x: x[1])
     return nearby_airports
-
-# Function to fetch METAR and TAF data
-def fetch_weather(icao_code):
-    metar_url = f'https://tgftp.nws.noaa.gov/data/observations/metar/stations/{icao_code}.TXT'
-    taf_url = f'https://tgftp.nws.noaa.gov/data/forecasts/taf/stations/{icao_code}.TXT'
-    
-    metar_response = requests.get(metar_url)
-    taf_response = requests.get(taf_url)
-    
-    metar = metar_response.text.split('\n')[1] if metar_response.status_code == 200 and len(metar_response.text.split('\n')) > 1 else "No data"
-    taf = taf_response.text if taf_response.status_code == 200 else "No data"
-    
-    return metar, taf
-
-# Function to parse METAR visibility and cloud base
-def parse_metar(metar):
-    try:
-        visibility_match = re.search(r'\s(\d{4})\s', metar)
-        visibility = int(visibility_match.group(1)) if visibility_match else None
-        
-        cloud_base_match = re.search(r'\s(BKN|FEW|SCT|OVC)(\d{3})\s', metar)
-        cloud_base = int(cloud_base_match.group(2)) * 100 if cloud_base_match else None
-        
-        return visibility, cloud_base
-    except Exception as e:
-        st.error(f"Error parsing METAR: {e}")
-        return None, None
-
-# Function to parse TAF visibility and cloud base
-def parse_taf(taf):
-    try:
-        forecast_blocks = taf.split(" FM")
-        forecasts = []
-        now = datetime.utcnow()
-        
-        for block in forecast_blocks[1:]:
-            time_match = re.match(r'(\d{2})(\d{2})/(\d{2})(\d{2})', block)
-            if time_match:
-                start_hour = int(time_match.group(1))
-                start_minute = int(time_match.group(2))
-                start_time = now.replace(hour=start_hour, minute=start_minute, second=0, microsecond=0)
-                
-                visibility_match = re.search(r'\s(\d{4})\s', block)
-                visibility = int(visibility_match.group(1)) if visibility_match else None
-                
-                cloud_base_match = re.search(r'\s(BKN|FEW|SCT|OVC)(\d{3})\s', block)
-                cloud_base = int(cloud_base_match.group(2)) * 100 if cloud_base_match else None
-                
-                forecasts.append((start_time, visibility, cloud_base))
-        
-        return forecasts
-    except Exception as e:
-        st.error(f"Error parsing TAF: {e}")
-        return []
-
-# Function to check weather criteria
-def check_weather_criteria(metar, taf):
-    try:
-        visibility_ok, ceiling_ok = True, True
-        metar_visibility, metar_ceiling = parse_metar(metar)
-        
-        if metar_visibility is not None:
-            visibility_ok = metar_visibility >= 3000
-        
-        if metar_ceiling is not None:
-            ceiling_ok = metar_ceiling >= 700
-        
-        forecasts = parse_taf(taf)
-        now = datetime.utcnow()
-        future_time = now + timedelta(hours=5)
-        
-        for forecast_time, forecast_visibility, forecast_ceiling in forecasts:
-            if forecast_time > future_time:
-                break
-            if forecast_visibility is not None:
-                visibility_ok = visibility_ok and (forecast_visibility >= 3000)
-            if forecast_ceiling is not None:
-                ceiling_ok = ceiling_ok and (forecast_ceiling >= 700)
-        
-        return visibility_ok and ceiling_ok
-    except Exception as e:
-        st.error(f"Error checking weather criteria: {e}")
-        return False
 
 # Sidebar for base selection and radius filter
 with st.sidebar:
@@ -160,20 +70,43 @@ with st.sidebar:
         min_value=3000, max_value=10000, value=5000, step=1000,
         format="%d ft"
     )
-    fuel_kg = st.slider(
+    total_fuel_kg = st.slider(
         'Total Fuel Upload (kg)', 
         min_value=300, max_value=723, value=500, step=50,
         format="%d kg"
     )
+
+    # Expandable section for fuel breakdown
+    with st.expander("Show Fuel Breakdown"):
+        approach_count = st.selectbox("Number of Approaches", [0, 1, 2], index=0)
+        system_test_and_air_taxi = 37
+        holding_final_reserve = 100
+        approach_fuel = approach_count * 30
+        air_taxi_to_parking = 20
+
+        contingency_fuel = 0.1 * (total_fuel_kg - holding_final_reserve - system_test_and_air_taxi - air_taxi_to_parking - approach_fuel)
+        trip_fuel_kg = total_fuel_kg - (system_test_and_air_taxi + holding_final_reserve + approach_fuel + air_taxi_to_parking + contingency_fuel)
+
+        fuel_data = {
+            "Fuel Component": ["System Test and Air Taxi", "Holding/Final Reserve", "Approach Fuel", "Air Taxi to Parking", "Contingency Fuel", "Trip Fuel"],
+            "Fuel (kg)": [system_test_and_air_taxi, holding_final_reserve, approach_fuel, air_taxi_to_parking, round(contingency_fuel, 2), round(trip_fuel_kg, 2)]
+        }
+        df_fuel = pd.DataFrame(fuel_data)
+        st.table(df_fuel)
     
+    # Show calculated flight time below the fuel slider
+    fuel_burn_kgph = H145D2_PERFORMANCE['fuel_burn_kgph']
+    flight_time_hours = trip_fuel_kg / fuel_burn_kgph
+    st.markdown(f"### Calculated Flight Time: {flight_time_hours:.2f} hours")
+
     st.markdown("### Weather at Home Base")
     auto_fetch = st.checkbox("Try to get weather values automatically via API", value=False)
     
     if auto_fetch:
         # Placeholder for API function to fetch weather data
-        freezing_level = 0  # Replace with actual function call
-        wind_speed = 0  # Replace with actual function call
-        wind_direction = 0  # Replace with actual function call
+        freezing_level = 0
+        wind_speed = 0
+        wind_direction = 0
         cloud_text = "Fetched from API"
     else:
         wind_direction = st.text_input("Wind Direction (°)", "360")
@@ -187,8 +120,6 @@ with st.sidebar:
 
 # Calculate mission radius
 cruise_speed_kt = H145D2_PERFORMANCE['cruise_speed_kt']
-fuel_burn_kgph = H145D2_PERFORMANCE['fuel_burn_kgph']
-flight_time_hours = fuel_kg / fuel_burn_kgph
 
 # Calculate ground speed considering wind
 try:
@@ -198,7 +129,6 @@ except ValueError:
     wind_direction = 0
     wind_speed = 0
 
-# Calculate the wind component
 wind_component = wind_speed * math.cos(math.radians(wind_direction))
 ground_speed_kt = cruise_speed_kt + wind_component
 
