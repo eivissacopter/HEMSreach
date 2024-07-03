@@ -41,7 +41,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-API_KEY = '6f77e13b25bfe083b0bd8853d642bbde'
+AVWX_API_KEY = '6za8qC9A_ccwpCc_lus3atiuA7f3c4mwQKMGzW1RVvY'
 
 # Function to calculate distance and bearing between two points using the Haversine formula
 def haversine(lon1, lat1, lon2, lat2):
@@ -83,18 +83,27 @@ def calculate_ground_speed(cruise_speed_kt, wind_speed, wind_direction, flight_d
     ground_speed = cruise_speed_kt + wind_component  # Correct calculation to add wind impact
     return ground_speed
 
-# Function to fetch weather data from OpenWeatherMap One Call API
-def fetch_weather_data(lat, lon, api_key):
-    one_call_url = f"https://api.openweathermap.org/data/3.0/onecall?lat={lat}&lon={lon}&appid={api_key}&units=metric"
+# Function to fetch METAR and TAF data from AVWX
+def fetch_metar_taf_data(icao, api_key):
+    headers = {"Authorization": f"Bearer {api_key}"}
+    metar_url = f"https://avwx.rest/api/metar/{icao}?options=summary"
+    taf_url = f"https://avwx.rest/api/taf/{icao}?options=summary"
 
     try:
-        response = requests.get(one_call_url)
-        response.raise_for_status()  # Raise an HTTPError for bad responses
-        weather_data = response.json()
+        response_metar = requests.get(metar_url, headers=headers)
+        response_metar.raise_for_status()  # Raise an HTTPError for bad responses
+        metar_data = response_metar.json()
     except requests.exceptions.RequestException as e:
-        weather_data = f"Error fetching weather data: {e}"
+        metar_data = f"Error fetching METAR data: {e}"
 
-    return weather_data
+    try:
+        response_taf = requests.get(taf_url, headers=headers)
+        response_taf.raise_for_status()  # Raise an HTTPError for bad responses
+        taf_data = response_taf.json()
+    except requests.exceptions.RequestException as e:
+        taf_data = f"Error fetching TAF data: {e}"
+
+    return metar_data, taf_data
 
 # Sidebar for base selection and radius filter
 with st.sidebar:
@@ -198,52 +207,35 @@ folium.Marker(
     icon=folium.Icon(color="blue", icon="info-sign"),
 ).add_to(m)
 
-# Add all airports to map with color indicating reachability and weather data in the popup
-for airport in airports:
-    distance, bearing = haversine(selected_base['lon'], selected_base['lat'], airport['lon'], airport['lat'])
-    ground_speed_kt = calculate_ground_speed(cruise_speed_kt, wind_speed, wind_direction, bearing)
-    time_to_airport_hours = distance / ground_speed_kt if ground_speed_kt > 0 else float('inf')
+# Add reachable airports to map
+reachable_airports_data = []
+for airport, distance in reachable_airports:
+    metar_data, taf_data = fetch_metar_taf_data(airport['icao'], AVWX_API_KEY)
+    
+    if isinstance(metar_data, dict) and isinstance(taf_data, dict):
+        weather_info = f"METAR: {metar_data.get('raw', 'N/A')}\nTAF: {taf_data.get('raw', 'N/A')}"
+        popup_text = f"{airport['name']} ({airport['icao']})\n{weather_info}"
 
-    weather_data = fetch_weather_data(airport['lat'], airport['lon'], API_KEY)
+        reachable_airports_data.append({
+            "Airport": f"{airport['name']} ({airport['icao']})",
+            "METAR": metar_data.get('raw', 'N/A'),
+            "TAF": taf_data.get('raw', 'N/A')
+        })
 
-    if isinstance(weather_data, dict):
-        if time_to_airport_hours <= flight_time_hours:
-            color = "darkgrey"
-            icon_opacity = 1.0
-        else:
-            color = "lightgrey"
-            icon_opacity = 0.5
-    else:
-        color = "lightgrey"
-        icon_opacity = 0.5
-
-    popup_text = f"{airport['name']} ({airport['icao']})\nWeather: {weather_data}"
-    folium.Marker(
-        location=[airport['lat'], airport['lon']],
-        popup=popup_text,
-        icon=folium.Icon(color=color, icon="plane"),
-        opacity=icon_opacity,
-    ).add_to(m)
+        folium.Marker(
+            location=[airport['lat'], airport['lon']],
+            popup=popup_text,
+            icon=folium.Icon(color="blue", icon="plane"),
+        ).add_to(m)
 
 # Display map
 folium_static(m, width=1280, height=800)
 
-# Create table of reachable airports with weather data
-reachable_airports_data = []
-for airport, distance in reachable_airports:
-    weather_data = fetch_weather_data(airport['lat'], airport['lon'], API_KEY)
-
-    if isinstance(weather_data, dict):
-        reachable_airports_data.append({
-            "Airport": f"{airport['name']} ({airport['icao']})",
-            "Weather": weather_data
-        })
-
-df_reachable_airports = pd.DataFrame(reachable_airports_data)
-
 # Ensure the columns exist before trying to highlight
-if not df_reachable_airports.empty:
-    # Function to highlight weather data based on visibility and ceiling
+if reachable_airports_data:
+    df_reachable_airports = pd.DataFrame(reachable_airports_data)
+
+    # Function to highlight METAR and TAF based on visibility and ceiling
     def highlight_weather_conditions(text, vis_thresholds, ceil_thresholds):
         for vis, color in vis_thresholds.items():
             text = text.replace(str(vis), f"<span style='color:{color}'>{vis}</span>")
@@ -251,7 +243,7 @@ if not df_reachable_airports.empty:
             text = text.replace(str(ceil), f"<span style='color:{color}'>{ceil}</span>")
         return text
 
-    # Highlight visibility and ceiling in the weather data
+    # Highlight visibility and ceiling in the METAR and TAF columns
     vis_thresholds = {
         "500": "red", "900": "yellow", "3000": "green", "5000": "blue"
     }
@@ -259,9 +251,10 @@ if not df_reachable_airports.empty:
         "200": "red", "400": "yellow", "700": "green", "1500": "blue"
     }
 
-    df_reachable_airports['Weather'] = df_reachable_airports['Weather'].apply(lambda x: highlight_weather_conditions(str(x), vis_thresholds, ceil_thresholds))
+    df_reachable_airports['METAR'] = df_reachable_airports['METAR'].apply(lambda x: highlight_weather_conditions(str(x), vis_thresholds, ceil_thresholds))
+    df_reachable_airports['TAF'] = df_reachable_airports['TAF'].apply(lambda x: highlight_weather_conditions(str(x), vis_thresholds, ceil_thresholds))
 
-    # Display the table with highlighted weather data
+    # Display the table with highlighted METAR and TAF data
     st.markdown(df_reachable_airports.to_html(escape=False), unsafe_allow_html=True)
 
 # Display the table
