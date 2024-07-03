@@ -8,9 +8,6 @@ from database import helicopter_bases, airports
 from performance import H145D2_PERFORMANCE
 import folium
 from streamlit_folium import folium_static
-from io import BytesIO
-import numpy as np
-import pytesseract
 import openmeteo_requests
 import requests_cache
 from retry_requests import retry
@@ -212,11 +209,13 @@ with st.sidebar:
     cruise_altitude_ft = st.slider(
         'Select cruise altitude in feet', 
         min_value=3000, max_value=10000, value=5000, step=1000,
+        format="%d ft",
         orientation="vertical"
     )
     fuel_kg = st.slider(
         'Total Fuel Upload (kg)', 
         min_value=300, max_value=723, value=500, step=50,
+        format="%d kg",
         orientation="vertical"
     )
     
@@ -295,4 +294,3 @@ for airport, distance in nearby_airports:
 
 # Display map
 folium_static(m, width=1920, height=1080)
-
