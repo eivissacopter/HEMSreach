@@ -1,1 +1,1 @@
-folium_static
+folium
