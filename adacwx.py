@@ -8,9 +8,6 @@ from database import helicopter_bases, airports
 from performance import H145D2_PERFORMANCE
 import folium
 from streamlit_folium import folium_static
-import openmeteo_requests
-import requests_cache
-from retry_requests import retry
 
 # Set the page configuration at the very top
 st.set_page_config(layout="wide")
@@ -44,11 +41,6 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
-
-# Setup the Open-Meteo API client with cache and retry on error
-cache_session = requests_cache.CachedSession('.cache', expire_after=3600)
-retry_session = retry(cache_session, retries=5, backoff_factor=0.2)
-openmeteo = openmeteo_requests.Client(session=retry_session)
 
 # Function to calculate distance between two points using the Haversine formula
 def haversine(lon1, lat1, lon2, lat2):
@@ -178,9 +170,11 @@ with st.sidebar:
     auto_fetch = st.checkbox("Try to get weather values automatically via API", value=False)
     
     if auto_fetch:
-        freezing_level, wind_speed, wind_direction, cloud_text = fetch_freezing_level_and_wind(
-            selected_base['lat'], selected_base['lon'], cruise_altitude_ft
-        )
+        # Placeholder for API function to fetch weather data
+        freezing_level = 0  # Replace with actual function call
+        wind_speed = 0  # Replace with actual function call
+        wind_direction = 0  # Replace with actual function call
+        cloud_text = "Fetched from API"
     else:
         wind_direction = st.text_input("Wind Direction (°)", "360")
         wind_speed = st.text_input("Wind Speed (kt)", "0")
@@ -243,9 +237,11 @@ for airport, distance in nearby_airports:
         freezing_level = st.text_input(f"Freezing Level (ft) at {airport['icao']}", "0")
         cloud_text = "Manual Input"
     else:
-        freezing_level, wind_speed, wind_direction, cloud_text = fetch_freezing_level_and_wind(
-            airport['lat'], airport['lon'], cruise_altitude_ft
-        )
+        # Placeholder for API function to fetch weather data
+        freezing_level = 0  # Replace with actual function call
+        wind_speed = 0  # Replace with actual function call
+        wind_direction = 0  # Replace with actual function call
+        cloud_text = "Fetched from API"
     
     if freezing_level is not None and wind_speed is not None and wind_direction is not None:
         popup_text = (
@@ -267,4 +263,4 @@ for airport, distance in nearby_airports:
     ).add_to(m)
 
 # Display map
-folium_static(m, width=1920, height=1080)
+folium_static(m)
