@@ -7,8 +7,6 @@ from database import helicopter_bases, airports
 from performance import H145D2_PERFORMANCE
 import folium
 from streamlit_folium import folium_static
-import metar
-import pytz
 from metar import Metar
 
 # Set the page configuration at the very top
@@ -37,14 +35,6 @@ st.markdown(
     .stNumberInput, .stTextInput {
         display: inline-block;
         margin-right: 10px;
-    }
-    .small-label {
-        font-size: 12px;
-        margin-bottom: -5px;  /* Reduced space between label and input field */
-    }
-    .stTextInput > div {
-        display: flex;
-        flex-direction: column-reverse;
     }
     </style>
     """,
@@ -149,7 +139,7 @@ def is_valid_for_time_window(metar_report, taf_reports, time_window_hours):
 
     return True
 
-# Function to get weather status based on METAR and TAF data
+# Function to get weather status based on METAR, TREND, and TAF data
 def get_weather_status(metar_report, taf_reports, dest_ok_vis, dest_ok_ceiling, alt_ok_vis, alt_ok_ceiling, no_alt_vis, no_alt_ceiling, nvfr_vis, nvfr_ceiling):
     status = "UNKNOWN"
     color = "gray"
@@ -170,19 +160,16 @@ def get_weather_status(metar_report, taf_reports, dest_ok_vis, dest_ok_ceiling, 
             if part.startswith("BKN") or part.startswith("OVC"):
                 ceilings.append(int(part[3:]) * 100)  # Convert hundreds of feet to feet
 
-    all_vis = visibilities + [10000]  # Default visibility if not available
-    all_ceils = ceilings + [0]        # Default ceiling if not available
-
-    if any(vis < dest_ok_vis or ceil > dest_ok_ceiling for vis, ceil in zip(all_vis, all_ceils)):
+    if any(vis < dest_ok_vis or ceil > dest_ok_ceiling for vis, ceil in zip(visibilities, ceilings)):
         status = "DEST OK"
         color = "red"
-    elif any(vis < alt_ok_vis or ceil > alt_ok_ceiling for vis, ceil in zip(all_vis, all_ceils)):
+    elif any(vis < alt_ok_vis or ceil > alt_ok_ceiling for vis, ceil in zip(visibilities, ceilings)):
         status = "ALT OK"
         color = "yellow"
-    elif any(vis < no_alt_vis or ceil > no_alt_ceiling for vis, ceil in zip(all_vis, all_ceils)):
+    elif any(vis < no_alt_vis or ceil > no_alt_ceiling for vis, ceil in zip(visibilities, ceilings)):
         status = "NO ALT REQ"
         color = "green"
-    elif any(vis < nvfr_vis or ceil > nvfr_ceiling for vis, ceil in zip(all_vis, all_ceils)):
+    elif any(vis < nvfr_vis or ceil > nvfr_ceiling for vis, ceil in zip(visibilities, ceilings)):
         status = "NVFR OK"
         color = "blue"
 
@@ -244,24 +231,16 @@ with st.sidebar:
 
         col1, col2 = st.columns(2)
         with col1:
-            st.markdown('<div class="small-label">DEST OK Vis (m)</div>', unsafe_allow_html=True)
-            dest_ok_vis = st.text_input("", "500")
-            st.markdown('<div class="small-label">ALT OK Vis (m)</div>', unsafe_allow_html=True)
-            alt_ok_vis = st.text_input("", "900")
-            st.markdown('<div class="small-label">NO ALT Vis (m)</div>', unsafe_allow_html=True)
-            no_alt_vis = st.text_input("", "3000")
-            st.markdown('<div class="small-label">NVFR OK Vis (m)</div>', unsafe_allow_html=True)
-            nvfr_vis = st.text_input("", "5000")
+            dest_ok_vis = st.text_input("DEST OK Vis (m)", "500")
+            alt_ok_vis = st.text_input("ALT OK Vis (m)", "900")
+            no_alt_vis = st.text_input("NO ALT Vis (m)", "3000")
+            nvfr_vis = st.text_input("NVFR OK Vis (m)", "5000")
 
         with col2:
-            st.markdown('<div class="small-label">DEST OK Ceiling (ft)</div>', unsafe_allow_html=True)
-            dest_ok_ceiling = st.text_input("", "200")
-            st.markdown('<div class="small-label">ALT OK Ceiling (ft)</div>', unsafe_allow_html=True)
-            alt_ok_ceiling = st.text_input("", "400")
-            st.markdown('<div class="small-label">NO ALT Ceiling (ft)</div>', unsafe_allow_html=True)
-            no_alt_ceiling = st.text_input("", "700")
-            st.markdown('<div class="small-label">NVFR OK Ceiling (ft)</div>', unsafe_allow_html=True)
-            nvfr_ceiling = st.text_input("", "1500")
+            dest_ok_ceiling = st.text_input("DEST OK Ceiling (ft)", "200")
+            alt_ok_ceiling = st.text_input("ALT OK Ceiling (ft)", "400")
+            no_alt_ceiling = st.text_input("NO ALT Ceiling (ft)", "700")
+            nvfr_ceiling = st.text_input("NVFR OK Ceiling (ft)", "1500")
 
     wind_direction = st.text_input("Wind Direction (°)", "360")
     wind_speed = st.text_input("Wind Speed (kt)", "0")
