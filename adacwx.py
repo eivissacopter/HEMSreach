@@ -40,7 +40,11 @@ st.markdown(
     }
     .small-label {
         font-size: 12px;
-        margin-bottom: 0px;  /* Reduced space between label and input field */
+        margin-bottom: -5px;  /* Reduced space between label and input field */
+    }
+    .stTextInput > div {
+        display: flex;
+        flex-direction: column-reverse;
     }
     </style>
     """,
