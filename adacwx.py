@@ -8,7 +8,7 @@ from performance import H145D2_PERFORMANCE
 import folium
 from streamlit_folium import folium_static
 import pytz
-from metar_taf_parser_mivek import MetarParser, TAFParser
+from metar_taf_parser.parser import MetarParser, TafParser
 
 # Set the page configuration at the very top
 st.set_page_config(layout="wide")
