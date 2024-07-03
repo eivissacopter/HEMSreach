@@ -145,7 +145,7 @@ with st.sidebar:
         trip_fuel_kg -= (alternate_fuel + approach_fuel)
 
         fuel_data = {
-            "Fuel Component": ["System Test and Air Taxi", "Trip Fuel", "Final Reserve", "15 Minutes Fuel" if not alternate_required else "Alternate Fuel", "Approach Fuel", "Air Taxi to Parking", "Contingency Fuel"],
+            "Fuel Component": ["System Test + Air Taxi", "Trip Fuel", "Final ReserveFuel", "15 Minutes Fuel" if not alternate_required else "Alternate Fuel", "Approach Fuel", "Air Taxi to Parking", "Contingency Fuel"],
             "Fuel (kg)": [system_test_and_air_taxi, round(trip_fuel_kg), holding_final_reserve, round(fifteen_min_fuel) if not alternate_required else round(alternate_fuel), approach_fuel, air_taxi_to_parking, round(contingency_fuel)]
         }
         df_fuel = pd.DataFrame(fuel_data)
