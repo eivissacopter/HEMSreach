@@ -40,6 +40,7 @@ st.markdown(
     }
     .small-label {
         font-size: 12px;
+        margin-bottom: -10px;
     }
     </style>
     """,
@@ -154,7 +155,8 @@ def get_weather_status(metar_report, taf_reports, dest_ok_vis, dest_ok_ceiling, 
 
     if metar_report:
         visibilities.append(metar_report.vis.value())
-        ceilings.append(metar_report.sky_conditions[0].altitude() * 100)
+        if metar_report.sky_conditions:
+            ceilings.append(metar_report.sky_conditions[0].altitude() * 100)
 
     for taf in taf_reports:
         taf_parts = taf.split()
@@ -258,15 +260,13 @@ with st.sidebar:
 
     wind_direction = st.text_input("Wind Direction (°)", "360")
     wind_speed = st.text_input("Wind Speed (kt)", "0")
-    freezing_level = st.text_input("Freezing Level (ft)", "0")
+    freezing_level = st.text_input("Freezing Level (ft)", "5000")
+    min_vectoring_altitude = st.text_input("Minimum Vectoring Altitude (ft)", "5000")
 
     wind_direction = float(wind_direction) if wind_direction else 0
     wind_speed = float(wind_speed) if wind_speed else 0
-    freezing_level = float(freezing_level) if freezing_level else 0
-
-    # Manual input for Minimum Vectoring Altitude
-    min_vectoring_altitude = st.text_input("Minimum Vectoring Altitude (ft)")
-    min_vectoring_altitude = float(min_vectoring_altitude) if min_vectoring_altitude else 0
+    freezing_level = float(freezing_level) if freezing_level else 5000
+    min_vectoring_altitude = float(min_vectoring_altitude) if min_vectoring_altitude else 5000
 
 # Calculate mission radius
 fuel_burn_kgph = H145D2_PERFORMANCE['fuel_burn_kgph']
