@@ -219,13 +219,14 @@ with st.sidebar:
     )
     
     st.markdown("### Weather at Home Base")
-    freezing_level, wind_speed, wind_direction, cloud_text = fetch_freezing_level_and_wind(
+    freezing_level, wind_speed, wind_direction, cloud_text, thunderstorm = fetch_freezing_level_and_wind(
         selected_base['lat'], selected_base['lon'], cruise_altitude_ft
     )
     
     st.markdown(f"**Wind at {cruise_altitude_ft} ft:** {wind_direction}°/{wind_speed} kt")
     st.markdown(f"**Freezing Level (Altitude):** {freezing_level} ft")
     st.markdown(f"**Clouds:** {cloud_text}")
+    st.markdown(f"**Thunderstorm Forecast:** {thunderstorm}")
 
 
 # Calculate mission radius
@@ -269,7 +270,7 @@ for airport, distance in nearby_airports:
     
     color = "green" if weather_ok else "red"
     
-    freezing_level, wind_speed, wind_direction, cloud_text = fetch_freezing_level_and_wind(
+    freezing_level, wind_speed, wind_direction, cloud_text, thunderstorm = fetch_freezing_level_and_wind(
         airport['lat'], airport['lon'], cruise_altitude_ft
     )
     
@@ -278,7 +279,8 @@ for airport, distance in nearby_airports:
             f"{airport['name']} ({airport['icao']}) - {distance:.1f} NM\n"
             f"Freezing Level: {freezing_level} ft\n"
             f"Wind: {wind_direction}°/{wind_speed} kt\n"
-            f"Clouds: {cloud_text}"
+            f"Clouds: {cloud_text}\n"
+            f"Thunderstorm Forecast: {thunderstorm}"
         )
     else:
         popup_text = (
@@ -293,4 +295,4 @@ for airport, distance in nearby_airports:
     ).add_to(m)
 
 # Display map
-folium_static(m, width=1920, height=1080)
+folium_static(m)
