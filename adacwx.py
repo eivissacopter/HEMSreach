@@ -71,9 +71,9 @@ def get_reachable_airports(base_lat, base_lon, flight_time_hours, cruise_speed_k
 
 # Function to calculate ground speed considering wind
 def calculate_ground_speed(cruise_speed_kt, wind_speed, wind_direction, flight_direction):
-    relative_wind_direction = math.radians(wind_direction - flight_direction)
+    relative_wind_direction = math.radians(flight_direction - wind_direction)
     wind_component = wind_speed * math.cos(relative_wind_direction)
-    ground_speed = cruise_speed_kt + wind_component
+    ground_speed = cruise_speed_kt - wind_component  # Invert the calculation to correctly apply wind impact
     return ground_speed
 
 # Sidebar for base selection and radius filter
@@ -116,19 +116,19 @@ with st.sidebar:
     alternate_fuel = st.number_input("Alternate Fuel (kg)", value=0, step=10) if alternate_required else 0
     trip_fuel_kg -= alternate_fuel
 
+    # Number of approaches and approach fuel logic
+    approach_fuel = 30
+    if alternate_required:
+        approach_fuel = 60
+    trip_fuel_kg -= approach_fuel
+    st.write(f"Approach Fuel: {approach_fuel} kg")
+
     # Show calculated flight time below the fuel slider
     fuel_burn_kgph = H145D2_PERFORMANCE['fuel_burn_kgph']
     flight_time_hours = trip_fuel_kg / fuel_burn_kgph
     flight_time_minutes = int((flight_time_hours - int(flight_time_hours)) * 60)
     flight_time_display = f"{int(flight_time_hours)}h {flight_time_minutes}m"
     st.markdown(f"### Calculated Flight Time: {flight_time_display}")
-
-    # Number of approaches
-    approach_fuel = 30
-    if alternate_required:
-        approach_fuel = 60
-    trip_fuel_kg -= approach_fuel
-    st.write(f"Approach Fuel: {approach_fuel} kg")
 
     st.markdown("### Weather at Home Base")
     auto_fetch = st.checkbox("Try to get weather values automatically via API", value=False)
