@@ -191,16 +191,17 @@ fuel_burn_kgph = H145D2_PERFORMANCE['fuel_burn_kgph']
 flight_time_hours = fuel_kg / fuel_burn_kgph
 
 # Calculate ground speed considering wind
-if isinstance(wind_direction, str) and wind_direction.isnumeric():
-    wind_direction = int(wind_direction)
-if isinstance(wind_speed, str) and wind_speed.isnumeric():
-    wind_speed = int(wind_speed)
+try:
+    wind_direction = float(wind_direction)
+    wind_speed = float(wind_speed)
+except ValueError:
+    wind_direction = 0
+    wind_speed = 0
 
-if wind_direction is not None:
-    wind_component = wind_speed * math.cos(math.radians(wind_direction))
-    ground_speed_kt = cruise_speed_kt + wind_component
-else:
-    ground_speed_kt = cruise_speed_kt
+# Calculate the wind component
+wind_angle = math.radians(wind_direction)
+wind_effect = wind_speed * math.cos(wind_angle)
+ground_speed_kt = cruise_speed_kt + wind_effect
 
 mission_radius_nm = ground_speed_kt * flight_time_hours
 
