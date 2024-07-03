@@ -56,7 +56,7 @@ def haversine(lon1, lat1, lon2, lat2):
     R = 6371.0  # Earth radius in kilometers
     lon1, lat1, lon2, lat2 = map(math.radians, [lon1, lat1, lon2, lat2])
     dlon = lon2 - lon1
-    dlat = lon2 - lat1
+    dlat = lat2 - lat1
     a = math.sin(dlat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
     distance = R * c * 0.539957  # Convert to nautical miles
@@ -159,7 +159,7 @@ def check_weather_criteria(metar, taf):
 # Function to fetch freezing level and wind data using OpenMeteo API
 @st.cache_data
 def fetch_freezing_level_and_wind(lat, lon, altitude_ft):
-    altitude_m = round(altitude_ft * 0.3048)  # Convert feet to meters and round
+    altitude_m = round(altitude_ft * 0.3048)  # Convert feet to meters and round to the nearest meter
     altitude_levels = [1500, 3000, 5000]  # Supported altitude levels in meters for wind
     altitude_m = min(altitude_levels, key=lambda x: abs(x - altitude_m))  # Find the closest supported level
     
@@ -167,7 +167,7 @@ def fetch_freezing_level_and_wind(lat, lon, altitude_ft):
     params = {
         "latitude": lat,
         "longitude": lon,
-        "hourly": f"freezing_level_height,wind_speed_{altitude_m}m,wind_direction_{altitude_m}m",
+        "hourly": f"freezing_level_height,wind_speed_{altitude_m},wind_direction_{altitude_m}",
         "timezone": "auto"
     }
     try:
@@ -176,8 +176,8 @@ def fetch_freezing_level_and_wind(lat, lon, altitude_ft):
         data = response.json()
         hourly = data['hourly']
         freezing_level_height = hourly['freezing_level_height'][0]  # Use the first value for now
-        wind_speed_mps = hourly[f'wind_speed_{altitude_m}m'][0]  # Use the first value for now
-        wind_direction = hourly[f'wind_direction_{altitude_m}m'][0]  # Use the first value for now
+        wind_speed_mps = hourly[f'wind_speed_{altitude_m}'][0]  # Use the first value for now
+        wind_direction = hourly[f'wind_direction_{altitude_m}'][0]  # Use the first value for now
 
         # Convert wind speed from m/s to knots
         wind_speed_knots = round(wind_speed_mps * 1.94384)
