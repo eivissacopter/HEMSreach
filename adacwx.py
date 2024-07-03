@@ -7,6 +7,8 @@ from database import helicopter_bases, airports
 from performance import H145D2_PERFORMANCE
 import folium
 from streamlit_folium import folium_static
+import metar
+import pytz
 
 # Set the page configuration at the very top
 st.set_page_config(layout="wide")
@@ -80,28 +82,101 @@ def calculate_ground_speed(cruise_speed_kt, wind_speed, wind_direction, flight_d
     ground_speed = cruise_speed_kt - wind_component  # Invert the calculation to correctly apply wind impact
     return ground_speed
 
-# Function to fetch weather data for IFR classification
-def fetch_weather_data(lat, lon, hours_ahead):
-    end_time = datetime.utcnow() + timedelta(hours=hours_ahead)
-    base_url = "https://api.open-meteo.com/v1/forecast"
-    params = {
-        "latitude": lat,
-        "longitude": lon,
-        "hourly": "visibility,cloudcover",
-        "start": datetime.utcnow().isoformat() + "Z",
-        "end": end_time.isoformat() + "Z",
+# Function to fetch METAR and TAF data
+def fetch_metar_taf_data(icao):
+    base_url = "https://aviationweather.gov/adds/dataserver_current/httpparam"
+    params_metar = {
+        "dataSource": "metars",
+        "requestType": "retrieve",
+        "format": "xml",
+        "hoursBeforeNow": 5,
+        "stationString": icao
     }
-    response = requests.get(base_url, params=params)
-    data = response.json()
+    params_taf = {
+        "dataSource": "tafs",
+        "requestType": "retrieve",
+        "format": "xml",
+        "hoursBeforeNow": 5,
+        "stationString": icao
+    }
 
-    if "hourly" in data:
-        visibility = data["hourly"]["visibility"]
-        cloud_cover = data["hourly"]["cloudcover"]
-    else:
-        visibility = []
-        cloud_cover = []
+    response_metar = requests.get(base_url, params=params_metar)
+    response_taf = requests.get(base_url, params=params_taf)
 
-    return visibility, cloud_cover
+    metar_data = response_metar.content.decode()
+    taf_data = response_taf.content.decode()
+
+    return metar_data, taf_data
+
+# Function to parse METAR data
+def parse_metar_data(metar_data):
+    try:
+        metar_report = metar.Metar(metar_data, strict=False)
+        return metar_report
+    except metar.ParserError:
+        return None
+
+# Function to parse TAF data
+def parse_taf_data(taf_data):
+    taf_reports = []
+    lines = taf_data.splitlines()
+    for line in lines:
+        if line.startswith("TAF") or line.startswith("TAF AMD") or line.startswith("TAF COR"):
+            taf_reports.append(line)
+    return taf_reports
+
+# Function to check if the data is valid for the coming time window
+def is_valid_for_time_window(metar_report, taf_reports, time_window_hours):
+    current_time = datetime.utcnow().replace(tzinfo=pytz.UTC)
+    end_time = current_time + timedelta(hours=time_window_hours)
+
+    if metar_report:
+        metar_time = metar_report.time.replace(tzinfo=pytz.UTC)
+        if metar_time > end_time:
+            return False
+
+    for taf in taf_reports:
+        taf_time_str = taf.split()[2]
+        taf_time = datetime.strptime(taf_time_str, "%y%m%d%H%M").replace(tzinfo=pytz.UTC)
+        if taf_time > end_time:
+            return False
+
+    return True
+
+# Function to get weather status based on METAR and TAF data
+def get_weather_status(metar_report, taf_reports, dest_ok_vis, dest_ok_ceiling, alt_ok_vis, alt_ok_ceiling, no_alt_vis, no_alt_ceiling, nvfr_vis, nvfr_ceiling):
+    status = "UNKNOWN"
+    color = "gray"
+
+    visibilities = []
+    ceilings = []
+
+    if metar_report:
+        visibilities.append(metar_report.vis)
+        ceilings.append(metar_report.sky)
+
+    for taf in taf_reports:
+        taf_parts = taf.split()
+        for part in taf_parts:
+            if part.startswith("P6SM") or part.endswith("SM"):
+                visibilities.append(int(part.rstrip("SM")) * 1609.34)  # Convert statute miles to meters
+            if part.startswith("BKN") or part.startswith("OVC"):
+                ceilings.append(int(part[3:]) * 100)  # Convert hundreds of feet to feet
+
+    if all(vis >= dest_ok_vis and ceil <= dest_ok_ceiling for vis, ceil in zip(visibilities, ceilings)):
+        status = "NO ALT REQ"
+        color = "green"
+    elif all(vis >= alt_ok_vis and ceil <= alt_ok_ceiling for vis, ceil in zip(visibilities, ceilings)):
+        status = "ALT OK"
+        color = "yellow"
+    elif all(vis >= no_alt_vis and ceil <= no_alt_ceiling for vis, ceil in zip(visibilities, ceilings)):
+        status = "NVFR OK"
+        color = "blue"
+    elif all(vis >= nvfr_vis and ceil <= nvfr_ceiling for vis, ceil in zip(visibilities, ceilings)):
+        status = "DEST OK"
+        color = "red"
+
+    return status, color
 
 # Sidebar for base selection and radius filter
 with st.sidebar:
@@ -156,26 +231,32 @@ with st.sidebar:
     # Expandable section for weather configuration
     with st.expander("Weather Config"):
         weather_time_window = st.slider('Weather Time Window (hours)', min_value=1, max_value=10, value=5, step=1)
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.markdown("### DEST OK")
-            dest_ok_vis = st.text_input("DEST OK Vis (m)", "500")
-            dest_ok_ceiling = st.text_input("DEST OK Ceiling (ft)", "200")
 
-            st.markdown("### ALT OK")
-            alt_ok_vis = st.text_input("ALT OK Vis (m)", "900")
-            alt_ok_ceiling = st.text_input("ALT OK Ceiling (ft)", "400")
+        col1, col2 = st.columns(2)
+        with col1:
+            st.markdown("DEST OK Vis (m)")
+            dest_ok_vis = st.text_input("", "500")
+            st.markdown("DEST OK Ceiling (ft)")
+            dest_ok_ceiling = st.text_input("", "200")
 
         with col2:
-            st.markdown("### NO ALT")
-            no_alt_vis = st.text_input("NO ALT Vis (m)", "3000")
-            no_alt_ceiling = st.text_input("NO ALT Ceiling (ft)", "700")
+            st.markdown("ALT OK Vis (m)")
+            alt_ok_vis = st.text_input("", "900")
+            st.markdown("ALT OK Ceiling (ft)")
+            alt_ok_ceiling = st.text_input("", "400")
 
-            st.markdown("### NVFR OK")
-            nvfr_vis = st.text_input("NVFR OK Vis (m)", "5000")
-            nvfr_ceiling = st.text_input("NVFR OK Ceiling (ft)", "1500")
+        col3, col4 = st.columns(2)
+        with col3:
+            st.markdown("NO ALT Vis (m)")
+            no_alt_vis = st.text_input("", "3000")
+            st.markdown("NO ALT Ceiling (ft)")
+            no_alt_ceiling = st.text_input("", "700")
+
+        with col4:
+            st.markdown("NVFR OK Vis (m)")
+            nvfr_vis = st.text_input("", "5000")
+            st.markdown("NVFR OK Ceiling (ft)")
+            nvfr_ceiling = st.text_input("", "1500")
 
     wind_direction = st.text_input("Wind Direction (°)", "360")
     wind_speed = st.text_input("Wind Speed (kt)", "0")
@@ -216,25 +297,23 @@ folium.Marker(
 
 # Add reachable airports to map
 for airport, distance in reachable_airports:
-    visibility, cloud_cover = fetch_weather_data(airport['lat'], airport['lon'], weather_time_window)
-    
-    if distance > flight_time_hours * cruise_speed_kt:
-        status = "OUT OF RANGE"
-        color = "gray"
-    elif all(v >= float(dest_ok_vis) and c <= float(dest_ok_ceiling) for v, c in zip(visibility, cloud_cover)):
-        status = "NO ALT REQ"
-        color = "green"
-    elif all(v >= float(alt_ok_vis) and c <= float(alt_ok_ceiling) for v, c in zip(visibility, cloud_cover)):
-        status = "ALT OK"
-        color = "yellow"
-    elif all(v >= float(no_alt_vis) and c <= float(no_alt_ceiling) for v, c in zip(visibility, cloud_cover)):
-        status = "NVFR OK"
-        color = "blue"
-    else:
-        status = "DEST OK"
-        color = "red"
+    metar_data, taf_data = fetch_metar_taf_data(airport['icao'])
+    metar_report = parse_metar_data(metar_data)
+    taf_reports = parse_taf_data(taf_data)
 
-    popup_text = f"{airport['name']} ({airport['icao']}) - {distance:.1f} NM - {status}"
+    if not is_valid_for_time_window(metar_report, taf_reports, weather_time_window):
+        status = "INVALID DATA"
+        color = "gray"
+    else:
+        status, color = get_weather_status(
+            metar_report, taf_reports,
+            float(dest_ok_vis), float(dest_ok_ceiling),
+            float(alt_ok_vis), float(alt_ok_ceiling),
+            float(no_alt_vis), float(no_alt_ceiling),
+            float(nvfr_vis), float(nvfr_ceiling)
+        )
+
+    popup_text = f"{airport['name']} ({airport['icao']}) - {status}"
     folium.Marker(
         location=[airport['lat'], airport['lon']],
         popup=popup_text,
