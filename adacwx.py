@@ -80,7 +80,7 @@ def get_reachable_airports(base_lat, base_lon, flight_time_hours, cruise_speed_k
 def calculate_ground_speed(cruise_speed_kt, wind_speed, wind_direction, flight_direction):
     relative_wind_direction = math.radians(flight_direction - wind_direction)
     wind_component = wind_speed * math.cos(relative_wind_direction)
-    ground_speed = cruise_speed_kt + wind_component  # Correct calculation to add wind impact
+    ground_speed = cruise_speed_kt - wind_component  # Correct calculation to subtract wind impact for headwind
     return ground_speed
 
 # Function to fetch METAR and TAF data from AVWX
@@ -104,6 +104,63 @@ def fetch_metar_taf_data(icao, api_key):
         taf_data = f"Error fetching TAF data: {e}"
 
     return metar_data, taf_data
+
+# Function to check if the data is valid for the coming time window
+def is_valid_for_time_window(metar_report, taf_reports, time_window_hours):
+    current_time = datetime.utcnow().replace(tzinfo=pytz.UTC)
+    end_time = current_time + timedelta(hours=time_window_hours)
+
+    if metar_report:
+        metar_time = datetime.strptime(metar_report['time']['dt'], '%Y-%m-%dT%H:%M:%S').replace(tzinfo=pytz.UTC)
+        if metar_time < current_time or metar_time > end_time:
+            return False
+
+    for taf in taf_reports:
+        taf_time_str = taf.split()[2]
+        taf_time = datetime.strptime(taf_time_str, "%y%m%d%H%M").replace(tzinfo=pytz.UTC)
+        if taf_time < current_time or taf_time > end_time:
+            return False
+
+    return True
+
+# Function to get weather status based on METAR, TREND, and TAF data
+def get_weather_status(metar_report, taf_reports, dest_ok_vis, dest_ok_ceiling, alt_ok_vis, alt_ok_ceiling, no_alt_vis, no_alt_ceiling, nvfr_vis, nvfr_ceiling):
+    status = "UNKNOWN"
+    color = "gray"
+
+    visibilities = []
+    ceilings = []
+
+    if metar_report:
+        visibilities.append(int(metar_report['visibility']['value']))  # Assuming visibility in meters
+        if metar_report['clouds']:
+            ceilings.append(int(metar_report['clouds'][0]['altitude'] * 100))  # Assuming altitude in hundreds of feet
+
+    for taf in taf_reports:
+        taf_parts = taf.split()
+        for part in taf_parts:
+            if part.endswith("SM"):
+                visibilities.append(int(part.rstrip("SM")) * 1609.34)  # Convert statute miles to meters
+            if part.startswith("BKN") or part.startswith("OVC"):
+                ceilings.append(int(part[3:]) * 100)  # Convert hundreds of feet to feet
+
+    all_vis = visibilities + [10000]  # Default visibility if not available
+    all_ceils = ceilings + [0]        # Default ceiling if not available
+
+    if any(vis < dest_ok_vis or ceil > dest_ok_ceiling for vis, ceil in zip(all_vis, all_ceils)):
+        status = "DEST OK"
+        color = "red"
+    elif any(vis < alt_ok_vis or ceil > alt_ok_ceiling for vis, ceil in zip(all_vis, all_ceils)):
+        status = "ALT OK"
+        color = "yellow"
+    elif any(vis < no_alt_vis or ceil > no_alt_ceiling for vis, ceil in zip(all_vis, all_ceils)):
+        status = "NO ALT REQ"
+        color = "green"
+    elif any(vis < nvfr_vis or ceil > nvfr_ceiling for vis, ceil in zip(all_vis, all_ceils)):
+        status = "NVFR OK"
+        color = "blue"
+
+    return status, color
 
 # Sidebar for base selection and radius filter
 with st.sidebar:
@@ -256,6 +313,8 @@ if reachable_airports_data:
 
     # Display the table with highlighted METAR and TAF data
     st.markdown(df_reachable_airports.to_html(escape=False), unsafe_allow_html=True)
+else:
+    df_reachable_airports = pd.DataFrame(columns=["Airport", "METAR", "TAF"])
 
 # Display the table
 st.table(df_reachable_airports)
