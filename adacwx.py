@@ -231,31 +231,8 @@ for airport, distance in nearby_airports:
     
     color = "green" if weather_ok else "red"
     
-    if not auto_fetch:
-        wind_direction = st.text_input(f"Wind Direction (°) at {airport['icao']}", "360")
-        wind_speed = st.text_input(f"Wind Speed (kt) at {airport['icao']}", "0")
-        freezing_level = st.text_input(f"Freezing Level (ft) at {airport['icao']}", "0")
-        cloud_text = "Manual Input"
-    else:
-        # Placeholder for API function to fetch weather data
-        freezing_level = 0  # Replace with actual function call
-        wind_speed = 0  # Replace with actual function call
-        wind_direction = 0  # Replace with actual function call
-        cloud_text = "Fetched from API"
+    popup_text = f"{airport['name']} ({airport['icao']}) - {distance:.1f} NM"
     
-    if freezing_level is not None and wind_speed is not None and wind_direction is not None:
-        popup_text = (
-            f"{airport['name']} ({airport['icao']}) - {distance:.1f} NM\n"
-            f"Freezing Level: {freezing_level} ft\n"
-            f"Wind: {wind_direction}°/{wind_speed} kt\n"
-            f"Clouds: {cloud_text}"
-        )
-    else:
-        popup_text = (
-            f"{airport['name']} ({airport['icao']}) - {distance:.1f} NM\n"
-            "Weather data not available"
-        )
-
     folium.Marker(
         location=[airport['lat'], airport['lon']],
         popup=popup_text,
