@@ -1,10 +1,8 @@
 folium
 streamlit-folium
-pdf2image
-pytesseract
 opencv-python
 openmeteo_requests
 requests_cache
 retry_requests
 geopandas
-metar-taf-parser
+python-metar-taf-parser
