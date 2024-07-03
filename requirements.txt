@@ -7,3 +7,4 @@ openmeteo_requests
 requests_cache
 retry_requests
 geopandas
+python-metar
