@@ -14,6 +14,7 @@ import pytesseract
 import openmeteo_requests
 import requests_cache
 from retry_requests import retry
+import geopandas as gpd
 
 # Set the page configuration at the very top
 st.set_page_config(layout="wide")
@@ -218,6 +219,12 @@ def extract_mva_data_from_image_url(image_url):
 
     return mva_data
 
+# Function to fetch DFS geo layers using WFS
+def fetch_dfs_geo_layers():
+    url = "https://haleconnect.com/ows/services/org.732.341f2791-919e-49de-8d86-3b18e040c430_wfs"
+    gdf = gpd.read_file(url)
+    return gdf
+
 # Sidebar for base selection and radius filter
 with st.sidebar:
     base_names = [base['name'] for base in helicopter_bases]
@@ -258,9 +265,9 @@ for airport, distance in nearby_airports:
 
 # Add Geo-Data from DFS
 if show_geo_data:
-    # Add the geo-data layer here
-    geo_data_url = "https://www.dfs.de/homepage/de/services/geo-daten/"
-    folium.GeoJson(geo_data_url, name="Geo-Data from DFS").add_to(m)
+    # Fetch and add the geo-data layer here
+    gdf = fetch_dfs_geo_layers()
+    folium.GeoJson(gdf, name="Geo-Data from DFS").add_to(m)
 
 # Add Minimum Vectoring Altitudes (MVA) layer
 if show_mva_layer:
