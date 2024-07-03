@@ -9,4 +9,4 @@ retry_requests
 geopandas
 metar-taf-parser-mivek
 metar
-TAF
+TAFParser
