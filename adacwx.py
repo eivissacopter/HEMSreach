@@ -89,7 +89,7 @@ with st.sidebar:
 
         fuel_data = {
             "Fuel Component": ["System Test and Air Taxi", "Holding/Final Reserve", "Approach Fuel", "Air Taxi to Parking", "Contingency Fuel", "Trip Fuel"],
-            "Fuel (kg)": [system_test_and_air_taxi, holding_final_reserve, approach_fuel, air_taxi_to_parking, round(contingency_fuel, 2), round(trip_fuel_kg, 2)]
+            "Fuel (kg)": [system_test_and_air_taxi, holding_final_reserve, approach_fuel, air_taxi_to_parking, round(contingency_fuel), round(trip_fuel_kg)]
         }
         df_fuel = pd.DataFrame(fuel_data)
         st.table(df_fuel)
@@ -97,7 +97,9 @@ with st.sidebar:
     # Show calculated flight time below the fuel slider
     fuel_burn_kgph = H145D2_PERFORMANCE['fuel_burn_kgph']
     flight_time_hours = trip_fuel_kg / fuel_burn_kgph
-    st.markdown(f"### Calculated Flight Time: {flight_time_hours:.2f} hours")
+    flight_time_minutes = int((flight_time_hours - int(flight_time_hours)) * 60)
+    flight_time_display = f"{int(flight_time_hours)}h {flight_time_minutes}m"
+    st.markdown(f"### Calculated Flight Time: {flight_time_display}")
 
     st.markdown("### Weather at Home Base")
     auto_fetch = st.checkbox("Try to get weather values automatically via API", value=False)
@@ -132,7 +134,7 @@ except ValueError:
 wind_component = wind_speed * math.cos(math.radians(wind_direction))
 ground_speed_kt = cruise_speed_kt + wind_component
 
-mission_radius_nm = ground_speed_kt * flight_time_hours
+mission_radius_nm = ground_speed_kt * (flight_time_hours + flight_time_minutes / 60)
 
 # Get airports within mission radius
 nearby_airports = get_airports_within_radius(selected_base['lat'], selected_base['lon'], mission_radius_nm)
@@ -156,13 +158,8 @@ folium.Marker(
 
 # Add airports to map
 for airport, distance in nearby_airports:
-    metar, taf = fetch_weather(airport['icao'])
-    weather_ok = check_weather_criteria(metar, taf)
-    
-    color = "green" if weather_ok else "red"
-    
+    color = "green"
     popup_text = f"{airport['name']} ({airport['icao']}) - {distance:.1f} NM"
-    
     folium.Marker(
         location=[airport['lat'], airport['lon']],
         popup=popup_text,
