@@ -8,6 +8,10 @@ from performance import H145D2_PERFORMANCE
 import folium
 from streamlit_folium import folium_static
 import pytz
+from metar import Metar
+from metar.Datatypes import temperature, speed, distance, pressure
+from metar.Metar import Metar as MetarParser
+from metar.TAF import TAF as TAFParser
 
 # Set the page configuration at the very top
 st.set_page_config(layout="wide")
@@ -105,62 +109,67 @@ def fetch_metar_taf_data(icao, api_key):
 
     return metar_data, taf_data
 
-# Function to check if the data is valid for the coming time window
-def is_valid_for_time_window(metar_report, taf_reports, time_window_hours):
+# Function to parse and interpret METAR data
+def parse_metar(metar_raw):
+    try:
+        metar = MetarParser(metar_raw)
+        return metar
+    except Exception as e:
+        return None
+
+# Function to parse and interpret TAF data
+def parse_taf(taf_raw):
+    try:
+        taf = TAFParser(taf_raw)
+        return taf
+    except Exception as e:
+        return None
+
+# Function to categorize weather data
+def categorize_weather(metar, taf, time_window_hours):
     current_time = datetime.utcnow().replace(tzinfo=pytz.UTC)
     end_time = current_time + timedelta(hours=time_window_hours)
 
-    if metar_report:
-        metar_time = datetime.strptime(metar_report['time']['dt'], '%Y-%m-%dT%H:%M:%S').replace(tzinfo=pytz.UTC)
-        if metar_time < current_time or metar_time > end_time:
-            return False
+    def check_conditions(report):
+        visibilities = []
+        ceilings = []
 
-    for taf in taf_reports:
-        taf_time_str = taf.split()[2]
-        taf_time = datetime.strptime(taf_time_str, "%y%m%d%H%M").replace(tzinfo=pytz.UTC)
-        if taf_time < current_time or taf_time > end_time:
-            return False
+        if isinstance(report, MetarParser):
+            visibilities.append(report.vis.value())
+            if report.sky_conditions:
+                ceilings.append(report.sky_conditions[0].altitude() * 100)
 
-    return True
+        if isinstance(report, TAFParser):
+            for forecast in report.forecast:
+                visibilities.append(forecast.visibility)
+                ceilings.extend([layer[1] for layer in forecast.sky])
 
-# Function to get weather status based on METAR, TREND, and TAF data
-def get_weather_status(metar_report, taf_reports, dest_ok_vis, dest_ok_ceiling, alt_ok_vis, alt_ok_ceiling, no_alt_vis, no_alt_ceiling, nvfr_vis, nvfr_ceiling):
-    status = "UNKNOWN"
-    color = "gray"
+        visibilities = [v for v in visibilities if v is not None]
+        ceilings = [c for c in ceilings if c is not None]
 
-    visibilities = []
-    ceilings = []
+        return visibilities, ceilings
 
-    if metar_report:
-        visibilities.append(int(metar_report['visibility']['value']))  # Assuming visibility in meters
-        if metar_report['clouds']:
-            ceilings.append(int(metar_report['clouds'][0]['altitude'] * 100))  # Assuming altitude in hundreds of feet
+    metar_vis, metar_ceil = check_conditions(metar)
+    taf_vis, taf_ceil = check_conditions(taf)
 
-    for taf in taf_reports:
-        taf_parts = taf.split()
-        for part in taf_parts:
-            if part.endswith("SM"):
-                visibilities.append(int(part.rstrip("SM")) * 1609.34)  # Convert statute miles to meters
-            if part.startswith("BKN") or part.startswith("OVC"):
-                ceilings.append(int(part[3:]) * 100)  # Convert hundreds of feet to feet
+    visibilities = metar_vis + taf_vis
+    ceilings = metar_ceil + taf_ceil
 
-    all_vis = visibilities + [10000]  # Default visibility if not available
-    all_ceils = ceilings + [0]        # Default ceiling if not available
+    def categorize(vis, ceil):
+        if vis < float(dest_ok_vis) or ceil > float(dest_ok_ceiling):
+            return "DEST OK", "red"
+        elif vis < float(alt_ok_vis) or ceil > float(alt_ok_ceiling):
+            return "ALT OK", "yellow"
+        elif vis < float(no_alt_vis) or ceil > float(no_alt_ceiling):
+            return "NO ALT REQ", "green"
+        elif vis < float(nvfr_vis) or ceil > float(nvfr_ceiling):
+            return "NVFR OK", "blue"
+        else:
+            return "UNKNOWN", "gray"
 
-    if any(vis < dest_ok_vis or ceil > dest_ok_ceiling for vis, ceil in zip(all_vis, all_ceils)):
-        status = "DEST OK"
-        color = "red"
-    elif any(vis < alt_ok_vis or ceil > alt_ok_ceiling for vis, ceil in zip(all_vis, all_ceils)):
-        status = "ALT OK"
-        color = "yellow"
-    elif any(vis < no_alt_vis or ceil > no_alt_ceiling for vis, ceil in zip(all_vis, all_ceils)):
-        status = "NO ALT REQ"
-        color = "green"
-    elif any(vis < nvfr_vis or ceil > nvfr_ceiling for vis, ceil in zip(all_vis, all_ceils)):
-        status = "NVFR OK"
-        color = "blue"
+    vis_category, vis_color = categorize(min(visibilities), max(ceilings))
 
-    return status, color
+    return vis_category, vis_color
 
 # Sidebar for base selection and radius filter
 with st.sidebar:
@@ -270,6 +279,10 @@ for airport, distance in reachable_airports:
     metar_data, taf_data = fetch_metar_taf_data(airport['icao'], AVWX_API_KEY)
     
     if isinstance(metar_data, dict) and isinstance(taf_data, dict):
+        metar_report = parse_metar(metar_data.get('raw', ''))
+        taf_report = parse_taf(taf_data.get('raw', ''))
+        weather_category, color = categorize_weather(metar_report, taf_report, weather_time_window)
+        
         weather_info = f"METAR: {metar_data.get('raw', 'N/A')}\nTAF: {taf_data.get('raw', 'N/A')}"
         popup_text = f"{airport['name']} ({airport['icao']})\n{weather_info}"
 
@@ -282,7 +295,7 @@ for airport, distance in reachable_airports:
         folium.Marker(
             location=[airport['lat'], airport['lon']],
             popup=popup_text,
-            icon=folium.Icon(color="blue", icon="plane"),
+            icon=folium.Icon(color=color, icon="plane"),
         ).add_to(m)
 
 # Display map
