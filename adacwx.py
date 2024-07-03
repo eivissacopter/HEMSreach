@@ -204,7 +204,18 @@ with st.sidebar:
 cruise_speed_kt = H145D2_PERFORMANCE['cruise_speed_kt']
 fuel_burn_kgph = H145D2_PERFORMANCE['fuel_burn_kgph']
 flight_time_hours = fuel_kg / fuel_burn_kgph
-mission_radius_nm = cruise_speed_kt * flight_time_hours
+
+# Get wind data at cruise altitude
+_, wind_speed_knots, wind_direction = fetch_freezing_level_and_wind(selected_base['lat'], selected_base['lon'], cruise_altitude_ft)
+
+# Calculate ground speed considering wind
+if wind_direction is not None:
+    wind_component = wind_speed_knots * math.cos(math.radians(wind_direction))
+    ground_speed_kt = cruise_speed_kt + wind_component
+else:
+    ground_speed_kt = cruise_speed_kt
+
+mission_radius_nm = ground_speed_kt * flight_time_hours
 
 # Get airports within mission radius
 nearby_airports = get_airports_within_radius(selected_base['lat'], selected_base['lon'], mission_radius_nm)
