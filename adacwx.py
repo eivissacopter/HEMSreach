@@ -153,8 +153,15 @@ def fetch_zero_deg_altitude(lat, lon, api_key):
     response = requests.get(url)
     data = response.json()
     
-    # Extract temperature profile from the response
-    current_temp = data['current']['temp'] - 273.15  # Convert from Kelvin to Celsius
+    # Print the data for debugging
+    st.write(data)
+    
+    try:
+        # Extract temperature profile from the response
+        current_temp = data['current']['temp'] - 273.15  # Convert from Kelvin to Celsius
+    except KeyError as e:
+        st.error(f"KeyError: {e}")
+        return None
     
     # Assume a simple lapse rate
     lapse_rate = -6.5 / 1000  # Standard atmosphere lapse rate in °C/m
