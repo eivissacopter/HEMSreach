@@ -199,9 +199,8 @@ except ValueError:
     wind_speed = 0
 
 # Calculate the wind component
-wind_angle = math.radians(wind_direction)
-wind_effect = wind_speed * math.cos(wind_angle)
-ground_speed_kt = cruise_speed_kt + wind_effect
+wind_component = wind_speed * math.cos(math.radians(wind_direction))
+ground_speed_kt = cruise_speed_kt + wind_component
 
 mission_radius_nm = ground_speed_kt * flight_time_hours
 
