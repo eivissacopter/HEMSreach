@@ -129,7 +129,7 @@ nearby_airports = get_airports_within_radius(selected_base['lat'], selected_base
 
 # Create map centered on selected base with OpenFlightMaps
 m = folium.Map(location=[selected_base['lat'], selected_base['lon']], zoom_start=7, tiles=None)
-folium.TileLayer('https://{s}.tile.openflightmaps.org/{z}/{x}/{y}.png', 
+folium.TileLayer('https://{s}.tile.openflightmaps.org/{z}/{x}/{y}.png?tileSet=airspaces&tileFormat=png', 
                  attr='OpenFlightMaps').add_to(m)
 
 # Add selected base to map
@@ -153,4 +153,4 @@ for airport, distance in nearby_airports:
     ).add_to(m)
 
 # Display map
-folium_static(m)
+folium_static(m, width=1500, height=800)
