@@ -123,7 +123,7 @@ with st.sidebar:
     alternate_fuel = st.number_input("Alternate Fuel (kg)", value=0, step=10) if alternate_required else 0
 
     # Expandable section for fuel breakdown
-    with st.expander("Show Fuel Breakdown"):
+    with st.expander("Fuel Breakdown"):
         system_test_and_air_taxi = 37
         holding_final_reserve = 100
         air_taxi_to_parking = 20
