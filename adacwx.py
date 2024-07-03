@@ -213,10 +213,8 @@ for airport in airports:
     time_to_airport_hours = distance / ground_speed_kt if ground_speed_kt > 0 else float('inf')
 
     metar_data, taf_data = fetch_metar_taf_data(airport['icao'], API_KEY)
-    metar_report = parse_metar_data(metar_data)
-    taf_reports = parse_taf_data(taf_data)
 
-    if metar_report and taf_reports:
+    if isinstance(metar_data, dict) and isinstance(taf_data, dict):
         if time_to_airport_hours <= flight_time_hours:
             color = "darkgrey"
             icon_opacity = 1.0
@@ -242,10 +240,8 @@ folium_static(m, width=1280, height=800)
 reachable_airports_data = []
 for airport, distance in reachable_airports:
     metar_data, taf_data = fetch_metar_taf_data(airport['icao'], API_KEY)
-    metar_report = parse_metar_data(metar_data)
-    taf_reports = parse_taf_data(taf_data)
 
-    if metar_report and taf_reports:
+    if isinstance(metar_data, dict) and isinstance(taf_data, dict):
         reachable_airports_data.append({
             "Airport": f"{airport['name']} ({airport['icao']})",
             "METAR": metar_data,
@@ -259,9 +255,9 @@ if not df_reachable_airports.empty:
     # Function to highlight METAR and TAF based on visibility and ceiling
     def highlight_weather_conditions(text, vis_thresholds, ceil_thresholds):
         for vis, color in vis_thresholds.items():
-            text = text.replace(vis, f"<span style='color:{color}'>{vis}</span>")
+            text = text.replace(str(vis), f"<span style='color:{color}'>{vis}</span>")
         for ceil, color in ceil_thresholds.items():
-            text = text.replace(ceil, f"<span style='color:{color}'>{ceil}</span>")
+            text = text.replace(str(ceil), f"<span style='color:{color}'>{ceil}</span>")
         return text
 
     # Highlight visibility and ceiling in the METAR and TAF columns
@@ -272,7 +268,11 @@ if not df_reachable_airports.empty:
         "200": "red", "400": "yellow", "700": "green", "1500": "blue"
     }
 
-    df_reachable_airports['METAR'] = df_reachable_airports['METAR'].apply(lambda x: highlight_weather_conditions(x, vis_thresholds, ceil_thresholds))
-    df_reachable_airports['TAF'] = df_reachable_airports['TAF'].apply(lambda x: highlight_weather_conditions(x, vis_thresholds, ceil_thresholds))
+    df_reachable_airports['METAR'] = df_reachable_airports['METAR'].apply(lambda x: highlight_weather_conditions(str(x), vis_thresholds, ceil_thresholds))
+    df_reachable_airports['TAF'] = df_reachable_airports['TAF'].apply(lambda x: highlight_weather_conditions(str(x), vis_thresholds, ceil_thresholds))
 
+    # Display the table with highlighted METAR and TAF data
+    st.markdown(df_reachable_airports.to_html(escape=False), unsafe_allow_html=True)
+
+# Display the table
 st.table(df_reachable_airports)
