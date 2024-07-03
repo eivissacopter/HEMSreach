@@ -31,6 +31,10 @@ st.markdown(
     .stSlider {
         height: 100%;
     }
+    .stNumberInput, .stTextInput {
+        display: inline-block;
+        margin-right: 10px;
+    }
     </style>
     """,
     unsafe_allow_html=True,
@@ -123,7 +127,7 @@ with st.sidebar:
     alternate_fuel = st.number_input("Alternate Fuel (kg)", value=0, step=10) if alternate_required else 0
 
     # Expandable section for fuel breakdown
-    with st.expander("Fuel Breakdown"):
+    with st.expander("Show Fuel Breakdown"):
         system_test_and_air_taxi = 37
         holding_final_reserve = 100
         air_taxi_to_parking = 20
@@ -153,25 +157,25 @@ with st.sidebar:
     with st.expander("Weather Config"):
         weather_time_window = st.slider('Weather Time Window (hours)', min_value=1, max_value=10, value=5, step=1)
         
-        st.markdown("### NVFR Limits")
-        nvfr_vis = st.text_input("NVFR Vis (m)", "5000")
-        nvfr_ceiling = st.text_input("NVFR Ceiling (ft)", "1500")
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.markdown("### DEST OK Limits")
+            dest_ok_vis = st.text_input("DEST OK Vis (m)", "500")
+            dest_ok_ceiling = st.text_input("DEST OK Ceiling (ft)", "200")
 
-        st.markdown("### DVFR Limits")
-        dvfr_vis = st.text_input("DVFR Vis (m)", "3000")
-        dvfr_ceiling = st.text_input("DVFR Ceiling (ft)", "500")
+            st.markdown("### ALT OK Limits")
+            alt_ok_vis = st.text_input("ALT OK Vis (m)", "900")
+            alt_ok_ceiling = st.text_input("ALT OK Ceiling (ft)", "400")
 
-        st.markdown("### NO ALT Limits")
-        no_alt_vis = st.text_input("NO ALT Vis (m)", "3000")
-        no_alt_ceiling = st.text_input("NO ALT Ceiling (ft)", "700")
+        with col2:
+            st.markdown("### NO ALT Limits")
+            no_alt_vis = st.text_input("NO ALT Vis (m)", "3000")
+            no_alt_ceiling = st.text_input("NO ALT Ceiling (ft)", "700")
 
-        st.markdown("### ALT OK Limits")
-        alt_ok_vis = st.text_input("ALT OK Vis (m)", "900")
-        alt_ok_ceiling = st.text_input("ALT OK Ceiling (ft)", "400")
-
-        st.markdown("### DEST OK Limits")
-        dest_ok_vis = st.text_input("DEST OK Vis (m)", "500")
-        dest_ok_ceiling = st.text_input("DEST OK Ceiling (ft)", "200")
+            st.markdown("### NVFR OK Limits")
+            nvfr_vis = st.text_input("NVFR OK Vis (m)", "5000")
+            nvfr_ceiling = st.text_input("NVFR OK Ceiling (ft)", "1500")
 
     wind_direction = st.text_input("Wind Direction (°)", "360")
     wind_speed = st.text_input("Wind Speed (kt)", "0")
@@ -214,24 +218,21 @@ folium.Marker(
 for airport, distance in reachable_airports:
     visibility, cloud_cover = fetch_weather_data(airport['lat'], airport['lon'], weather_time_window)
     
-    if all(v >= float(dest_ok_vis) and c <= float(dest_ok_ceiling) for v, c in zip(visibility, cloud_cover)):
-        status = "DEST OK"
+    if distance > flight_time_hours * cruise_speed_kt:
+        status = "OUT OF RANGE"
+        color = "gray"
+    elif all(v >= float(dest_ok_vis) and c <= float(dest_ok_ceiling) for v, c in zip(visibility, cloud_cover)):
+        status = "NO ALT REQ"
         color = "green"
     elif all(v >= float(alt_ok_vis) and c <= float(alt_ok_ceiling) for v, c in zip(visibility, cloud_cover)):
         status = "ALT OK"
-        color = "green"
-    elif all(v >= float(no_alt_vis) and c <= float(no_alt_ceiling) for v, c in zip(visibility, cloud_cover)):
-        status = "NO ALT"
         color = "yellow"
-    elif all(v >= float(dvfr_vis) and c <= float(dvfr_ceiling) for v, c in zip(visibility, cloud_cover)):
-        status = "DVFR"
-        color = "orange"
-    elif all(v >= float(nvfr_vis) and c <= float(nvfr_ceiling) for v, c in zip(visibility, cloud_cover)):
-        status = "NVFR"
-        color = "red"
+    elif all(v >= float(no_alt_vis) and c <= float(no_alt_ceiling) for v, c in zip(visibility, cloud_cover)):
+        status = "NVFR OK"
+        color = "blue"
     else:
-        status = "UNKNOWN"
-        color = "gray"
+        status = "DEST OK"
+        color = "red"
 
     popup_text = f"{airport['name']} ({airport['icao']}) - {distance:.1f} NM - {status}"
     folium.Marker(
@@ -242,4 +243,3 @@ for airport, distance in reachable_airports:
 
 # Display map
 folium_static(m, width=1280, height=800)
-
