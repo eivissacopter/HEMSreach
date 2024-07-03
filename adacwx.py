@@ -38,6 +38,9 @@ st.markdown(
         display: inline-block;
         margin-right: 10px;
     }
+    .small-label {
+        font-size: 12px;
+    }
     </style>
     """,
     unsafe_allow_html=True,
@@ -109,7 +112,7 @@ def fetch_metar_taf_data(icao):
 # Function to parse METAR data
 def parse_metar_data(metar_data):
     try:
-        report = metar.parse(metar_data)
+        report = Metar.Metar(metar_data)
         return report
     except Exception as e:
         return None
@@ -130,13 +133,13 @@ def is_valid_for_time_window(metar_report, taf_reports, time_window_hours):
 
     if metar_report:
         metar_time = metar_report.time.replace(tzinfo=pytz.UTC)
-        if metar_time > end_time:
+        if metar_time < current_time or metar_time > end_time:
             return False
 
     for taf in taf_reports:
         taf_time_str = taf.split()[2]
         taf_time = datetime.strptime(taf_time_str, "%y%m%d%H%M").replace(tzinfo=pytz.UTC)
-        if taf_time > end_time:
+        if taf_time < current_time or taf_time > end_time:
             return False
 
     return True
@@ -161,18 +164,20 @@ def get_weather_status(metar_report, taf_reports, dest_ok_vis, dest_ok_ceiling, 
             if part.startswith("BKN") or part.startswith("OVC"):
                 ceilings.append(int(part[3:]) * 100)  # Convert hundreds of feet to feet
 
-    if all(vis >= dest_ok_vis and ceil <= dest_ok_ceiling for vis, ceil in zip(visibilities, ceilings)):
-        status = "NO ALT REQ"
-        color = "green"
-    elif all(vis >= alt_ok_vis and ceil <= alt_ok_ceiling for vis, ceil in zip(visibilities, ceilings)):
-        status = "ALT OK"
-        color = "yellow"
-    elif all(vis >= no_alt_vis and ceil <= no_alt_ceiling for vis, ceil in zip(visibilities, ceilings)):
-        status = "NVFR OK"
-        color = "blue"
-    elif all(vis >= nvfr_vis and ceil <= nvfr_ceiling for vis, ceil in zip(visibilities, ceilings)):
-        status = "DEST OK"
-        color = "red"
+    for vis, ceil in zip(visibilities, ceilings):
+        if vis < nvfr_vis or ceil > nvfr_ceiling:
+            status = "NVFR OK"
+            color = "blue"
+        if vis < no_alt_vis or ceil > no_alt_ceiling:
+            status = "NO ALT REQ"
+            color = "green"
+        if vis < alt_ok_vis or ceil > alt_ok_ceiling:
+            status = "ALT OK"
+            color = "yellow"
+        if vis < dest_ok_vis or ceil > dest_ok_ceiling:
+            status = "DEST OK"
+            color = "red"
+            break  # Exit loop on the first condition met
 
     return status, color
 
@@ -232,28 +237,23 @@ with st.sidebar:
 
         col1, col2 = st.columns(2)
         with col1:
-            st.markdown("DEST OK Vis (m)")
+            st.markdown('<div class="small-label">DEST OK Vis (m)</div>', unsafe_allow_html=True)
             dest_ok_vis = st.text_input("", "500")
-            st.markdown("DEST OK Ceiling (ft)")
-            dest_ok_ceiling = st.text_input("", "200")
+            st.markdown('<div class="small-label">ALT OK Vis (m)</div>', unsafe_allow_html=True)
+            alt_ok_vis = st.text_input("", "900")
+            st.markdown('<div class="small-label">NO ALT Vis (m)</div>', unsafe_allow_html=True)
+            no_alt_vis = st.text_input("", "3000")
+            st.markdown('<div class="small-label">NVFR OK Vis (m)</div>', unsafe_allow_html=True)
+            nvfr_vis = st.text_input("", "5000")
 
         with col2:
-            st.markdown("ALT OK Vis (m)")
-            alt_ok_vis = st.text_input("", "900")
-            st.markdown("ALT OK Ceiling (ft)")
+            st.markdown('<div class="small-label">DEST OK Ceiling (ft)</div>', unsafe_allow_html=True)
+            dest_ok_ceiling = st.text_input("", "200")
+            st.markdown('<div class="small-label">ALT OK Ceiling (ft)</div>', unsafe_allow_html=True)
             alt_ok_ceiling = st.text_input("", "400")
-
-        col3, col4 = st.columns(2)
-        with col3:
-            st.markdown("NO ALT Vis (m)")
-            no_alt_vis = st.text_input("", "3000")
-            st.markdown("NO ALT Ceiling (ft)")
+            st.markdown('<div class="small-label">NO ALT Ceiling (ft)</div>', unsafe_allow_html=True)
             no_alt_ceiling = st.text_input("", "700")
-
-        with col4:
-            st.markdown("NVFR OK Vis (m)")
-            nvfr_vis = st.text_input("", "5000")
-            st.markdown("NVFR OK Ceiling (ft)")
+            st.markdown('<div class="small-label">NVFR OK Ceiling (ft)</div>', unsafe_allow_html=True)
             nvfr_ceiling = st.text_input("", "1500")
 
     wind_direction = st.text_input("Wind Direction (°)", "360")
