@@ -11,6 +11,9 @@ from PIL import Image, ImageEnhance, ImageFilter
 from io import BytesIO
 import numpy as np
 import pytesseract
+import openmeteo_requests
+import requests_cache
+from retry_requests import retry
 
 # Set the page configuration at the very top
 st.set_page_config(layout="wide")
@@ -41,6 +44,11 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
+
+# Setup the Open-Meteo API client with cache and retry on error
+cache_session = requests_cache.CachedSession('.cache', expire_after=3600)
+retry_session = retry(cache_session, retries=5, backoff_factor=0.2)
+openmeteo = openmeteo_requests.Client(session=retry_session)
 
 # Function to calculate distance between two points using the Haversine formula
 def haversine(lon1, lat1, lon2, lat2):
@@ -147,26 +155,32 @@ def check_weather_criteria(metar, taf):
         st.error(f"Error checking weather criteria: {e}")
         return False
 
-# Function to fetch 0°C altitude using OpenWeatherMap API
-def fetch_zero_deg_altitude(lat, lon, api_key):
-    url = f"http://api.openweathermap.org/data/2.5/onecall?lat={lat}&lon={lon}&appid={api_key}"
-    response = requests.get(url)
-    data = response.json()
-    
+# Function to fetch 0°C altitude using OpenMeteo API
+def fetch_zero_deg_altitude(lat, lon):
+    url = "https://api.open-meteo.com/v1/dwd-icon"
+    params = {
+        "latitude": lat,
+        "longitude": lon,
+        "hourly": "freezing_level_height"
+    }
+    responses = openmeteo.weather_api(url, params=params)
+    response = responses[0]
+
+    if response is None:
+        st.error("Error fetching data from OpenMeteo API")
+        return None
+
     # Print the data for debugging
-    st.write(data)
-    
+    st.write(response)
+
     try:
-        # Extract temperature profile from the response
-        current_temp = data['current']['temp'] - 273.15  # Convert from Kelvin to Celsius
+        hourly = response.Hourly()
+        hourly_freezing_level_height = hourly.Variables(0).ValuesAsNumpy()
+        zero_deg_altitude = hourly_freezing_level_height[0]  # Use the first value for now
     except KeyError as e:
         st.error(f"KeyError: {e}")
         return None
-    
-    # Assume a simple lapse rate
-    lapse_rate = -6.5 / 1000  # Standard atmosphere lapse rate in °C/m
-    zero_deg_altitude = current_temp / lapse_rate  # Calculate the altitude where temperature is 0°C
-    
+
     return zero_deg_altitude
 
 # Function to extract MVA data from an image URL using OCR
@@ -174,34 +188,33 @@ def extract_mva_data_from_image_url(image_url):
     response = requests.get(image_url)
     img = Image.open(BytesIO(response.content))
 
-    # Convert image to array
-    img_array = np.array(img)
-    # Convert to grayscale
-    gray = cv2.cvtColor(img_array, cv2.COLOR_BGR2GRAY)
+    # Convert image to grayscale
+    gray = img.convert('L')
+    # Enhance image
+    enhancer = ImageEnhance.Contrast(gray)
+    gray = enhancer.enhance(2)
     # Apply thresholding
-    _, thresh = cv2.threshold(gray, 150, 255, cv2.THRESH_BINARY_INV)
-    # Detect contours
-    contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    bw = gray.point(lambda x: 0 if x < 128 else 255, '1')
 
     mva_data = []
-    for cnt in contours:
-        # Approximate the contour to reduce the number of points
-        epsilon = 0.02 * cv2.arcLength(cnt, True)
-        approx = cv2.approxPolyDP(cnt, epsilon, True)
-        # Use OCR to extract the text
-        x, y, w, h = cv2.boundingRect(cnt)
-        roi = gray[y:y+h, x:x+w]
-        text = pytesseract.image_to_string(roi, config='--psm 6')
+    width, height = bw.size
 
-        # Clean and validate the text
-        try:
-            mva_value = int(re.search(r'\d+', text).group())
-            mva_data.append({
-                'polygon': approx.tolist(),
-                'mva': mva_value
-            })
-        except (ValueError, AttributeError):
-            continue
+    # OCR processing
+    data = pytesseract.image_to_data(bw, output_type=pytesseract.Output.DICT)
+    n_boxes = len(data['level'])
+    for i in range(n_boxes):
+        if int(data['conf'][i]) > 60:  # Confidence threshold
+            text = data['text'][i]
+            try:
+                mva_value = int(re.search(r'\d+', text).group())
+                x, y, w, h = (data['left'][i], data['top'][i], data['width'][i], data['height'][i])
+                polygon = [(x, y), (x + w, y), (x + w, y + h), (x, y + h)]
+                mva_data.append({
+                    'polygon': polygon,
+                    'mva': mva_value
+                })
+            except (ValueError, AttributeError):
+                continue
 
     return mva_data
 
@@ -267,13 +280,13 @@ if show_mva_layer:
 # Add 0°C Altitude Layer
 if show_zero_deg_layer:
     # Fetch and add 0°C altitude data
-    api_key = "912f77866083d8de4c3b1d830eabe804"  # Your OpenWeatherMap API key
-    zero_deg_altitude = fetch_zero_deg_altitude(selected_base['lat'], selected_base['lon'], api_key)
-    folium.Marker(
-        location=[selected_base['lat'], selected_base['lon']],
-        popup=f"0°C Altitude: {zero_deg_altitude:.2f} m",
-        icon=folium.Icon(color="blue", icon="info-sign"),
-    ).add_to(m)
+    zero_deg_altitude = fetch_zero_deg_altitude(selected_base['lat'], selected_base['lon'])
+    if zero_deg_altitude is not None:
+        folium.Marker(
+            location=[selected_base['lat'], selected_base['lon']],
+            popup=f"0°C Altitude: {zero_deg_altitude:.2f} m",
+            icon=folium.Icon(color="blue", icon="info-sign"),
+        ).add_to(m)
 
 # Display map
 folium_static(m, width=1920, height=1080)
