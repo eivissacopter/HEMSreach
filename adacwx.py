@@ -159,8 +159,8 @@ def check_weather_criteria(metar, taf):
 @st.cache_data
 def fetch_freezing_level_and_wind(lat, lon, altitude_ft):
     altitude_m = round(altitude_ft * 0.3048)  # Convert feet to meters and round to the nearest meter
-    altitude_levels = [1500, 3000, 5000]  # Supported altitude levels in meters for wind
-    altitude_m = min(altitude_levels, key=lambda x: abs(x - altitude_m))  # Find the closest supported level
+    altitude_levels = ["1500", "3000", "5000"]  # Supported altitude levels in meters for wind
+    altitude_m = min(altitude_levels, key=lambda x: abs(int(x) - altitude_m))  # Find the closest supported level
     
     url = "https://api.open-meteo.com/v1/dwd-icon"
     params = {
@@ -198,6 +198,7 @@ def fetch_freezing_level_and_wind(lat, lon, altitude_ft):
         return None, None, None, None, None
 
     return freezing_level_altitude_ft, wind_speed_knots, wind_direction, cloud_text, thunderstorm
+
 
 # Sidebar for base selection and radius filter
 with st.sidebar:
