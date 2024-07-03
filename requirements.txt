@@ -1,2 +1,3 @@
 folium
 streamlit-folium
+pdf2image
