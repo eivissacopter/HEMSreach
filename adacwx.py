@@ -143,8 +143,8 @@ with st.sidebar:
         trip_fuel_kg -= approach_fuel
 
         fuel_data = {
-            "Fuel Component": ["System Test and Air Taxi", "Holding/Final Reserve", "Air Taxi to Parking", "Contingency Fuel", "Approach Fuel", "Trip Fuel"],
-            "Fuel (kg)": [system_test_and_air_taxi, holding_final_reserve, air_taxi_to_parking, round(contingency_fuel), approach_fuel, round(trip_fuel_kg)]
+            "Fuel Component": ["System Test and Air Taxi", "Trip Fuel", "Holding/Final Reserve", "Approach Fuel", "Air Taxi to Parking", "Contingency Fuel"],
+            "Fuel (kg)": [system_test_and_air_taxi, round(trip_fuel_kg), holding_final_reserve, approach_fuel, air_taxi_to_parking, round(contingency_fuel)]
         }
         df_fuel = pd.DataFrame(fuel_data)
         st.table(df_fuel)
@@ -169,11 +169,11 @@ with st.sidebar:
 
     st.markdown(f"**Wind at {cruise_altitude_ft} ft:** {wind_direction}°/{wind_speed} kt")
     st.markdown(f"**Freezing Level (Altitude):** {freezing_level} ft")
+
+    # Manual input for Minimum Vectoring Altitude
+    min_vectoring_altitude = st.text_input("Minimum Vectoring Altitude (ft)")
+
     st.markdown(f"**Expected Icing:** {icing_warning}")
-
-    # Manual input for Minimum Vectoring Altitude below Freezing Level
-    min_vectoring_altitude = st.text_input("Minimum Vectoring Altitude below Freezing Level (ft)")
-
 
 # Calculate mission radius
 cruise_speed_kt = H145D2_PERFORMANCE['cruise_speed_kt']
@@ -210,3 +210,4 @@ for airport, distance in reachable_airports:
 
 # Display map
 folium_static(m, width=1280, height=800)
+
