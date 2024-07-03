@@ -2,4 +2,4 @@ folium
 streamlit-folium
 pdf2image
 pytesseract
-cv2
+opencv-python
