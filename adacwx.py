@@ -160,20 +160,20 @@ with st.sidebar:
         col1, col2 = st.columns(2)
         
         with col1:
-            st.markdown("### DEST OK Limits")
+            st.markdown("### DEST OK")
             dest_ok_vis = st.text_input("DEST OK Vis (m)", "500")
             dest_ok_ceiling = st.text_input("DEST OK Ceiling (ft)", "200")
 
-            st.markdown("### ALT OK Limits")
+            st.markdown("### ALT OK")
             alt_ok_vis = st.text_input("ALT OK Vis (m)", "900")
             alt_ok_ceiling = st.text_input("ALT OK Ceiling (ft)", "400")
 
         with col2:
-            st.markdown("### NO ALT Limits")
+            st.markdown("### NO ALT")
             no_alt_vis = st.text_input("NO ALT Vis (m)", "3000")
             no_alt_ceiling = st.text_input("NO ALT Ceiling (ft)", "700")
 
-            st.markdown("### NVFR OK Limits")
+            st.markdown("### NVFR OK")
             nvfr_vis = st.text_input("NVFR OK Vis (m)", "5000")
             nvfr_ceiling = st.text_input("NVFR OK Ceiling (ft)", "1500")
 
