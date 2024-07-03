@@ -295,4 +295,4 @@ for airport, distance in nearby_airports:
     ).add_to(m)
 
 # Display map
-folium_static(m)
+folium_static(m, width=1920, height=1080)
