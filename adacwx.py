@@ -15,21 +15,22 @@ st.set_page_config(layout="wide")
 st.markdown(
     """
     <style>
-    .stApp {
-        background-color: #ffffff;
-        height: 100vh;
-        width: 100vw;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        overflow: hidden;
+    .reportview-container .main .block-container {
+        padding: 0;
+    }
+    .reportview-container .main {
+        background: none;
+        padding: 0;
+    }
+    .sidebar .sidebar-content {
+        background-color: #f8f9fa;
     }
     .fullScreenMap {
-        position: absolute;
+        position: fixed;
         top: 0;
-        right: 0;
-        bottom: 0;
         left: 0;
+        width: 100%;
+        height: 100%;
         z-index: 0;
     }
     </style>
@@ -142,15 +143,17 @@ def check_weather_criteria(metar, taf):
         st.error(f"Error checking weather criteria: {e}")
         return False
 
-# Streamlit app layout
-st.title('Aviation Weather Checker')
-
 # Sidebar for base selection and radius filter
 with st.sidebar:
     base_names = [base['name'] for base in helicopter_bases]
     selected_base_name = st.selectbox('Select Home Base', base_names)
     selected_base = next(base for base in helicopter_bases if base['name'] == selected_base_name)
     radius_nm = st.slider('Select radius in nautical miles', min_value=50, max_value=500, value=200, step=10)
+
+    # Add switches for layers
+    show_geo_data = st.checkbox("Show Geo-Data from DFS")
+    show_mva_layer = st.checkbox("Show Minimum Vectoring Altitudes (MVA)")
+    show_zero_deg_layer = st.checkbox("Show 0°C Altitude Layer")
 
 # Get airports within radius
 nearby_airports = get_airports_within_radius(selected_base['lat'], selected_base['lon'], radius_nm)
@@ -177,6 +180,31 @@ for airport, distance in nearby_airports:
         popup=f"{airport['name']} ({airport['icao']}) - {distance:.1f} NM",
         icon=folium.Icon(color=color),
     ).add_to(m)
+
+# Add Geo-Data from DFS
+if show_geo_data:
+    # Add the geo-data layer here
+    geo_data_url = "https://www.dfs.de/homepage/de/services/geo-daten/"
+    folium.GeoJson(geo_data_url, name="Geo-Data from DFS").add_to(m)
+
+# Add Minimum Vectoring Altitudes (MVA) layer
+if show_mva_layer:
+    # Add the MVA layer here
+    mva_data_url = "https://aip.dfs.de/BasicIFR/2024JUN13/pages/3B0A314B47BE175AAF92535E9A03CD13.html"
+    # Parse and add MVA data (placeholder)
+    folium.GeoJson(mva_data_url, name="Minimum Vectoring Altitudes").add_to(m)
+
+# Add 0°C Altitude Layer
+if show_zero_deg_layer:
+    # Fetch and add 0°C altitude data (placeholder)
+    zero_deg_data = fetch_zero_deg_data()  # Implement this function
+    folium.GeoJson(zero_deg_data, name="0°C Altitude Layer").add_to(m)
+
+# Add comparison layer for MVA and 0°C Altitude
+if show_mva_layer and show_zero_deg_layer:
+    # Compare and highlight areas where 0°C altitude is at or below MVA (placeholder)
+    comparison_layer = compare_mva_and_zero_deg(mva_data_url, zero_deg_data)  # Implement this function
+    folium.GeoJson(comparison_layer, name="MVA vs 0°C Altitude").add_to(m)
 
 # Display map
 folium_static(m, width=1920, height=1080)
