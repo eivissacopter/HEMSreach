@@ -5,6 +5,8 @@ import math
 import re
 from datetime import datetime, timedelta
 from database import helicopter_bases, airports
+import folium
+from streamlit_folium import folium_static
 
 # Function to calculate distance between two points using the Haversine formula
 def haversine(lon1, lat1, lon2, lat2):
@@ -124,22 +126,28 @@ with st.sidebar:
 # Get airports within radius
 nearby_airports = get_airports_within_radius(selected_base['lat'], selected_base['lon'], radius_nm)
 
-# Debugging output
-st.write(f"Selected base: {selected_base_name}")
-st.write(f"Radius: {radius_nm} NM")
-st.write(f"Nearby airports: {len(nearby_airports)} found")
+# Create map centered on selected base
+m = folium.Map(location=[selected_base['lat'], selected_base['lon']], zoom_start=7)
 
-# Display nearby airports and check weather
-st.subheader(f'Airports within {radius_nm} NM of {selected_base_name}')
+# Add selected base to map
+folium.Marker(
+    location=[selected_base['lat'], selected_base['lon']],
+    popup=selected_base_name,
+    icon=folium.Icon(color="blue", icon="info-sign"),
+).add_to(m)
+
+# Add airports to map
 for airport, distance in nearby_airports:
     metar, taf = fetch_weather(airport['icao'])
     weather_ok = check_weather_criteria(metar, taf)
     
-    st.markdown(f"### {airport['name']} ({airport['icao']}) - {distance:.1f} NM")
-    st.text(f"METAR: {metar}")
-    st.text(f"TAF: {taf}")
+    color = "green" if weather_ok else "red"
     
-    if weather_ok:
-        st.success("IFR OK")
-    else:
-        st.error("IFR Not OK")
+    folium.Marker(
+        location=[airport['lat'], airport['lon']],
+        popup=f"{airport['name']} ({airport['icao']}) - {distance:.1f} NM",
+        icon=folium.Icon(color=color),
+    ).add_to(m)
+
+# Display map
+folium_static(m)
