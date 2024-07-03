@@ -57,7 +57,7 @@ def haversine(lon1, lat1, lon2, lat2):
     R = 6371.0  # Earth radius in kilometers
     lon1, lat1, lon2, lat2 = map(math.radians, [lon1, lat1, lon2, lat2])
     dlon = lon2 - lon1
-    dlat = lon2 - lat1
+    dlat = lat2 - lat1
     a = math.sin(dlat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
     distance = R * c * 0.539957  # Convert to nautical miles
@@ -159,25 +159,27 @@ def check_weather_criteria(metar, taf):
 
 # Function to fetch freezing level and wind data using OpenMeteo API
 @st.cache_data
-def fetch_freezing_level_and_wind(lat, lon):
-    url = "https://api.open-meteo.com/v1/dwd-icon"
+def fetch_freezing_level_and_wind(lat, lon, altitude_ft):
+    altitude_m = altitude_ft * 0.3048  # Convert feet to meters
+    url = "https://api.open-meteo.com/v1/forecast"
     params = {
         "latitude": lat,
         "longitude": lon,
-        "hourly": "freezing_level_height,wind_speed_1500m,wind_direction_1500m"
+        "hourly": f"freezing_level_height,wind_speed_{int(altitude_m)}m,wind_direction_{int(altitude_m)}m"
     }
     try:
-        responses = openmeteo.weather_api(url, params=params)
-        response = responses[0]
-        hourly = response.Hourly()
-        freezing_level = hourly.Variables(0).ValuesAsNumpy()[0]  # Use the first value for now
-        wind_speed_1500m = hourly.Variables(1).ValuesAsNumpy()[0]  # Use the first value for now
-        wind_direction_1500m = hourly.Variables(2).ValuesAsNumpy()[0]  # Use the first value for now
+        response = requests.get(url, params=params)
+        response.raise_for_status()
+        data = response.json()
+        hourly = data['hourly']
+        freezing_level = hourly['freezing_level_height'][0]  # Use the first value for now
+        wind_speed = hourly[f'wind_speed_{int(altitude_m)}m'][0]  # Use the first value for now
+        wind_direction = hourly[f'wind_direction_{int(altitude_m)}m'][0]  # Use the first value for now
     except Exception as e:
         st.error(f"Error fetching data from OpenMeteo API: {e}")
         return None, None, None
 
-    return freezing_level, wind_speed_1500m, wind_direction_1500m
+    return freezing_level, wind_speed, wind_direction
 
 # Function to extract MVA data from an image URL using OCR
 def extract_mva_data_from_image_url(image_url):
@@ -238,6 +240,7 @@ with st.sidebar:
     selected_base_name = st.selectbox('Select Home Base', base_names, index=base_names.index(default_base['name']))
     selected_base = next(base for base in helicopter_bases if base['name'] == selected_base_name)
     radius_nm = st.slider('Select radius in nautical miles', min_value=50, max_value=500, value=200, step=10)
+    cruise_altitude_ft = st.slider('Select cruise altitude in feet', min_value=1000, max_value=10000, value=5000, step=500)
 
     # Add switches for layers
     show_geo_data = st.checkbox("Show Geo-Data from DFS")
@@ -264,9 +267,13 @@ for airport, distance in nearby_airports:
     
     color = "green" if weather_ok else "red"
     
+    freezing_level, wind_speed, wind_direction = fetch_freezing_level_and_wind(airport['lat'], airport['lon'], cruise_altitude_ft)
+    
     folium.Marker(
         location=[airport['lat'], airport['lon']],
-        popup=f"{airport['name']} ({airport['icao']}) - {distance:.1f} NM",
+        popup=f"{airport['name']} ({airport['icao']}) - {distance:.1f} NM\n"
+              f"Freezing Level: {freezing_level:.0f} ft\n"
+              f"Wind: {wind_speed} m/s from {wind_direction}°",
         icon=folium.Icon(color=color),
     ).add_to(m)
 
@@ -288,16 +295,6 @@ if show_mva_layer:
             fill_color='blue',
             fill_opacity=0.4,
             popup=f"MVA: {mva['mva']} ft"
-        ).add_to(m)
-
-# Add Freezing Level and Wind Layer
-if show_freezing_level_layer:
-    freezing_level, wind_speed_1500m, wind_direction_1500m = fetch_freezing_level_and_wind(selected_base['lat'], selected_base['lon'])
-    if freezing_level is not None:
-        folium.Marker(
-            location=[selected_base['lat'], selected_base['lon']],
-            popup=f"Freezing Level: {freezing_level:.2f} m\nWind: {wind_speed_1500m} m/s from {wind_direction_1500m}°",
-            icon=folium.Icon(color="blue", icon="info-sign"),
         ).add_to(m)
 
 # Display map
