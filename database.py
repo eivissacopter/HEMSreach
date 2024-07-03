@@ -97,6 +97,17 @@ airports = [
     {"name": "Wiesbaden Army Airfield", "icao": "ETOU", "lat": 50.0498, "lon": 8.3254},
     {"name": "Würzburg Airport", "icao": "EDFW", "lat": 49.7619, "lon": 9.9672},
     {"name": "Zagreb Airport", "icao": "LDZA", "lat": 45.7429, "lon": 16.0688},
+    {"name": "Augsburg Airport", "icao": "EDMA", "lat": 48.425, "lon": 10.9317},
+    {"name": "Bayreuth Airport", "icao": "EDQD", "lat": 49.985, "lon": 11.64},
+    {"name": "Braunschweig-Wolfsburg Airport", "icao": "EDVE", "lat": 52.3192, "lon": 10.5561},
+    {"name": "Cuxhaven-Nordholz Airport", "icao": "ETMN", "lat": 53.7678, "lon": 8.6585},
+    {"name": "Eggenfelden Airport", "icao": "EDME", "lat": 48.395, "lon": 12.7233},
+    {"name": "Emden Airport", "icao": "EDWE", "lat": 53.3911, "lon": 7.2275},
+    {"name": "Giebelstadt Airport", "icao": "EDQG", "lat": 49.6483, "lon": 9.9661},
+    {"name": "Hamburg-Finkenwerder Airport", "icao": "EDHI", "lat": 53.5358, "lon": 9.8356},
+    {"name": "Heringsdorf Airport", "icao": "EDAH", "lat": 53.8787, "lon": 14.1523},
+    {"name": "Hof Airport", "icao": "EDQM", "lat": 50.2886, "lon": 11.8564},
+    {"name": "Ingolstadt-Manching Airport", "icao": "ETSI", "lat": 48.715, "lon": 11.5336},
     {"name": "Zurich Airport", "icao": "LSZH", "lat": 47.4581, "lon": 8.5481}
     # Military airports
     {"name": "Ramstein Air Base", "icao": "ETAR", "lat": 49.4369, "lon": 7.6003},
