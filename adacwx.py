@@ -209,14 +209,12 @@ with st.sidebar:
     cruise_altitude_ft = st.slider(
         'Select cruise altitude in feet', 
         min_value=3000, max_value=10000, value=5000, step=1000,
-        format="%d ft",
-        orientation="vertical"
+        format="%d ft"
     )
     fuel_kg = st.slider(
         'Total Fuel Upload (kg)', 
         min_value=300, max_value=723, value=500, step=50,
-        format="%d kg",
-        orientation="vertical"
+        format="%d kg"
     )
     
     st.markdown("### Weather at Home Base")
@@ -227,6 +225,7 @@ with st.sidebar:
     st.markdown(f"**Wind at {cruise_altitude_ft} ft:** {wind_direction}°/{wind_speed} kt")
     st.markdown(f"**Freezing Level (Altitude):** {freezing_level} ft")
     st.markdown(f"**Clouds:** {cloud_text}")
+
 
 # Calculate mission radius
 cruise_speed_kt = H145D2_PERFORMANCE['cruise_speed_kt']
