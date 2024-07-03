@@ -7,7 +7,6 @@ from database import helicopter_bases, airports
 from performance import H145D2_PERFORMANCE
 import folium
 from streamlit_folium import folium_static
-from metar import Metar
 import pytz
 
 # Set the page configuration at the very top
@@ -41,6 +40,8 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
+
+API_KEY = '6f77e13b25bfe083b0bd8853d642bbde'
 
 # Function to calculate distance and bearing between two points using the Haversine formula
 def haversine(lon1, lat1, lon2, lat2):
@@ -79,116 +80,29 @@ def get_reachable_airports(base_lat, base_lon, flight_time_hours, cruise_speed_k
 def calculate_ground_speed(cruise_speed_kt, wind_speed, wind_direction, flight_direction):
     relative_wind_direction = math.radians(flight_direction - wind_direction)
     wind_component = wind_speed * math.cos(relative_wind_direction)
-    ground_speed = cruise_speed_kt - wind_component  # Invert the calculation to correctly apply wind impact
+    ground_speed = cruise_speed_kt + wind_component  # Correct calculation to add wind impact
     return ground_speed
 
-# Function to fetch METAR and TAF data
-def fetch_metar_taf_data(icao):
-    base_url = "https://aviationweather.gov/adds/dataserver_current/httpparam"
-    params_metar = {
-        "dataSource": "metars",
-        "requestType": "retrieve",
-        "format": "xml",
-        "hoursBeforeNow": 5,
-        "stationString": icao
-    }
-    params_taf = {
-        "dataSource": "tafs",
-        "requestType": "retrieve",
-        "format": "xml",
-        "hoursBeforeNow": 5,
-        "stationString": icao
-    }
+# Function to fetch METAR and TAF data from OpenWeatherMap
+def fetch_metar_taf_data(icao, api_key):
+    metar_url = f"http://api.openweathermap.org/data/2.5/weather?q={icao}&appid={api_key}"
+    taf_url = f"http://api.openweathermap.org/data/2.5/forecast?q={icao}&appid={api_key}"
 
     try:
-        response_metar = requests.get(base_url, params=params_metar)
+        response_metar = requests.get(metar_url)
         response_metar.raise_for_status()  # Raise an HTTPError for bad responses
-        metar_data = response_metar.text
+        metar_data = response_metar.json()
     except requests.exceptions.RequestException as e:
         metar_data = f"Error fetching METAR data: {e}"
 
     try:
-        response_taf = requests.get(base_url, params=params_taf)
+        response_taf = requests.get(taf_url)
         response_taf.raise_for_status()  # Raise an HTTPError for bad responses
-        taf_data = response_taf.text
+        taf_data = response_taf.json()
     except requests.exceptions.RequestException as e:
         taf_data = f"Error fetching TAF data: {e}"
 
     return metar_data, taf_data
-
-# Function to parse METAR data
-def parse_metar_data(metar_data):
-    try:
-        report = Metar.Metar(metar_data)
-        return report
-    except Exception as e:
-        return None
-
-# Function to parse TAF data
-def parse_taf_data(taf_data):
-    taf_reports = []
-    lines = taf_data.splitlines()
-    for line in lines:
-        if line.startswith("TAF") or line.startswith("TAF AMD") or line.startswith("TAF COR"):
-            taf_reports.append(line)
-    return taf_reports
-
-# Function to check if the data is valid for the coming time window
-def is_valid_for_time_window(metar_report, taf_reports, time_window_hours):
-    current_time = datetime.utcnow().replace(tzinfo=pytz.UTC)
-    end_time = current_time + timedelta(hours=time_window_hours)
-
-    if metar_report:
-        metar_time = metar_report.time.replace(tzinfo=pytz.UTC)
-        if metar_time < current_time or metar_time > end_time:
-            return False
-
-    for taf in taf_reports:
-        taf_time_str = taf.split()[2]
-        taf_time = datetime.strptime(taf_time_str, "%y%m%d%H%M").replace(tzinfo=pytz.UTC)
-        if taf_time < current_time or taf_time > end_time:
-            return False
-
-    return True
-
-# Function to get weather status based on METAR, TREND, and TAF data
-def get_weather_status(metar_report, taf_reports, dest_ok_vis, dest_ok_ceiling, alt_ok_vis, alt_ok_ceiling, no_alt_vis, no_alt_ceiling, nvfr_vis, nvfr_ceiling):
-    status = "UNKNOWN"
-    color = "gray"
-
-    visibilities = []
-    ceilings = []
-
-    if metar_report:
-        visibilities.append(metar_report.vis.value())
-        if metar_report.sky_conditions:
-            ceilings.append(metar_report.sky_conditions[0].altitude() * 100)
-
-    for taf in taf_reports:
-        taf_parts = taf.split()
-        for part in taf_parts:
-            if part.endswith("SM"):
-                visibilities.append(int(part.rstrip("SM")) * 1609.34)  # Convert statute miles to meters
-            if part.startswith("BKN") or part.startswith("OVC"):
-                ceilings.append(int(part[3:]) * 100)  # Convert hundreds of feet to feet
-
-    all_vis = visibilities + [10000]  # Default visibility if not available
-    all_ceils = ceilings + [0]        # Default ceiling if not available
-
-    if any(vis < dest_ok_vis or ceil > dest_ok_ceiling for vis, ceil in zip(all_vis, all_ceils)):
-        status = "DEST OK"
-        color = "red"
-    elif any(vis < alt_ok_vis or ceil > alt_ok_ceiling for vis, ceil in zip(all_vis, all_ceils)):
-        status = "ALT OK"
-        color = "yellow"
-    elif any(vis < no_alt_vis or ceil > no_alt_ceiling for vis, ceil in zip(all_vis, all_ceils)):
-        status = "NO ALT REQ"
-        color = "green"
-    elif any(vis < nvfr_vis or ceil > nvfr_ceiling for vis, ceil in zip(all_vis, all_ceils)):
-        status = "NVFR OK"
-        color = "blue"
-
-    return status, color
 
 # Sidebar for base selection and radius filter
 with st.sidebar:
@@ -196,7 +110,7 @@ with st.sidebar:
     default_base = next(base for base in helicopter_bases if base['name'] == 'Christoph 77 Mainz')
     selected_base_name = st.selectbox('Select Home Base', base_names, index=base_names.index(default_base['name']))
     selected_base = next(base for base in helicopter_bases if base['name'] == selected_base_name)
-    
+
     st.markdown("")
     cruise_altitude_ft = st.slider(
         'Cruise Altitude', 
@@ -298,7 +212,7 @@ for airport in airports:
     ground_speed_kt = calculate_ground_speed(cruise_speed_kt, wind_speed, wind_direction, bearing)
     time_to_airport_hours = distance / ground_speed_kt if ground_speed_kt > 0 else float('inf')
 
-    metar_data, taf_data = fetch_metar_taf_data(airport['icao'])
+    metar_data, taf_data = fetch_metar_taf_data(airport['icao'], API_KEY)
     metar_report = parse_metar_data(metar_data)
     taf_reports = parse_taf_data(taf_data)
 
@@ -327,7 +241,7 @@ folium_static(m, width=1280, height=800)
 # Create table of reachable airports with METAR and TAF data
 reachable_airports_data = []
 for airport, distance in reachable_airports:
-    metar_data, taf_data = fetch_metar_taf_data(airport['icao'])
+    metar_data, taf_data = fetch_metar_taf_data(airport['icao'], API_KEY)
     metar_report = parse_metar_data(metar_data)
     taf_reports = parse_taf_data(taf_data)
 
