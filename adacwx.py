@@ -9,7 +9,6 @@ import folium
 from streamlit_folium import folium_static
 import pytz
 from metar import Metar as MetarParser
-from metar_taf_parser.parser import TAF
 
 # Set the page configuration at the very top
 st.set_page_config(layout="wide")
