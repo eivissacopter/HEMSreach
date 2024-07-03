@@ -7,10 +7,8 @@ from datetime import datetime, timedelta
 from database import helicopter_bases, airports
 import folium
 from streamlit_folium import folium_static
-from pdf2image import convert_from_path
-from PIL import Image
+from PIL import Image, ImageEnhance, ImageFilter
 from io import BytesIO
-import cv2
 import numpy as np
 import pytesseract
 
