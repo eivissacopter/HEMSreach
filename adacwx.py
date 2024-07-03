@@ -160,12 +160,17 @@ def check_weather_criteria(metar, taf):
 # Function to fetch freezing level and wind data using OpenMeteo API
 @st.cache_data
 def fetch_freezing_level_and_wind(lat, lon, altitude_ft):
-    altitude_m = altitude_ft * 0.3048  # Convert feet to meters
+    altitude_m = round(altitude_ft * 0.3048)  # Convert feet to meters and round
+    altitude_levels = [1500, 3000, 5000]  # Supported altitude levels in meters for wind
+    altitude_m = min(altitude_levels, key=lambda x: abs(x - altitude_m))  # Find the closest supported level
+    
     url = "https://api.open-meteo.com/v1/forecast"
     params = {
         "latitude": lat,
         "longitude": lon,
-        "hourly": f"freezing_level_height,wind_speed_{int(altitude_m)}m,wind_direction_{int(altitude_m)}m"
+        "hourly": f"freezing_level_height,wind_speed_{altitude_m}m,wind_direction_{altitude_m}m",
+        "start": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "end": (datetime.utcnow() + timedelta(hours=1)).strftime("%Y-%m-%dT%H:%M:%SZ")
     }
     try:
         response = requests.get(url, params=params)
@@ -173,8 +178,8 @@ def fetch_freezing_level_and_wind(lat, lon, altitude_ft):
         data = response.json()
         hourly = data['hourly']
         freezing_level = hourly['freezing_level_height'][0]  # Use the first value for now
-        wind_speed = hourly[f'wind_speed_{int(altitude_m)}m'][0]  # Use the first value for now
-        wind_direction = hourly[f'wind_direction_{int(altitude_m)}m'][0]  # Use the first value for now
+        wind_speed = hourly[f'wind_speed_{altitude_m}m'][0]  # Use the first value for now
+        wind_direction = hourly[f'wind_direction_{altitude_m}m'][0]  # Use the first value for now
     except Exception as e:
         st.error(f"Error fetching data from OpenMeteo API: {e}")
         return None, None, None
