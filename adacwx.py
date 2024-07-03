@@ -134,7 +134,7 @@ with st.sidebar:
         air_taxi_to_parking = 20
 
         contingency_fuel = 0.1 * (total_fuel_kg - holding_final_reserve - system_test_and_air_taxi - air_taxi_to_parking)
-        trip_fuel_kg = total_fuel_kg - (system_test_and_air_taxi + holding_final_reserve + air_taxi_to_parking + contingency_fuel)
+        trip_fuel_kg = total_fuel_kg - (system_test_and_air_taxi + holding_final_reserve + air_taxi_to_parking + contingency_fuel + alternate_fuel)
 
         # Number of approaches and approach fuel logic
         approach_fuel = 30
@@ -167,19 +167,19 @@ with st.sidebar:
         freezing_level = st.text_input("Freezing Level (ft)", "0")
         icing_warning = "Manual Input"
 
-    st.markdown(f"**Wind at {cruise_altitude_ft} ft:** {wind_direction}°/{wind_speed} kt")
-    st.markdown(f"**Freezing Level (Altitude):** {freezing_level} ft")
+    wind_direction = float(wind_direction) if wind_direction else 0
+    wind_speed = float(wind_speed) if wind_speed else 0
+    freezing_level = float(freezing_level) if freezing_level else 0
 
     # Manual input for Minimum Vectoring Altitude
     min_vectoring_altitude = st.text_input("Minimum Vectoring Altitude (ft)")
-
-    st.markdown(f"**Expected Icing:** {icing_warning}")
+    min_vectoring_altitude = float(min_vectoring_altitude) if min_vectoring_altitude else 0
 
 # Calculate mission radius
 cruise_speed_kt = H145D2_PERFORMANCE['cruise_speed_kt']
 
 # Get reachable airports
-reachable_airports = get_reachable_airports(selected_base['lat'], selected_base['lon'], flight_time_hours, cruise_speed_kt, float(wind_speed), float(wind_direction))
+reachable_airports = get_reachable_airports(selected_base['lat'], selected_base['lon'], flight_time_hours, cruise_speed_kt, wind_speed, wind_direction)
 
 # Create map centered on selected base
 m = folium.Map(location=[selected_base['lat'], selected_base['lon']], zoom_start=7)
@@ -210,4 +210,3 @@ for airport, distance in reachable_airports:
 
 # Display map
 folium_static(m, width=1280, height=800)
-
