@@ -123,6 +123,10 @@ with st.sidebar:
         format="%d kg"
     )
 
+    # Alternate required checkbox and input
+    alternate_required = st.checkbox("Alternate Required")
+    alternate_fuel = st.number_input("Alternate Fuel (kg)", value=0, step=10) if alternate_required else 0
+
     # Expandable section for fuel breakdown
     with st.expander("Show Fuel Breakdown"):
         system_test_and_air_taxi = 37
@@ -144,11 +148,6 @@ with st.sidebar:
         }
         df_fuel = pd.DataFrame(fuel_data)
         st.table(df_fuel)
-
-    # Alternate required checkbox and input
-    alternate_required = st.checkbox("Alternate Required")
-    alternate_fuel = st.number_input("Alternate Fuel (kg)", value=0, step=10) if alternate_required else 0
-    trip_fuel_kg -= alternate_fuel
 
     # Show calculated flight time below the fuel slider
     fuel_burn_kgph = H145D2_PERFORMANCE['fuel_burn_kgph']
@@ -172,8 +171,9 @@ with st.sidebar:
     st.markdown(f"**Freezing Level (Altitude):** {freezing_level} ft")
     st.markdown(f"**Expected Icing:** {icing_warning}")
 
-    # Manual input for Minimum Vectoring Altitude
+    # Manual input for Minimum Vectoring Altitude below Freezing Level
     min_vectoring_altitude = st.text_input("Minimum Vectoring Altitude below Freezing Level (ft)")
+
 
 # Calculate mission radius
 cruise_speed_kt = H145D2_PERFORMANCE['cruise_speed_kt']
