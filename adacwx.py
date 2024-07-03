@@ -2,11 +2,11 @@ import streamlit as st
 import pandas as pd
 import requests
 import math
+from datetime import datetime, timedelta
 from database import helicopter_bases, airports
 from performance import H145D2_PERFORMANCE
 import folium
 from streamlit_folium import folium_static
-from datetime import datetime, timedelta
 
 # Set the page configuration at the very top
 st.set_page_config(layout="wide")
@@ -173,9 +173,19 @@ with st.sidebar:
         dest_ok_vis = st.text_input("DEST OK Vis (m)", "500")
         dest_ok_ceiling = st.text_input("DEST OK Ceiling (ft)", "200")
 
-# Ensure all necessary variables are defined before use
-fuel_burn_kgph = H145D2_PERFORMANCE['fuel_burn_kgph']
-flight_time_hours = trip_fuel_kg / fuel_burn_kgph
+    wind_direction = st.text_input("Wind Direction (°)", "360")
+    wind_speed = st.text_input("Wind Speed (kt)", "0")
+    freezing_level = st.text_input("Freezing Level (ft)", "0")
+
+    wind_direction = float(wind_direction) if wind_direction else 0
+    wind_speed = float(wind_speed) if wind_speed else 0
+    freezing_level = float(freezing_level) if freezing_level else 0
+
+    # Manual input for Minimum Vectoring Altitude
+    min_vectoring_altitude = st.text_input("Minimum Vectoring Altitude (ft)")
+    min_vectoring_altitude = float(min_vectoring_altitude) if min_vectoring_altitude else 0
+
+# Calculate mission radius
 cruise_speed_kt = H145D2_PERFORMANCE['cruise_speed_kt']
 
 # Get reachable airports
