@@ -61,6 +61,8 @@ def get_reachable_airports(base_lat, base_lon, flight_time_hours, cruise_speed_k
     for airport in airports:
         distance, bearing = haversine(base_lon, base_lat, airport['lon'], airport['lat'])
         ground_speed_kt = calculate_ground_speed(cruise_speed_kt, wind_speed, wind_direction, bearing)
+        if ground_speed_kt <= 0:
+            continue
         time_to_airport_hours = distance / ground_speed_kt
         if time_to_airport_hours <= flight_time_hours:
             reachable_airports.append((airport, distance))
@@ -98,30 +100,21 @@ with st.sidebar:
         system_test_and_air_taxi = 37
         holding_final_reserve = 100
         air_taxi_to_parking = 20
-        st.write("System Test and Air Taxi: 37 kg")
-        st.write("Holding/Final Reserve: 100 kg")
-        st.write("Air Taxi to Parking: 20 kg")
 
         contingency_fuel = 0.1 * (total_fuel_kg - holding_final_reserve - system_test_and_air_taxi - air_taxi_to_parking)
-        st.write(f"Contingency Fuel (10%): {round(contingency_fuel)} kg")
-
-        alternate_required = st.checkbox("Alternate Required")
-        alternate_fuel = st.number_input("Alternate Fuel (kg)", value=0, step=10) if alternate_required else 0
-
-        trip_fuel_kg = total_fuel_kg - (system_test_and_air_taxi + holding_final_reserve + air_taxi_to_parking + contingency_fuel + alternate_fuel)
+        trip_fuel_kg = total_fuel_kg - (system_test_and_air_taxi + holding_final_reserve + air_taxi_to_parking + contingency_fuel)
 
         fuel_data = {
-            "Fuel Component": ["System Test and Air Taxi", "Holding/Final Reserve", "Air Taxi to Parking", "Contingency Fuel", "Alternate Fuel", "Trip Fuel"],
-            "Fuel (kg)": [system_test_and_air_taxi, holding_final_reserve, air_taxi_to_parking, round(contingency_fuel), round(alternate_fuel), round(trip_fuel_kg)]
+            "Fuel Component": ["System Test and Air Taxi", "Holding/Final Reserve", "Air Taxi to Parking", "Contingency Fuel", "Trip Fuel"],
+            "Fuel (kg)": [system_test_and_air_taxi, holding_final_reserve, air_taxi_to_parking, round(contingency_fuel), round(trip_fuel_kg)]
         }
         df_fuel = pd.DataFrame(fuel_data)
         st.table(df_fuel)
 
-    # Number of approaches
-    approach_count = st.selectbox("Number of Approaches", [0, 1, 2], index=0)
-    approach_fuel = approach_count * 30
-    trip_fuel_kg -= approach_fuel
-    st.write(f"Approach Fuel: {approach_fuel} kg")
+    # Alternate required checkbox and input
+    alternate_required = st.checkbox("Alternate Required")
+    alternate_fuel = st.number_input("Alternate Fuel (kg)", value=0, step=10) if alternate_required else 0
+    trip_fuel_kg -= alternate_fuel
 
     # Show calculated flight time below the fuel slider
     fuel_burn_kgph = H145D2_PERFORMANCE['fuel_burn_kgph']
@@ -129,6 +122,13 @@ with st.sidebar:
     flight_time_minutes = int((flight_time_hours - int(flight_time_hours)) * 60)
     flight_time_display = f"{int(flight_time_hours)}h {flight_time_minutes}m"
     st.markdown(f"### Calculated Flight Time: {flight_time_display}")
+
+    # Number of approaches
+    approach_fuel = 30
+    if alternate_required:
+        approach_fuel = 60
+    trip_fuel_kg -= approach_fuel
+    st.write(f"Approach Fuel: {approach_fuel} kg")
 
     st.markdown("### Weather at Home Base")
     auto_fetch = st.checkbox("Try to get weather values automatically via API", value=False)
@@ -153,7 +153,7 @@ with st.sidebar:
 cruise_speed_kt = H145D2_PERFORMANCE['cruise_speed_kt']
 
 # Get reachable airports
-reachable_airports = get_reachable_airports(selected_base['lat'], selected_base['lon'], flight_time_hours, cruise_speed_kt, wind_speed, wind_direction)
+reachable_airports = get_reachable_airports(selected_base['lat'], selected_base['lon'], flight_time_hours, cruise_speed_kt, float(wind_speed), float(wind_direction))
 
 # Create map centered on selected base
 m = folium.Map(location=[selected_base['lat'], selected_base['lon']], zoom_start=7)
