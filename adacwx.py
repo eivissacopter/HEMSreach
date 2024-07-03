@@ -8,7 +8,6 @@ from database import helicopter_bases, airports
 from performance import H145D2_PERFORMANCE
 import folium
 from streamlit_folium import folium_static
-from PIL import Image, ImageEnhance, ImageFilter
 from io import BytesIO
 import numpy as np
 import pytesseract
@@ -40,6 +39,9 @@ st.markdown(
         width: 100%;
         height: 100%;
         z-index: 0;
+    }
+    .stSlider {
+        height: 100%;
     }
     </style>
     """,
@@ -156,7 +158,7 @@ def check_weather_criteria(metar, taf):
         st.error(f"Error checking weather criteria: {e}")
         return False
 
-# Function to fetch freezing level and wind data using OpenMeteo API
+# Function to fetch freezing level, wind, and cloud data using OpenMeteo API
 @st.cache_data
 def fetch_freezing_level_and_wind(lat, lon, altitude_ft):
     altitude_m = round(altitude_ft * 0.3048)  # Convert feet to meters and round to the nearest meter
@@ -167,7 +169,7 @@ def fetch_freezing_level_and_wind(lat, lon, altitude_ft):
     params = {
         "latitude": lat,
         "longitude": lon,
-        "hourly": f"freezing_level_height,wind_speed_{altitude_m}m,wind_direction_{altitude_m}m",
+        "hourly": f"freezing_level_height,wind_speed_{altitude_m},wind_direction_{altitude_m},clouds",
         "models": "dwd-icon",
         "timezone": "auto"
     }
@@ -177,8 +179,9 @@ def fetch_freezing_level_and_wind(lat, lon, altitude_ft):
         data = response.json()
         hourly = data['hourly']
         freezing_level_height = hourly['freezing_level_height'][0]  # Use the first value for now
-        wind_speed_mps = hourly[f'wind_speed_{altitude_m}m'][0]  # Use the first value for now
-        wind_direction = hourly[f'wind_direction_{altitude_m}m'][0]  # Use the first value for now
+        wind_speed_mps = hourly[f'wind_speed_{altitude_m}'][0]  # Use the first value for now
+        wind_direction = hourly[f'wind_direction_{altitude_m}'][0]  # Use the first value for now
+        clouds = hourly['clouds'][0]  # Use the first value for now
 
         # Convert wind speed from m/s to knots
         wind_speed_knots = round(wind_speed_mps * 1.94384)
@@ -186,11 +189,75 @@ def fetch_freezing_level_and_wind(lat, lon, altitude_ft):
         # Convert freezing level height from meters to feet
         freezing_level_altitude_ft = round(freezing_level_height * 3.28084)
 
+        # Determine cloud conditions
+        if clouds > 0:
+            cloud_base_ft = freezing_level_altitude_ft + (clouds * 3.28084)
+            cloud_text = f"Cloud base at {cloud_base_ft:.0f} ft above freezing level"
+        else:
+            cloud_text = "Sky clear"
+
     except Exception as e:
         st.error(f"Error fetching data from OpenMeteo API: {e}")
-        return None, None, None
+        return None, None, None, None
 
-    return freezing_level_altitude_ft, wind_speed_knots, wind_direction
+    return freezing_level_altitude_ft, wind_speed_knots, wind_direction, cloud_text
+
+# Sidebar for base selection and vertical sliders for cruising altitude and fuel
+with st.sidebar:
+    base_names = [base['name'] for base in helicopter_bases]
+    default_base = next(base for base in helicopter_bases if base['name'] == 'Christoph 77 Mainz')
+    selected_base_name = st.selectbox('Select Home Base', base_names, index=base_names.index(default_base['name']))
+    selected_base = next(base for base in helicopter_bases if base['name'] == selected_base_name)
+    
+    st.markdown("### Cruising Altitude")
+    cruise_altitude_ft = st.slider('Select cruise altitude in feet', min_value=3000, max_value=10000, value=5000, step=1000, format='%d ft', vertical=True)
+    
+    st.markdown("### Total Fuel Upload")
+    fuel_kg = st.slider('Select fuel in tanks (kg)', min_value=300, max_value=723, value=500, step=50, format='%d kg', vertical=True)
+
+    # Get wind and freezing level data for the home base at the selected cruise altitude
+    freezing_level_ft, wind_speed_knots, wind_direction, cloud_text = fetch_freezing_level_and_wind(selected_base['lat'], selected_base['lon'], cruise_altitude_ft)
+
+    st.markdown(f"### Home Base Weather\n**Wind**: {wind_direction}°/{wind_speed_knots} kt\n**Freezing Level**: {freezing_level_ft} ft\n**Clouds**: {cloud_text}")
+
+# Calculate mission radius
+cruise_speed_kt = H145D2_PERFORMANCE['cruise_speed_kt']
+fuel_burn_kgph = H145D2_PERFORMANCE['fuel_burn_kgph']
+flight_time_hours = fuel_kg / fuel_burn_kgph
+
+# Calculate ground speed considering wind
+if wind_direction is not None:
+    wind_component = wind_speed_knots * math.cos(math.radians(wind_direction))
+    ground_speed_kt = cruise_speed_kt + wind_component
+else:
+    ground_speed_kt = cruise_speed_kt
+
+mission_radius_nm = ground_speed_kt * flight_time_hours
+
+# Get airports within mission radius
+nearby_airports = get_airports_within_radius(selected_base['lat'], selected_base['lon'], mission_radius_nm)
+
+# Create map centered on selected base
+m = folium.Map(location=[selected_base['lat'], selected_base['lon']], zoom_start=7)
+
+# Add OpenFlightMap tiles
+folium.TileLayer(
+    tiles='https://{s}.tile.openflightmaps.org/{z}/{x}/{y}.png',
+    attr='&copy; <a href="https://www.openflightmaps.org">OpenFlightMaps</a>',
+    name='OpenFlightMaps'
+).add_to(m)
+
+# Add selected base to map
+folium.Marker(
+    location=[selected_base['lat'], selected_base['lon']],
+    popup=selected_base_name,
+    icon=folium.Icon(color="blue", icon="info-sign"),
+).add_to(m)
+
+# Add airports to map
+for airport, distance in nearby_airports:
+    metar, taf = fetch
+    return freezing_level_altitude_ft, wind_speed_knots, wind_direction, cloud_text
 
 # Sidebar for base selection and radius filter
 with st.sidebar:
@@ -198,20 +265,36 @@ with st.sidebar:
     default_base = next(base for base in helicopter_bases if base['name'] == 'Christoph 77 Mainz')
     selected_base_name = st.selectbox('Select Home Base', base_names, index=base_names.index(default_base['name']))
     selected_base = next(base for base in helicopter_bases if base['name'] == selected_base_name)
-    cruise_altitude_ft = st.slider('Select cruise altitude in feet', min_value=1000, max_value=10000, value=5000, step=500)
-    fuel_kg = st.slider('Select fuel in tanks (kg)', min_value=300, max_value=723, value=500, step=1)
+    
+    st.markdown("### Flight Parameters")
+    cruise_altitude_ft = st.slider(
+        'Select cruise altitude in feet', 
+        min_value=3000, max_value=10000, value=5000, step=1000,
+        orientation="vertical"
+    )
+    fuel_kg = st.slider(
+        'Total Fuel Upload (kg)', 
+        min_value=300, max_value=723, value=500, step=50,
+        orientation="vertical"
+    )
+    
+    st.markdown("### Weather at Home Base")
+    freezing_level, wind_speed, wind_direction, cloud_text = fetch_freezing_level_and_wind(
+        selected_base['lat'], selected_base['lon'], cruise_altitude_ft
+    )
+    
+    st.markdown(f"**Wind at {cruise_altitude_ft} ft:** {wind_direction}°/{wind_speed} kt")
+    st.markdown(f"**Freezing Level (Altitude):** {freezing_level} ft")
+    st.markdown(f"**Clouds:** {cloud_text}")
 
 # Calculate mission radius
 cruise_speed_kt = H145D2_PERFORMANCE['cruise_speed_kt']
 fuel_burn_kgph = H145D2_PERFORMANCE['fuel_burn_kgph']
 flight_time_hours = fuel_kg / fuel_burn_kgph
 
-# Get wind data at cruise altitude
-_, wind_speed_knots, wind_direction = fetch_freezing_level_and_wind(selected_base['lat'], selected_base['lon'], cruise_altitude_ft)
-
 # Calculate ground speed considering wind
 if wind_direction is not None:
-    wind_component = wind_speed_knots * math.cos(math.radians(wind_direction))
+    wind_component = wind_speed * math.cos(math.radians(wind_direction))
     ground_speed_kt = cruise_speed_kt + wind_component
 else:
     ground_speed_kt = cruise_speed_kt
@@ -245,15 +328,22 @@ for airport, distance in nearby_airports:
     
     color = "green" if weather_ok else "red"
     
-    freezing_level, wind_speed, wind_direction = fetch_freezing_level_and_wind(airport['lat'], airport['lon'], cruise_altitude_ft)
+    freezing_level, wind_speed, wind_direction, cloud_text = fetch_freezing_level_and_wind(
+        airport['lat'], airport['lon'], cruise_altitude_ft
+    )
     
     if freezing_level is not None and wind_speed is not None and wind_direction is not None:
-        popup_text = f"{airport['name']} ({airport['icao']}) - {distance:.1f} NM\n"
-        popup_text += f"Freezing Level: {freezing_level} ft\n"
-        popup_text += f"Wind: {wind_direction}°/{wind_speed} kt"
+        popup_text = (
+            f"{airport['name']} ({airport['icao']}) - {distance:.1f} NM\n"
+            f"Freezing Level: {freezing_level} ft\n"
+            f"Wind: {wind_direction}°/{wind_speed} kt\n"
+            f"Clouds: {cloud_text}"
+        )
     else:
-        popup_text = f"{airport['name']} ({airport['icao']}) - {distance:.1f} NM\n"
-        popup_text += "Weather data not available"
+        popup_text = (
+            f"{airport['name']} ({airport['icao']}) - {distance:.1f} NM\n"
+            "Weather data not available"
+        )
 
     folium.Marker(
         location=[airport['lat'], airport['lon']],
@@ -263,3 +353,4 @@ for airport, distance in nearby_airports:
 
 # Display map
 folium_static(m, width=1920, height=1080)
+
