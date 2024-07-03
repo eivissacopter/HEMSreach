@@ -186,6 +186,8 @@ with st.sidebar:
     min_vectoring_altitude = float(min_vectoring_altitude) if min_vectoring_altitude else 0
 
 # Calculate mission radius
+fuel_burn_kgph = H145D2_PERFORMANCE['fuel_burn_kgph']
+flight_time_hours = trip_fuel_kg / fuel_burn_kgph
 cruise_speed_kt = H145D2_PERFORMANCE['cruise_speed_kt']
 
 # Get reachable airports
@@ -240,3 +242,4 @@ for airport, distance in reachable_airports:
 
 # Display map
 folium_static(m, width=1280, height=800)
+
