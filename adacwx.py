@@ -186,14 +186,14 @@ with st.sidebar:
     selected_base_name = st.selectbox('Select Home Base', base_names, index=base_names.index(default_base['name']))
     selected_base = next(base for base in helicopter_bases if base['name'] == selected_base_name)
     
-    st.markdown("### Flight Parameters")
+    st.markdown("")
     cruise_altitude_ft = st.slider(
-        'Select cruise altitude in feet', 
+        'Cruise Altitude', 
         min_value=3000, max_value=10000, value=5000, step=1000,
         format="%d ft"
     )
     total_fuel_kg = st.slider(
-        'Total Fuel Upload (kg)', 
+        'Total Fuel Upload', 
         min_value=300, max_value=723, value=500, step=50,
         format="%d kg"
     )
@@ -223,7 +223,7 @@ with st.sidebar:
         trip_fuel_kg -= (alternate_fuel + approach_fuel)
 
         fuel_data = {
-            "Fuel Component": ["System Test and Air Taxi", "Trip Fuel", "Holding/Final Reserve", "15 Minutes Fuel" if not alternate_required else "Alternate Fuel", "Approach Fuel", "Air Taxi to Parking", "Contingency Fuel"],
+            "Fuel Policy": ["System Test / Air Taxi", "Trip Fuel", "Final Reserve", "15 Minutes Fuel" if not alternate_required else "Alternate Fuel", "Approach Fuel", "Air Taxi to Parking", "Contingency Fuel"],
             "Fuel (kg)": [system_test_and_air_taxi, round(trip_fuel_kg), holding_final_reserve, round(fifteen_min_fuel) if not alternate_required else round(alternate_fuel), approach_fuel, air_taxi_to_parking, round(contingency_fuel)]
         }
         df_fuel = pd.DataFrame(fuel_data)
