@@ -8,12 +8,11 @@ from database import helicopter_bases, airports
 import folium
 from streamlit_folium import folium_static
 from pdf2image import convert_from_path
-import pytesseract
-import cv2
-import numpy as np
-import requests
 from PIL import Image
 from io import BytesIO
+import cv2
+import numpy as np
+import pytesseract
 
 # Set the page configuration at the very top
 st.set_page_config(layout="wide")
@@ -248,8 +247,8 @@ if show_geo_data:
 # Add Minimum Vectoring Altitudes (MVA) layer
 if show_mva_layer:
     # Add the MVA layer here
-    pdf_path = "path_to_mva_chart.pdf"  # Replace with the actual path to the MVA chart PDF
-    mva_data = extract_mva_data_from_pdf(pdf_path)
+    image_url = "https://aip.dfs.de/BasicIFR/pages/P00DD0.html"  # URL to the image
+    mva_data = extract_mva_data_from_image_url(image_url)
     for mva in mva_data:
         folium.Polygon(
             locations=[(point[0], point[1]) for point in mva['polygon']],
