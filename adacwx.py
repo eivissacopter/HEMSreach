@@ -6,6 +6,7 @@ from database import helicopter_bases, airports
 from performance import H145D2_PERFORMANCE
 import folium
 from streamlit_folium import folium_static
+from datetime import datetime, timedelta
 
 # Set the page configuration at the very top
 st.set_page_config(layout="wide")
@@ -76,30 +77,27 @@ def calculate_ground_speed(cruise_speed_kt, wind_speed, wind_direction, flight_d
     return ground_speed
 
 # Function to fetch weather data for IFR classification
-def fetch_weather_data(lat, lon):
+def fetch_weather_data(lat, lon, hours_ahead):
+    end_time = datetime.utcnow() + timedelta(hours=hours_ahead)
     base_url = "https://api.open-meteo.com/v1/forecast"
     params = {
         "latitude": lat,
         "longitude": lon,
         "hourly": "visibility,cloudcover",
-        "current_weather": True,
+        "start": datetime.utcnow().isoformat() + "Z",
+        "end": end_time.isoformat() + "Z",
     }
     response = requests.get(base_url, params=params)
     data = response.json()
 
     if "hourly" in data:
-        visibility = data["hourly"]["visibility"][0] if data["hourly"]["visibility"] else "N/A"
-        cloud_cover = data["hourly"]["cloudcover"][0] if data["hourly"]["cloudcover"] else "N/A"
-        if visibility == "N/A" or cloud_cover == "N/A":
-            ifr_status = "Unknown"
-        elif visibility < 5000 or cloud_cover > 50:
-            ifr_status = "Non-IFR"
-        else:
-            ifr_status = "IFR"
+        visibility = data["hourly"]["visibility"]
+        cloud_cover = data["hourly"]["cloudcover"]
     else:
-        ifr_status = "Unknown"
+        visibility = []
+        cloud_cover = []
 
-    return ifr_status
+    return visibility, cloud_cover
 
 # Sidebar for base selection and radius filter
 with st.sidebar:
@@ -145,32 +143,35 @@ with st.sidebar:
         trip_fuel_kg -= (alternate_fuel + approach_fuel)
 
         fuel_data = {
-            "Fuel Component": ["System Test + Air Taxi", "Trip Fuel", "Final ReserveFuel", "15 Minutes Fuel" if not alternate_required else "Alternate Fuel", "Approach Fuel", "Air Taxi to Parking", "Contingency Fuel"],
+            "Fuel Component": ["System Test and Air Taxi", "Trip Fuel", "Holding/Final Reserve", "15 Minutes Fuel" if not alternate_required else "Alternate Fuel", "Approach Fuel", "Air Taxi to Parking", "Contingency Fuel"],
             "Fuel (kg)": [system_test_and_air_taxi, round(trip_fuel_kg), holding_final_reserve, round(fifteen_min_fuel) if not alternate_required else round(alternate_fuel), approach_fuel, air_taxi_to_parking, round(contingency_fuel)]
         }
         df_fuel = pd.DataFrame(fuel_data)
         st.table(df_fuel)
 
-    # Show calculated flight time below the fuel slider
-    fuel_burn_kgph = H145D2_PERFORMANCE['fuel_burn_kgph']
-    flight_time_hours = trip_fuel_kg / fuel_burn_kgph
-    flight_time_minutes = int((flight_time_hours - int(flight_time_hours)) * 60)
-    flight_time_display = f"{int(flight_time_hours)}h {flight_time_minutes}m"
-    st.markdown(f"### Calculated Flight Time: {flight_time_display}")
+    # Expandable section for weather configuration
+    with st.expander("Weather Config"):
+        weather_time_window = st.slider('Weather Time Window (hours)', min_value=1, max_value=10, value=5, step=1)
+        
+        st.markdown("### NVFR Limits")
+        nvfr_vis = st.text_input("NVFR Vis (m)", "5000")
+        nvfr_ceiling = st.text_input("NVFR Ceiling (ft)", "1500")
 
-    st.markdown("### Weather at Home Base")
-    
-    wind_direction = st.text_input("Wind Direction (°)", "360")
-    wind_speed = st.text_input("Wind Speed (kt)", "0")
-    freezing_level = st.text_input("Freezing Level (ft)", "0")
+        st.markdown("### DVFR Limits")
+        dvfr_vis = st.text_input("DVFR Vis (m)", "3000")
+        dvfr_ceiling = st.text_input("DVFR Ceiling (ft)", "500")
 
-    wind_direction = float(wind_direction) if wind_direction else 0
-    wind_speed = float(wind_speed) if wind_speed else 0
-    freezing_level = float(freezing_level) if freezing_level else 0
+        st.markdown("### NO ALT Limits")
+        no_alt_vis = st.text_input("NO ALT Vis (m)", "3000")
+        no_alt_ceiling = st.text_input("NO ALT Ceiling (ft)", "700")
 
-    # Manual input for Minimum Vectoring Altitude
-    min_vectoring_altitude = st.text_input("Minimum Vectoring Altitude (ft)")
-    min_vectoring_altitude = float(min_vectoring_altitude) if min_vectoring_altitude else 0
+        st.markdown("### ALT OK Limits")
+        alt_ok_vis = st.text_input("ALT OK Vis (m)", "900")
+        alt_ok_ceiling = st.text_input("ALT OK Ceiling (ft)", "400")
+
+        st.markdown("### DEST OK Limits")
+        dest_ok_vis = st.text_input("DEST OK Vis (m)", "500")
+        dest_ok_ceiling = st.text_input("DEST OK Ceiling (ft)", "200")
 
 # Calculate mission radius
 cruise_speed_kt = H145D2_PERFORMANCE['cruise_speed_kt']
@@ -197,9 +198,28 @@ folium.Marker(
 
 # Add reachable airports to map
 for airport, distance in reachable_airports:
-    ifr_status = fetch_weather_data(airport['lat'], airport['lon'])
-    color = "blue" if ifr_status == "IFR" else "red"
-    popup_text = f"{airport['name']} ({airport['icao']}) - {distance:.1f} NM - {ifr_status}"
+    visibility, cloud_cover = fetch_weather_data(airport['lat'], airport['lon'], weather_time_window)
+    
+    if all(v >= float(dest_ok_vis) and c <= float(dest_ok_ceiling) for v, c in zip(visibility, cloud_cover)):
+        status = "DEST OK"
+        color = "green"
+    elif all(v >= float(alt_ok_vis) and c <= float(alt_ok_ceiling) for v, c in zip(visibility, cloud_cover)):
+        status = "ALT OK"
+        color = "green"
+    elif all(v >= float(no_alt_vis) and c <= float(no_alt_ceiling) for v, c in zip(visibility, cloud_cover)):
+        status = "NO ALT"
+        color = "yellow"
+    elif all(v >= float(dvfr_vis) and c <= float(dvfr_ceiling) for v, c in zip(visibility, cloud_cover)):
+        status = "DVFR"
+        color = "orange"
+    elif all(v >= float(nvfr_vis) and c <= float(nvfr_ceiling) for v, c in zip(visibility, cloud_cover)):
+        status = "NVFR"
+        color = "red"
+    else:
+        status = "UNKNOWN"
+        color = "gray"
+
+    popup_text = f"{airport['name']} ({airport['icao']}) - {distance:.1f} NM - {status}"
     folium.Marker(
         location=[airport['lat'], airport['lon']],
         popup=popup_text,
