@@ -36,7 +36,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# Function to calculate distance between two points using the Haversine formula
+# Function to calculate distance and bearing between two points using the Haversine formula
 def haversine(lon1, lat1, lon2, lat2):
     R = 6371.0  # Earth radius in kilometers
     lon1, lat1, lon2, lat2 = map(math.radians, [lon1, lat1, lon2, lat2])
@@ -45,17 +45,34 @@ def haversine(lon1, lat1, lon2, lat2):
     a = math.sin(dlat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
     distance = R * c * 0.539957  # Convert to nautical miles
-    return distance
 
-# Function to get airports within a certain radius
-def get_airports_within_radius(base_lat, base_lon, radius_nm):
-    nearby_airports = []
+    # Bearing calculation
+    y = math.sin(dlon) * math.cos(lat2)
+    x = math.cos(lat1) * math.sin(lat2) - math.sin(lat1) * math.cos(lat2) * math.cos(dlon)
+    bearing = math.atan2(y, x)
+    bearing = math.degrees(bearing)
+    bearing = (bearing + 360) % 360  # Normalize to 0-360 degrees
+
+    return distance, bearing
+
+# Function to get reachable airports within a certain radius
+def get_reachable_airports(base_lat, base_lon, flight_time_hours, cruise_speed_kt, wind_speed, wind_direction):
+    reachable_airports = []
     for airport in airports:
-        distance = haversine(base_lon, base_lat, airport['lon'], airport['lat'])
-        if distance <= radius_nm:
-            nearby_airports.append((airport, distance))
-    nearby_airports.sort(key=lambda x: x[1])
-    return nearby_airports
+        distance, bearing = haversine(base_lon, base_lat, airport['lon'], airport['lat'])
+        ground_speed_kt = calculate_ground_speed(cruise_speed_kt, wind_speed, wind_direction, bearing)
+        time_to_airport_hours = distance / ground_speed_kt
+        if time_to_airport_hours <= flight_time_hours:
+            reachable_airports.append((airport, distance))
+    reachable_airports.sort(key=lambda x: x[1])
+    return reachable_airports
+
+# Function to calculate ground speed considering wind
+def calculate_ground_speed(cruise_speed_kt, wind_speed, wind_direction, flight_direction):
+    relative_wind_direction = math.radians(wind_direction - flight_direction)
+    wind_component = wind_speed * math.cos(relative_wind_direction)
+    ground_speed = cruise_speed_kt + wind_component
+    return ground_speed
 
 # Sidebar for base selection and radius filter
 with st.sidebar:
@@ -123,31 +140,8 @@ with st.sidebar:
 # Calculate mission radius
 cruise_speed_kt = H145D2_PERFORMANCE['cruise_speed_kt']
 
-# Calculate ground speed considering wind
-try:
-    wind_direction = float(wind_direction)
-    wind_speed = float(wind_speed)
-except ValueError:
-    wind_direction = 0
-    wind_speed = 0
-
-# Function to calculate the effective ground speed in a given direction
-def calculate_ground_speed(cruise_speed_kt, wind_speed, wind_direction, flight_direction):
-    relative_wind_direction = math.radians(wind_direction - flight_direction)
-    wind_component = wind_speed * math.cos(relative_wind_direction)
-    ground_speed = cruise_speed_kt + wind_component
-    return ground_speed
-
-# Calculate the maximum mission radius by iterating through all directions (0 to 360 degrees)
-max_mission_radius = 0
-for direction in range(360):
-    ground_speed_kt = calculate_ground_speed(cruise_speed_kt, wind_speed, wind_direction, direction)
-    mission_radius_nm = ground_speed_kt * flight_time_hours
-    if mission_radius_nm > max_mission_radius:
-        max_mission_radius = mission_radius_nm
-
-# Get airports within mission radius
-nearby_airports = get_airports_within_radius(selected_base['lat'], selected_base['lon'], max_mission_radius)
+# Get reachable airports
+reachable_airports = get_reachable_airports(selected_base['lat'], selected_base['lon'], flight_time_hours, cruise_speed_kt, wind_speed, wind_direction)
 
 # Create map centered on selected base
 m = folium.Map(location=[selected_base['lat'], selected_base['lon']], zoom_start=7)
@@ -166,8 +160,8 @@ folium.Marker(
     icon=folium.Icon(color="blue", icon="info-sign"),
 ).add_to(m)
 
-# Add airports to map
-for airport, distance in nearby_airports:
+# Add reachable airports to map
+for airport, distance in reachable_airports:
     color = "green"
     popup_text = f"{airport['name']} ({airport['icao']}) - {distance:.1f} NM"
     folium.Marker(
