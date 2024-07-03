@@ -8,10 +8,8 @@ from performance import H145D2_PERFORMANCE
 import folium
 from streamlit_folium import folium_static
 import pytz
-from metar import Metar
-from metar.Datatypes import temperature, speed, distance, pressure
-from metar.Metar import Metar as MetarParser
-from metar_taf_parser import parse_taf
+from metar import Metar as MetarParser
+from metar_taf_parser.parser import parse_taf
 
 # Set the page configuration at the very top
 st.set_page_config(layout="wide")
