@@ -114,13 +114,23 @@ def parse_metar(metar_raw):
     except Exception as e:
         return None
 
-# Function to parse and interpret TAF data
+# Function to parse TAF data manually
 def parse_taf(taf_raw):
-    try:
-        taf = parse_taf(taf_raw)
-        return taf
-    except Exception as e:
-        return None
+    taf_data = {}
+    lines = taf_raw.split('\n')
+    forecasts = []
+    for line in lines:
+        if line.startswith('TAF') or line.startswith('TEMPO') or line.startswith('BECMG'):
+            forecast = {}
+            parts = line.split()
+            for part in parts:
+                if 'SM' in part:
+                    forecast['visibility'] = int(part.replace('SM', '')) * 1609  # Convert statute miles to meters
+                if part.startswith('BKN') or part.startswith('OVC'):
+                    forecast['ceiling'] = int(part[3:]) * 100  # Convert hundreds of feet to feet
+            forecasts.append(forecast)
+    taf_data['forecast'] = forecasts
+    return taf_data
 
 # Function to categorize weather data
 def categorize_weather(metar, taf, time_window_hours):
@@ -131,15 +141,15 @@ def categorize_weather(metar, taf, time_window_hours):
         visibilities = []
         ceilings = []
 
-        if isinstance(report, MetarParser):
+        if report and isinstance(report, MetarParser):
             visibilities.append(report.vis.value())
             if report.sky_conditions:
                 ceilings.append(report.sky_conditions[0].altitude() * 100)
 
-        if isinstance(report, list):  # Assuming list of TAF forecasts
-            for forecast in report:
-                visibilities.append(forecast.visibility)
-                ceilings.extend([layer[1] for layer in forecast.sky])
+        if report and isinstance(report, dict):  # Assuming TAF is parsed into a dict-like structure
+            for forecast in report.get('forecast', []):
+                visibilities.append(forecast.get('visibility', 10000))
+                ceilings.extend([forecast.get('ceiling', 0)])
 
         visibilities = [v for v in visibilities if v is not None]
         ceilings = [c for c in ceilings if c is not None]
