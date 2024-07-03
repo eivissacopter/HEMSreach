@@ -177,14 +177,22 @@ def fetch_freezing_level_and_wind(lat, lon, altitude_ft):
         response.raise_for_status()
         data = response.json()
         hourly = data['hourly']
-        freezing_level = hourly['freezing_level_height'][0]  # Use the first value for now
-        wind_speed = hourly['wind_speed_10m'][0]  # Use the first value for now
+        freezing_level_height = hourly['freezing_level_height'][0]  # Use the first value for now
+        wind_speed_mps = hourly['wind_speed_10m'][0]  # Use the first value for now
         wind_direction = hourly['wind_direction_10m'][0]  # Use the first value for now
+
+        # Convert wind speed from m/s to knots
+        wind_speed_knots = wind_speed_mps * 1.94384
+
+        # Convert freezing level height from meters to feet
+        freezing_level_altitude_ft = freezing_level_height * 3.28084
+
     except Exception as e:
         st.error(f"Error fetching data from OpenMeteo API: {e}")
         return None, None, None
 
-    return freezing_level, wind_speed, wind_direction
+    return freezing_level_altitude_ft, wind_speed_knots, wind_direction
+
 
 # Function to extract MVA data from an image URL using OCR
 def extract_mva_data_from_image_url(image_url):
