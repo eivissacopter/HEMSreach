@@ -108,11 +108,12 @@ def fetch_metar_taf_data(icao, api_key):
 
     return metar_data, taf_data
 
-# Function to parse and interpret METAR data using pytaf
+# Function to parse and interpret METAR data
 def parse_metar(metar_raw):
     try:
-        metar = pytaf.METAR(metar_raw)
-        return metar.decode()
+        metar = pytaf.TAF(metar_raw)
+        decoder = pytaf.Decoder(metar)
+        return decoder.decode_taf()
     except Exception as e:
         st.error(f"Error decoding METAR: {e}")
         return None
@@ -120,7 +121,8 @@ def parse_metar(metar_raw):
 def parse_taf(taf_raw):
     try:
         taf = pytaf.TAF(taf_raw)
-        return taf.decode()
+        decoder = pytaf.Decoder(taf)
+        return decoder.decode_taf()
     except Exception as e:
         st.error(f"Error decoding TAF: {e}")
         return None
@@ -134,7 +136,7 @@ def categorize_weather(metar, taf, time_window_hours):
         visibilities = []
         ceilings = []
         if report:
-            if isinstance(report, pytaf.METAR):
+            if isinstance(report, pytaf.TAF):
                 if report['visibility']:
                     visibilities.append(report['visibility'])
                 if report['clouds']:
