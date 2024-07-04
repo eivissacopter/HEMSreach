@@ -285,9 +285,10 @@ for airport, distance, bearing, ground_speed_kt, time_to_airport_hours in reacha
             icon=folium.Icon(color="blue", icon="plane"),
         ).add_to(m)
 
+###########################################################################################
 
 # Display map
-folium_static(m, width=1280, height=800)
+folium_static(m, width=1600, height=720)
 
 # Ensure the columns exist before trying to highlight
 if reachable_airports_data:
