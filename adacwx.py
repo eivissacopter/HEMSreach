@@ -179,6 +179,9 @@ with st.sidebar:
         contingency_fuel = 0.1 * (total_fuel_kg - holding_final_reserve - system_test_and_air_taxi - air_taxi_to_parking)
         trip_fuel_kg = total_fuel_kg - (system_test_and_air_taxi + holding_final_reserve + air_taxi_to_parking + contingency_fuel)
     
+        # Ensure cruise_fuel_burn is defined before this block
+        cruise_fuel_burn = st.sidebar.number_input("Cruise Fuel Burn (kg/h)", value=250)
+    
         # 15 minutes fuel calculation if alternate is not required
         if not alternate_required:
             fifteen_min_fuel = cruise_fuel_burn * 0.25
