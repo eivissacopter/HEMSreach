@@ -152,23 +152,19 @@ with st.sidebar:
     base_names = [base['name'] for base in helicopter_bases]
     airport_names = [airport['name'] for airport in airports]
 
-    col1, col2, col3 = st.columns([2, 2, 2])
+    # Toggle switch to choose between Bases and Airports
+    base_or_airport = st.radio('Select Location Type', ['Base', 'Airport'], horizontal=True)
 
-    with col2:
-        base_or_airport = st.radio('', ['Base', 'Airport'], horizontal=True)
-
-    col1, col2 = st.columns(2)
-    
+    # Input field for selecting base or airport
     if base_or_airport == 'Base':
-        with col1:
-            selected_base_name = st.selectbox('Select Base', base_names)
-            selected_base = next(base for base in helicopter_bases if base['name'] == selected_base_name)
-            selected_base_elevation = selected_base['elevation_ft']
+        selected_base_name = st.selectbox('Select Home Base', base_names)
+        selected_base = next(base for base in helicopter_bases if base['name'] == selected_base_name)
+        selected_base_elevation = selected_base['elevation_ft']
         selected_location = selected_base
     else:
-        with col2:
-            selected_airport_name = st.selectbox('Select Airport', airport_names)
-            selected_airport = next(airport for airport in airports if airport['name'] == selected_airport_name)
+        selected_airport_name = st.selectbox('Select Airport', airport_names)
+        selected_airport = next(airport for airport in airports if airport['name'] == selected_airport_name)
+        selected_base_elevation = selected_airport['elevation_ft']
         selected_location = selected_airport
 
     st.markdown("")
