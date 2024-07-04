@@ -147,7 +147,6 @@ def parse_taf(taf_raw):
 
 ###########################################################################################
 
-# Sidebar for base selection and radius filter
 with st.sidebar:
     base_names = [base['name'] for base in helicopter_bases]
     airport_names = [airport['name'] for airport in airports]
@@ -158,14 +157,12 @@ with st.sidebar:
     # Input field for selecting base or airport
     if base_or_airport == 'Base':
         selected_base_name = st.selectbox('Select Home Base', base_names)
-        selected_base = next(base for base in helicopter_bases if base['name'] == selected_base_name)
-        selected_base_elevation = selected_base['elevation_ft']
-        selected_location = selected_base
+        selected_location = next(base for base in helicopter_bases if base['name'] == selected_base_name)
     else:
         selected_airport_name = st.selectbox('Select Airport', airport_names)
-        selected_airport = next(airport for airport in airports if airport['name'] == selected_airport_name)
-        selected_base_elevation = selected_airport['elevation_ft']
-        selected_location = selected_airport
+        selected_location = next(airport for airport in airports if airport['name'] == selected_airport_name)
+
+    selected_base_elevation = selected_location['elevation_ft']
 
     st.markdown("")
     cruise_altitude_ft = st.slider(
@@ -236,7 +233,7 @@ with st.sidebar:
     
         df_fuel = pd.DataFrame(fuel_data)
         st.table(df_fuel)
-
+        
 ###########################################################################################
 
 # Use the input values for performance calculations
@@ -258,15 +255,13 @@ descend_performance = {
     'descend_rate_fpm': descend_rate
 }
 
-###########################################################################################
-
 # Calculate mission radius with climb, cruise, and descent performance
 climb_rate_fpm = climb_performance['climb_rate_fpm']
 descent_rate_fpm = descend_performance['descend_rate_fpm']
 
-# Calculate climb time using selected base elevation
-base_elevation_ft = selected_base.get('elevation', 500)  # Default to 500ft if not available
-climb_time_hours = (cruise_altitude_ft - base_elevation_ft) / climb_rate_fpm / 60
+# Calculate climb time using selected location elevation
+selected_location_elevation_ft = selected_location.get('elevation_ft', 500)  # Default to 500ft if not available
+climb_time_hours = (cruise_altitude_ft - selected_location_elevation_ft) / climb_rate_fpm / 60
 
 # Calculate fuel burn for climb and descent
 climb_fuel_burn = climb_time_hours * climb_performance['fuel_burn_kgph']
@@ -283,7 +278,7 @@ total_flight_time_hours = climb_time_hours + descent_time_hours + (remaining_tri
 
 # Get reachable airports
 reachable_airports = get_reachable_airports(
-    selected_base['lat'], selected_base['lon'],
+    selected_location['lat'], selected_location['lon'],
     total_flight_time_hours, climb_time_hours,
     descent_time_hours, cruise_performance['speed_kt'],
     wind_speed, wind_direction
