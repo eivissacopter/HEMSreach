@@ -295,7 +295,7 @@ if reachable_airports_data:
     # Format the data with units and appropriate rounding
     undecoded_airports_data = []
     decoded_airports_data = []
-    
+
     for airport_data in reachable_airports_data:
         distance_nm = f"{airport_data['Distance (NM)']:.2f} NM"
         time_hours = int(airport_data["Time (hours)"])
@@ -304,7 +304,7 @@ if reachable_airports_data:
         track_deg = f"{int(airport_data['Track (°)']):03d}°"
         ground_speed_kt = f"{int(airport_data['Ground Speed (kt)']):03d} kt"
         fuel_required_kg = f"{int(airport_data['Fuel Required (kg)'])} kg"
-        
+
         undecoded_airports_data.append({
             "Airport": airport_data["Airport"],
             "Distance (NM)": distance_nm,
@@ -316,20 +316,25 @@ if reachable_airports_data:
             "TAF": airport_data["TAF"]
         })
 
+        decoded_metar = parse_metar(airport_data["METAR"])
+        decoded_taf = parse_taf(airport_data["TAF"])
+
         decoded_airports_data.append({
             "Airport": airport_data["Airport"],
             "Distance (NM)": distance_nm,
             "Time (hours)": time_hhmm,
             "Track (°)": track_deg,
             "Ground Speed (kt)": ground_speed_kt,
-            "Fuel Required (kg)": fuel_required_kg
+            "Fuel Required (kg)": fuel_required_kg,
+            "Decoded METAR": decoded_metar,
+            "Decoded TAF": decoded_taf
         })
 
     df_undecoded = pd.DataFrame(undecoded_airports_data)
     df_decoded = pd.DataFrame(decoded_airports_data)
 
     # Display the undecoded table
-    st.markdown("### Undecoded METAR/TAF Data")
+    st.markdown("### Raw METAR/TAF Data")
     st.markdown(df_undecoded.to_html(escape=False), unsafe_allow_html=True)
 
     # Display the decoded table
@@ -337,12 +342,13 @@ if reachable_airports_data:
     st.markdown(df_decoded.to_html(escape=False), unsafe_allow_html=True)
 else:
     df_undecoded = pd.DataFrame(columns=["Airport", "Distance (NM)", "Time (hours)", "Track (°)", "Ground Speed (kt)", "Fuel Required (kg)", "METAR", "TAF"])
-    df_decoded = pd.DataFrame(columns=["Airport", "Distance (NM)", "Time (hours)", "Track (°)", "Ground Speed (kt)", "Fuel Required (kg)"])
+    df_decoded = pd.DataFrame(columns=["Airport", "Distance (NM)", "Time (hours)", "Track (°)", "Ground Speed (kt)", "Fuel Required (kg)", "Decoded METAR", "Decoded TAF"])
 
     # Display the tables
-    st.markdown("### Undecoded METAR/TAF Data")
+    st.markdown("### Raw METAR/TAF Data")
     st.table(df_undecoded)
 
     st.markdown("### Decoded METAR/TAF Data")
     st.table(df_decoded)
+
 
