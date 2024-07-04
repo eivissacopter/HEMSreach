@@ -153,7 +153,7 @@ with st.sidebar:
     airport_names = [airport['name'] for airport in airports]
 
     # Toggle switch to choose between Bases and Airports
-    base_or_airport = st.radio('Select Location Type', ['Base', 'Airport'], horizontal=True)
+    base_or_airport = st.radio('', ['Base', 'Airport'], horizontal=True)
 
     # Input field for selecting base or airport
     if base_or_airport == 'Base':
