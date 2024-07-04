@@ -350,8 +350,8 @@ else:
     df_decoded = pd.DataFrame(columns=["Airport", "Distance (NM)", "Time (hours)", "Track (°)", "Ground Speed (kt)", "Fuel Required (kg)", "Decoded METAR", "Decoded TAF"])
 
     # Display the tables
-    st.markdown("### Raw METAR/TAF Data")
-    st.table(df_undecoded)
+   # st.markdown("### Raw METAR/TAF Data")
+   # st.table(df_undecoded)
 
     st.markdown("### Decoded METAR/TAF Data")
     st.table(df_decoded)
