@@ -11,7 +11,7 @@ import pytz
 import pytaf
 
 # Set the page configuration at the very top
-st.set_page_config(layout="wide")
+# st.set_page_config(layout="wide")
 
 # Custom CSS to make the map full-screen and as the background
 st.markdown(
