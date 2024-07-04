@@ -187,10 +187,13 @@ temperature_profile = {
     "900hPa": weather_data['hourly']['temperature_900hPa'][0],
 }
 wind_speed_10m = weather_data['hourly']['wind_speed_10m'][0]
-wind_speed_cruise_alt = weather_data['hourly'][f'wind_speed_{int(1013.25 - cruise_altitude_ft / 27)}hPa'][0]
 
 # Calculate freezing level
 freezing_level_ft = calculate_freezing_level(temperature_profile)
+
+# Safely get wind aloft at the cruise altitude
+cruise_pressure_hPa = int(1013.25 - cruise_altitude_ft / 27)
+wind_speed_cruise_alt = weather_data['hourly'].get(f'wind_speed_{cruise_pressure_hPa}hPa', [None])[0]
 
 # Display weather data below home base selector
 st.markdown("### Weather Data at Home Base")
@@ -200,7 +203,7 @@ with col1:
 with col2:
     st.metric("Freezing Level", f"{freezing_level_ft:.0f} ft" if freezing_level_ft else "N/A")
 with col3:
-    st.metric("Wind Aloft", f"{wind_speed_cruise_alt} kt at {cruise_altitude_ft} ft")
+    st.metric("Wind Aloft", f"{wind_speed_cruise_alt} kt at {cruise_altitude_ft} ft" if wind_speed_cruise_alt is not None else "N/A")
 
     # Expandable section for fuel breakdown
     with st.expander("Fuel Policy"):
