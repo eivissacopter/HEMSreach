@@ -153,7 +153,7 @@ with st.sidebar:
     )
     total_fuel_kg = st.slider(
         'Total Fuel Upload',
-        min_value=300, max_value=723, value=500, step=50,
+        min_value=400, max_value=723, value=500, step=50,
         format="%d kg"
     )
 
