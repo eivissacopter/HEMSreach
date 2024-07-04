@@ -276,6 +276,34 @@ for airport, distance, bearing, ground_speed_kt, time_to_airport_hours in reacha
     cruise_time_hours = remaining_trip_fuel_kg / cruise_performance['fuel_burn_kgph']
     total_flight_time_hours = climb_time_hours + cruise_time_hours + descent_time_hours
 
+    metar_data, taf_data = fetch_metar_taf_data(airport['icao'], AVWX_API_KEY)
+    if isinstance(metar_data, dict) and isinstance(taf_data, dict):
+        metar_raw = metar_data.get('raw', '')
+        taf_raw = taf_data.get('raw', '')
+        metar_report = metar_raw  # No need to decode
+        taf_report = taf_raw  # No need to decode
+
+        fuel_required = time_to_airport_hours * cruise_performance['fuel_burn_kgph']
+
+        reachable_airports_data.append({
+            "Airport": f"{airport['name']} ({airport['icao']})",
+            "METAR": metar_raw,
+            "TAF": taf_raw,
+            "Distance (NM)": round(distance, 2),
+            "Time (hours)": round(time_to_airport_hours, 2),
+            "Track (°)": round(bearing, 2),
+            "Ground Speed (kt)": round(ground_speed_kt, 2),
+            "Fuel Required (kg)": round(fuel_required, 2)
+        })
+
+        weather_info = f"METAR: {metar_report}\\nTAF: {taf_report}"
+        popup_text = f"{airport['name']} ({airport['icao']})"
+        folium.Marker(
+            location=[airport['lat'], airport['lon']],
+            popup=popup_text,
+            icon=folium.Icon(color="blue", icon="plane"),
+        ).add_to(m)
+
 ###########################################################################################
 
 # Get reachable airports
