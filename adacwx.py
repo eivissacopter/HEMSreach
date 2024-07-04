@@ -245,6 +245,16 @@ with st.sidebar:
         freezing_level = float(freezing_level) if freezing_level else 5000
         min_vectoring_altitude = float(min_vectoring_altitude) if min_vectoring_altitude else 5000
 
+    # Decoded METAR for the closest airport
+    if reachable_airports:
+        closest_airport = reachable_airports[0][0]  # Get the closest airport
+        metar_data, taf_data = fetch_metar_taf_data(closest_airport['icao'], AVWX_API_KEY)
+        if isinstance(metar_data, dict):
+            metar_raw = metar_data.get('raw', '')
+            metar_report = parse_metar(metar_raw)
+            st.markdown("### Decoded METAR for Closest Airport")
+            st.table(pd.DataFrame({"METAR": [metar_report]}))
+
 # Calculate mission radius
 fuel_burn_kgph = H145D2_PERFORMANCE['fuel_burn_kgph']
 flight_time_hours = trip_fuel_kg / fuel_burn_kgph
