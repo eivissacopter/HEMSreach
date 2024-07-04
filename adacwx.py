@@ -10,7 +10,11 @@ from streamlit_folium import folium_static
 import pytz
 import pytaf
 
+###########################################################################################
+
 AVWX_API_KEY = '6za8qC9A_ccwpCc_lus3atiuA7f3c4mwQKMGzW1RVvY'
+
+###########################################################################################
 
 # Function to calculate distance and bearing between two points using the Haversine formula
 def haversine(lon1, lat1, lon2, lat2):
@@ -30,6 +34,8 @@ def haversine(lon1, lat1, lon2, lat2):
     bearing = (bearing + 360) % 360  # Normalize to 0-360 degrees
 
     return distance, bearing
+
+###########################################################################################
 
 # Function to get reachable airports within a certain radius
 @st.cache_data
@@ -53,6 +59,8 @@ def calculate_ground_speed(cruise_speed_kt, wind_speed, wind_direction, flight_d
     wind_component = wind_speed * math.cos(relative_wind_direction)
     ground_speed = cruise_speed_kt - wind_component  # Correct calculation to subtract wind impact for headwind
     return ground_speed
+
+###########################################################################################
 
 # Function to fetch METAR and TAF data from AVWX
 @st.cache_data
@@ -96,6 +104,8 @@ def parse_taf(taf_raw):
         st.error(f"Error decoding TAF: {e}")
         return None
 
+###########################################################################################
+
 # Sidebar for base selection and radius filter
 with st.sidebar:
     base_names = [base['name'] for base in helicopter_bases]
@@ -109,9 +119,16 @@ with st.sidebar:
         closest_airport = reachable_airports[0][0]  # Get the closest airport
         metar_data, taf_data = fetch_metar_taf_data(closest_airport['icao'], AVWX_API_KEY)
         if isinstance(metar_data, dict):
+            airport_icao = closest_airport['icao']
             qnh = metar_data.get('altimeter', {}).get('value', 'N/A')
             temperature = metar_data.get('temperature', {}).get('value', 'N/A')
-            st.markdown(f"### Nearest Airport Data\n- **QNH:** {qnh} hPa\n- **Temperature:** {temperature}°C")
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("ICAO", f"{airport_icao}")
+            with col2:
+                st.metric("QNH", f"{qnh} hPa")
+            with col3:
+                st.metric("Temperature", f"{temperature}°C")
 
     st.markdown("")
     cruise_altitude_ft = st.slider(
