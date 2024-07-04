@@ -5,7 +5,6 @@ import requests
 import math
 from datetime import datetime, timedelta
 from database import helicopter_bases, airports
-from performance import H145D2_PERFORMANCE
 import folium
 from streamlit_folium import folium_static
 import pytz
@@ -154,6 +153,7 @@ with st.sidebar:
     default_base = next(base for base in helicopter_bases if base['name'] == 'Christoph 77 Mainz')
     selected_base_name = st.selectbox('Select Home Base', base_names, index=base_names.index(default_base['name']))
     selected_base = next(base for base in helicopter_bases if base['name'] == selected_base_name)
+    selected_base_elevation = selected_base['elevation_ft']
 
     st.markdown("")
     cruise_altitude_ft = st.slider(
@@ -252,17 +252,29 @@ descend_performance = {
 climb_rate_fpm = climb_performance['climb_rate_fpm']
 descent_rate_fpm = descend_performance['descend_rate_fpm']
 
-climb_time_hours = (cruise_altitude_ft - 500) / climb_rate_fpm / 60
-descent_time_hours = (cruise_altitude_ft - 500) / descent_rate_fpm / 60
+# Climb time using selected base elevation
+climb_time_hours = (cruise_altitude_ft - selected_base_elevation) / climb_rate_fpm / 60
 
-climb_fuel_burn = climb_time_hours * climb_performance['fuel_burn_kgph']
-descent_fuel_burn = descent_time_hours * descend_performance['fuel_burn_kgph']
+# Climb time using selected base elevation
+climb_time_hours = (cruise_altitude_ft - selected_base_elevation) / climb_rate_fpm / 60
 
-cruise_fuel_burn_rate = cruise_performance['fuel_burn_kgph']
-remaining_trip_fuel_kg = trip_fuel_kg - (climb_fuel_burn + descent_fuel_burn)
-cruise_time_hours = remaining_trip_fuel_kg / cruise_fuel_burn_rate
+reachable_airports = get_reachable_airports(
+    selected_base['lat'], selected_base['lon'], 
+    total_flight_time_hours, climb_time_hours, 
+    descent_time_hours, cruise_performance['speed_kt'], 
+    wind_speed, wind_direction
+)
 
-total_flight_time_hours = climb_time_hours + cruise_time_hours + descent_time_hours
+reachable_airports_data = []
+
+for airport, distance, bearing, ground_speed_kt, time_to_airport_hours in reachable_airports:
+    airport_elevation = airport.get('elevation_ft', 0)
+    descent_time_hours = (cruise_altitude_ft - airport_elevation) / descent_rate_fpm / 60
+    climb_fuel_burn = climb_time_hours * climb_performance['fuel_burn_kgph']
+    descent_fuel_burn = descent_time_hours * descend_performance['fuel_burn_kgph']
+    remaining_trip_fuel_kg = trip_fuel_kg - (climb_fuel_burn + descent_fuel_burn)
+    cruise_time_hours = remaining_trip_fuel_kg / cruise_performance['fuel_burn_kgph']
+    total_flight_time_hours = climb_time_hours + cruise_time_hours + descent_time_hours
 
 ###########################################################################################
 
