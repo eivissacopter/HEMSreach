@@ -216,13 +216,13 @@ with st.sidebar:
             descend_speed = st.number_input("Descend Speed (kt)", value=100)
         
         with col2:
-            climb_fuel_burn = st.number_input("Climb Fuel Burn (kg/h)", value=100)
-            cruise_fuel_burn = st.number_input("Cruise Fuel Burn (kg/h)", value=100)
-            descend_fuel_burn = st.number_input("Descend Fuel Burn (kg/h)", value=100)
+            climb_fuel_burn = st.number_input("Climb Fuel (kg/h)", value=100)
+            cruise_fuel_burn = st.number_input("Cruise Fuel (kg/h)", value=100)
+            descend_fuel_burn = st.number_input("Descend Fuel (kg/h)", value=100)
         
         with col3:
             climb_rate = st.number_input("Climb Rate (fpm)", value=100)
-            performance_penalty = st.number_input("Performance Penalty (%)", value=100)
+            performance_penalty = st.number_input("Penalty (%)", value=100)
             descend_rate = st.number_input("Descend Rate (fpm)", value=100)
 
 ###########################################################################################
