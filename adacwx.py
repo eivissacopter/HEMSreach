@@ -181,7 +181,7 @@ with st.sidebar:
 
         # 15 minutes fuel calculation if alternate is not required
         if not alternate_required:
-            fifteen_min_fuel = H145D2_PERFORMANCE['cruise']['fuel_burn_kgph'] * 0.25
+            fifteen_min_fuel = cruise_fuel_burn * 0.25
             trip_fuel_kg -= fifteen_min_fuel
             approach_fuel = 30
         else:
