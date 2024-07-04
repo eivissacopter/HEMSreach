@@ -252,62 +252,28 @@ descend_performance = {
 climb_rate_fpm = climb_performance['climb_rate_fpm']
 descent_rate_fpm = descend_performance['descend_rate_fpm']
 
-# Climb time using selected base elevation
-climb_time_hours = (cruise_altitude_ft - selected_base_elevation) / climb_rate_fpm / 60
+# Calculate climb time using selected base elevation
+base_elevation_ft = selected_base.get('elevation', 500)  # Default to 500ft if not available
+climb_time_hours = (cruise_altitude_ft - base_elevation_ft) / climb_rate_fpm / 60
 
-# Climb time using selected base elevation
-climb_time_hours = (cruise_altitude_ft - selected_base_elevation) / climb_rate_fpm / 60
+# Calculate fuel burn for climb and descent
+climb_fuel_burn = climb_time_hours * climb_performance['fuel_burn_kgph']
 
+# Use the input speed for cruise performance
+cruise_fuel_burn_rate = cruise_performance['fuel_burn_kgph']
+
+# Placeholder for remaining trip fuel, to be recalculated based on descent for each airport
+remaining_trip_fuel_kg = trip_fuel_kg - climb_fuel_burn
+
+# Get reachable airports
 reachable_airports = get_reachable_airports(
-    selected_base['lat'], selected_base['lon'], 
-    total_flight_time_hours, climb_time_hours, 
-    descent_time_hours, cruise_performance['speed_kt'], 
+    selected_base['lat'], selected_base['lon'],
+    total_flight_time_hours, climb_time_hours,
+    descent_time_hours, cruise_speed,
     wind_speed, wind_direction
 )
 
-reachable_airports_data = []
-
-for airport, distance, bearing, ground_speed_kt, time_to_airport_hours in reachable_airports:
-    airport_elevation = airport.get('elevation_ft', 0)
-    descent_time_hours = (cruise_altitude_ft - airport_elevation) / descent_rate_fpm / 60
-    climb_fuel_burn = climb_time_hours * climb_performance['fuel_burn_kgph']
-    descent_fuel_burn = descent_time_hours * descend_performance['fuel_burn_kgph']
-    remaining_trip_fuel_kg = trip_fuel_kg - (climb_fuel_burn + descent_fuel_burn)
-    cruise_time_hours = remaining_trip_fuel_kg / cruise_performance['fuel_burn_kgph']
-    total_flight_time_hours = climb_time_hours + cruise_time_hours + descent_time_hours
-
-    metar_data, taf_data = fetch_metar_taf_data(airport['icao'], AVWX_API_KEY)
-    if isinstance(metar_data, dict) and isinstance(taf_data, dict):
-        metar_raw = metar_data.get('raw', '')
-        taf_raw = taf_data.get('raw', '')
-        metar_report = metar_raw  # No need to decode
-        taf_report = taf_raw  # No need to decode
-
-        fuel_required = time_to_airport_hours * cruise_performance['fuel_burn_kgph']
-
-        reachable_airports_data.append({
-            "Airport": f"{airport['name']} ({airport['icao']})",
-            "METAR": metar_raw,
-            "TAF": taf_raw,
-            "Distance (NM)": round(distance, 2),
-            "Time (hours)": round(time_to_airport_hours, 2),
-            "Track (°)": round(bearing, 2),
-            "Ground Speed (kt)": round(ground_speed_kt, 2),
-            "Fuel Required (kg)": round(fuel_required, 2)
-        })
-
-        weather_info = f"METAR: {metar_report}\\nTAF: {taf_report}"
-        popup_text = f"{airport['name']} ({airport['icao']})"
-        folium.Marker(
-            location=[airport['lat'], airport['lon']],
-            popup=popup_text,
-            icon=folium.Icon(color="blue", icon="plane"),
-        ).add_to(m)
-
 ###########################################################################################
-
-# Get reachable airports
-reachable_airports = get_reachable_airports(selected_base['lat'], selected_base['lon'], total_flight_time_hours, climb_time_hours, descent_time_hours, cruise_performance.get('speed_kt', 115), wind_speed, wind_direction)
 
 # Create map centered on selected base
 m = folium.Map(location=[selected_base['lat'], selected_base['lon']], zoom_start=7)
