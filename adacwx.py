@@ -206,26 +206,59 @@ with st.sidebar:
         with col2:
             wind_speed = st.number_input("Wind Speed (kt)", value=0, step=1)
 
+    # Expandable section for performance parameters
+    with st.expander("Performance"):
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            climb_speed = st.number_input("Climb Speed (kt)", value=100)
+            cruise_speed = st.number_input("Cruise Speed (kt)", value=100)
+            descend_speed = st.number_input("Descend Speed (kt)", value=100)
+        
+        with col2:
+            climb_fuel_burn = st.number_input("Climb Fuel Burn (kg/h)", value=100)
+            cruise_fuel_burn = st.number_input("Cruise Fuel Burn (kg/h)", value=100)
+            descend_fuel_burn = st.number_input("Descend Fuel Burn (kg/h)", value=100)
+        
+        with col3:
+            climb_rate = st.number_input("Climb Rate (fpm)", value=100)
+            performance_penalty = st.number_input("Performance Penalty (%)", value=100)
+            descend_rate = st.number_input("Descend Rate (fpm)", value=100)
+
 ###########################################################################################
 
-from performance import H145D2_PERFORMANCE  # Import performance data
+# Use the input values for performance calculations
+climb_performance = {
+    'speed_kt': climb_speed,
+    'fuel_burn_kgph': climb_fuel_burn,
+    'climb_rate_fpm': climb_rate
+}
 
-# Ensure H145D2_PERFORMANCE keys exist before accessing them
-climb_performance = H145D2_PERFORMANCE.get('climb', {})
-cruise_performance = H145D2_PERFORMANCE.get('cruise', {})
-descend_performance = H145D2_PERFORMANCE.get('descend', {})
+cruise_performance = {
+    'speed_kt': cruise_speed,
+    'fuel_burn_kgph': cruise_fuel_burn,
+    'performance_penalty': performance_penalty
+}
+
+descend_performance = {
+    'speed_kt': descend_speed,
+    'fuel_burn_kgph': descend_fuel_burn,
+    'descend_rate_fpm': descend_rate
+}
+
+###########################################################################################
 
 # Calculate mission radius with climb, cruise, and descent performance
-climb_rate_fpm = climb_performance.get('climb_rate_fpm')
-descent_rate_fpm = descend_performance.get('descend_rate_fpm')
+climb_rate_fpm = climb_performance['climb_rate_fpm']
+descent_rate_fpm = descend_performance['descend_rate_fpm']
 
 climb_time_hours = (cruise_altitude_ft - 500) / climb_rate_fpm / 60
 descent_time_hours = (cruise_altitude_ft - 500) / descent_rate_fpm / 60
 
-climb_fuel_burn = climb_time_hours * climb_performance.get('fuel_burn_kgph')
-descent_fuel_burn = descent_time_hours * descend_performance.get('fuel_burn_kgph')
+climb_fuel_burn = climb_time_hours * climb_performance['fuel_burn_kgph']
+descent_fuel_burn = descent_time_hours * descend_performance['fuel_burn_kgph']
 
-cruise_fuel_burn_rate = cruise_performance.get('fuel_burn_kgph')
+cruise_fuel_burn_rate = cruise_performance['fuel_burn_kgph']
 remaining_trip_fuel_kg = trip_fuel_kg - (climb_fuel_burn + descent_fuel_burn)
 cruise_time_hours = remaining_trip_fuel_kg / cruise_fuel_burn_rate
 
