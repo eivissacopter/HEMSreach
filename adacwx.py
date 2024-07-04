@@ -114,6 +114,7 @@ def parse_metar(metar_raw):
         metar = pytaf.METAR(metar_raw)
         return metar.decode()
     except Exception as e:
+        st.error(f"Error decoding METAR: {e}")
         return None
 
 def parse_taf(taf_raw):
@@ -121,6 +122,7 @@ def parse_taf(taf_raw):
         taf = pytaf.TAF(taf_raw)
         return taf.decode()
     except Exception as e:
+        st.error(f"Error decoding TAF: {e}")
         return None
 
 # Function to categorize weather data
@@ -275,9 +277,18 @@ folium.Marker(
 reachable_airports_data = []
 for airport, distance in reachable_airports:
     metar_data, taf_data = fetch_metar_taf_data(airport['icao'], AVWX_API_KEY)
+    st.write(f"Fetched METAR for {airport['icao']}: {metar_data}")
+    st.write(f"Fetched TAF for {airport['icao']}: {taf_data}")
+    
     if isinstance(metar_data, dict) and isinstance(taf_data, dict):
-        metar_report = parse_metar(metar_data.get('raw', ''))
-        taf_report = parse_taf(taf_data.get('raw', ''))
+        metar_raw = metar_data.get('raw', '')
+        taf_raw = taf_data.get('raw', '')
+        metar_report = parse_metar(metar_raw)
+        taf_report = parse_taf(taf_raw)
+        
+        st.write(f"Decoded METAR for {airport['icao']}: {metar_report}")
+        st.write(f"Decoded TAF for {airport['icao']}: {taf_report}")
+        
         weather_category, color = categorize_weather(metar_report, taf_report, weather_time_window)
         
         metar_decoded = metar_report if metar_report else "N/A"
@@ -296,6 +307,7 @@ for airport, distance in reachable_airports:
             icon=folium.Icon(color=color, icon="plane"),
         ).add_to(m)
 
+
 # Display map
 folium_static(m, width=1280, height=800)
 
@@ -310,3 +322,4 @@ else:
 
     # Display the table
     st.table(df_reachable_airports)
+
