@@ -293,23 +293,56 @@ folium_static(m, width=1440, height=720)
 # Ensure the columns exist before trying to highlight
 if reachable_airports_data:
     # Format the data with units and appropriate rounding
+    undecoded_airports_data = []
+    decoded_airports_data = []
+    
     for airport_data in reachable_airports_data:
-        airport_data["Distance (NM)"] = f"{airport_data['Distance (NM)']:.2f} NM"
+        distance_nm = f"{airport_data['Distance (NM)']:.2f} NM"
         time_hours = int(airport_data["Time (hours)"])
         time_minutes = int((airport_data["Time (hours)"] - time_hours) * 60)
-        airport_data["Time (hours)"] = f"{time_hours:02d}:{time_minutes:02d}"
-        airport_data["Track (°)"] = f"{int(airport_data['Track (°)']):03d}°"
-        airport_data["Ground Speed (kt)"] = f"{int(airport_data['Ground Speed (kt)']):03d} kt"
-        airport_data["Fuel Required (kg)"] = f"{int(airport_data['Fuel Required (kg)'])} kg"
+        time_hhmm = f"{time_hours:02d}:{time_minutes:02d}"
+        track_deg = f"{int(airport_data['Track (°)']):03d}°"
+        ground_speed_kt = f"{int(airport_data['Ground Speed (kt)']):03d} kt"
+        fuel_required_kg = f"{int(airport_data['Fuel Required (kg)'])} kg"
+        
+        undecoded_airports_data.append({
+            "Airport": airport_data["Airport"],
+            "Distance (NM)": distance_nm,
+            "Time (hours)": time_hhmm,
+            "Track (°)": track_deg,
+            "Ground Speed (kt)": ground_speed_kt,
+            "Fuel Required (kg)": fuel_required_kg,
+            "METAR": airport_data["METAR"],
+            "TAF": airport_data["TAF"]
+        })
 
-    df_reachable_airports = pd.DataFrame(reachable_airports_data)
+        decoded_airports_data.append({
+            "Airport": airport_data["Airport"],
+            "Distance (NM)": distance_nm,
+            "Time (hours)": time_hhmm,
+            "Track (°)": track_deg,
+            "Ground Speed (kt)": ground_speed_kt,
+            "Fuel Required (kg)": fuel_required_kg
+        })
 
-    # Display the table with additional data
-    st.markdown(df_reachable_airports.to_html(escape=False), unsafe_allow_html=True)
+    df_undecoded = pd.DataFrame(undecoded_airports_data)
+    df_decoded = pd.DataFrame(decoded_airports_data)
+
+    # Display the undecoded table
+    st.markdown("### Undecoded METAR/TAF Data")
+    st.markdown(df_undecoded.to_html(escape=False), unsafe_allow_html=True)
+
+    # Display the decoded table
+    st.markdown("### Decoded METAR/TAF Data")
+    st.markdown(df_decoded.to_html(escape=False), unsafe_allow_html=True)
 else:
-    df_reachable_airports = pd.DataFrame(columns=["Airport", "Distance (NM)", "Time (hours)", "Track (°)", "Ground Speed (kt)", "Fuel Required (kg)"])
+    df_undecoded = pd.DataFrame(columns=["Airport", "Distance (NM)", "Time (hours)", "Track (°)", "Ground Speed (kt)", "Fuel Required (kg)", "METAR", "TAF"])
+    df_decoded = pd.DataFrame(columns=["Airport", "Distance (NM)", "Time (hours)", "Track (°)", "Ground Speed (kt)", "Fuel Required (kg)"])
 
-    # Display the table
-    st.table(df_reachable_airports)
+    # Display the tables
+    st.markdown("### Undecoded METAR/TAF Data")
+    st.table(df_undecoded)
 
+    st.markdown("### Decoded METAR/TAF Data")
+    st.table(df_decoded)
 
