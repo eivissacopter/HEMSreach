@@ -20,6 +20,11 @@ AVWX_API_KEY = '6za8qC9A_ccwpCc_lus3atiuA7f3c4mwQKMGzW1RVvY'
 
 ###########################################################################################
 
+# Set the page configuration at the very top
+st.set_page_config(layout="wide")
+
+###########################################################################################
+
 # Function to calculate distance and bearing between two points using the Haversine formula
 def haversine(lon1, lat1, lon2, lat2):
     R = 6371.0  # Earth radius in kilometers
