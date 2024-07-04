@@ -292,6 +292,16 @@ folium_static(m, width=1440, height=720)
 
 # Ensure the columns exist before trying to highlight
 if reachable_airports_data:
+    # Format the data with units and appropriate rounding
+    for airport_data in reachable_airports_data:
+        airport_data["Distance (NM)"] = f"{airport_data['Distance (NM)']:.2f} NM"
+        time_hours = int(airport_data["Time (hours)"])
+        time_minutes = int((airport_data["Time (hours)"] - time_hours) * 60)
+        airport_data["Time (hours)"] = f"{time_hours:02d}:{time_minutes:02d}"
+        airport_data["Track (°)"] = f"{airport_data['Track (°)']:.0f}°"
+        airport_data["Ground Speed (kt)"] = f"{airport_data['Ground Speed (kt)']:.0f} kt"
+        airport_data["Fuel Required (kg)"] = f"{airport_data['Fuel Required (kg)']:.0f} kg"
+
     df_reachable_airports = pd.DataFrame(reachable_airports_data)
 
     # Display the table with additional data
@@ -301,4 +311,3 @@ else:
 
     # Display the table
     st.table(df_reachable_airports)
-
