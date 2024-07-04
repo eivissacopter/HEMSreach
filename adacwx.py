@@ -65,15 +65,16 @@ def haversine(lon1, lat1, lon2, lat2):
 
 # Function to get reachable airports within a certain radius
 @st.cache_data
-def get_reachable_airports(base_lat, base_lon, flight_time_hours, cruise_speed_kt, wind_speed, wind_direction):
+def get_reachable_airports(base_lat, base_lon, total_flight_time_hours, climb_time_hours, descent_time_hours, cruise_speed_kt, wind_speed, wind_direction):
     reachable_airports = []
+    cruise_time_hours = total_flight_time_hours - climb_time_hours - descent_time_hours
     for airport in airports:
         distance, bearing = haversine(base_lon, base_lat, airport['lon'], airport['lat'])
         ground_speed_kt = calculate_ground_speed(cruise_speed_kt, wind_speed, wind_direction, bearing)
         if ground_speed_kt <= 0:
             continue
         time_to_airport_hours = distance / ground_speed_kt
-        if time_to_airport_hours <= flight_time_hours:
+        if time_to_airport_hours <= cruise_time_hours:
             reachable_airports.append((airport, distance, bearing, ground_speed_kt, time_to_airport_hours))
     reachable_airports.sort(key=lambda x: x[1])
     return reachable_airports
@@ -135,7 +136,7 @@ with st.sidebar:
     selected_base = next(base for base in helicopter_bases if base['name'] == selected_base_name)
 
     # Fetch and display QNH and temperature of the nearest airport to the selected base
-    reachable_airports = get_reachable_airports(selected_base['lat'], selected_base['lon'], 2, 1, 0, 0)  # Dummy values for initial fetch
+    reachable_airports = get_reachable_airports(selected_base['lat'], selected_base['lon'], 2, 0, 0, 1, 0, 0)  # Dummy values for initial fetch
     if reachable_airports:
         closest_airport = reachable_airports[0][0]  # Get the closest airport
         metar_data, taf_data = fetch_metar_taf_data(closest_airport['icao'], AVWX_API_KEY)
@@ -170,7 +171,7 @@ with st.sidebar:
 
         # 15 minutes fuel calculation if alternate is not required
         if not alternate_required:
-            fifteen_min_fuel = H145D2_PERFORMANCE['fuel_burn_kgph'] * 0.25
+            fifteen_min_fuel = H145D2_PERFORMANCE['cruise']['fuel_burn_kgph'] * 0.25
             trip_fuel_kg -= fifteen_min_fuel
             approach_fuel = 30
         else:
@@ -195,13 +196,24 @@ with st.sidebar:
         with col2:
             wind_speed = st.number_input("Wind Speed (kt)", value=0, step=1)
 
-# Calculate mission radius
-fuel_burn_kgph = H145D2_PERFORMANCE['fuel_burn_kgph']
-flight_time_hours = trip_fuel_kg / fuel_burn_kgph
-cruise_speed_kt = H145D2_PERFORMANCE['cruise_speed_kt']
+# Calculate mission radius with climb, cruise, and descent performance
+climb_rate_fpm = H145D2_PERFORMANCE['climb']['climb_rate_fpm']
+descent_rate_fpm = H145D2_PERFORMANCE['descend']['descend_rate_fpm']
+
+climb_time_hours = (cruise_altitude_ft - 500) / climb_rate_fpm / 60
+descent_time_hours = (cruise_altitude_ft - 500) / descent_rate_fpm / 60
+
+climb_fuel_burn = climb_time_hours * H145D2_PERFORMANCE['climb']['fuel_burn_kgph']
+descent_fuel_burn = descent_time_hours * H145D2_PERFORMANCE['descend']['fuel_burn_kgph']
+
+cruise_fuel_burn_rate = H145D2_PERFORMANCE['cruise']['fuel_burn_kgph']
+remaining_trip_fuel_kg = trip_fuel_kg - (climb_fuel_burn + descent_fuel_burn)
+cruise_time_hours = remaining_trip_fuel_kg / cruise_fuel_burn_rate
+
+total_flight_time_hours = climb_time_hours + cruise_time_hours + descent_time_hours
 
 # Get reachable airports
-reachable_airports = get_reachable_airports(selected_base['lat'], selected_base['lon'], flight_time_hours, cruise_speed_kt, wind_speed, wind_direction)
+reachable_airports = get_reachable_airports(selected_base['lat'], selected_base['lon'], total_flight_time_hours, climb_time_hours, descent_time_hours, H145D2_PERFORMANCE['cruise']['speed_kt'], wind_speed, wind_direction)
 
 # Create map centered on selected base
 m = folium.Map(location=[selected_base['lat'], selected_base['lon']], zoom_start=7)
@@ -231,7 +243,7 @@ for airport, distance, bearing, ground_speed_kt, time_to_airport_hours in reacha
         metar_report = parse_metar(metar_raw)
         taf_report = parse_taf(taf_raw)
 
-        fuel_required = time_to_airport_hours * fuel_burn_kgph
+        fuel_required = time_to_airport_hours * cruise_fuel_burn_rate
 
         reachable_airports_data.append({
             "Airport": f"{airport['name']} ({airport['icao']})",
