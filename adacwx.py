@@ -64,6 +64,7 @@ def haversine(lon1, lat1, lon2, lat2):
     return distance, bearing
 
 # Function to get reachable airports within a certain radius
+@st.cache_data
 def get_reachable_airports(base_lat, base_lon, flight_time_hours, cruise_speed_kt, wind_speed, wind_direction):
     reachable_airports = []
     for airport in airports:
@@ -85,6 +86,7 @@ def calculate_ground_speed(cruise_speed_kt, wind_speed, wind_direction, flight_d
     return ground_speed
 
 # Function to fetch METAR and TAF data from AVWX
+@st.cache_data
 def fetch_metar_taf_data(icao, api_key):
     headers = {"Authorization": f"Bearer {api_key}"}
     metar_url = f"https://avwx.rest/api/metar/{icao}?options=summary"
@@ -112,14 +114,15 @@ def parse_metar(metar_raw):
         metar = pytaf.METAR(metar_raw)
         return metar.decode()
     except Exception as e:
+        st.error(f"Error decoding METAR: {e}")
         return None
 
-# Function to parse TAF data using pytaf
 def parse_taf(taf_raw):
     try:
         taf = pytaf.TAF(taf_raw)
         return taf.decode()
     except Exception as e:
+        st.error(f"Error decoding TAF: {e}")
         return None
 
 # Function to categorize weather data
@@ -245,16 +248,6 @@ with st.sidebar:
         freezing_level = float(freezing_level) if freezing_level else 5000
         min_vectoring_altitude = float(min_vectoring_altitude) if min_vectoring_altitude else 5000
 
-    # Decoded METAR for the closest airport
-    if reachable_airports:
-        closest_airport = reachable_airports[0][0]  # Get the closest airport
-        metar_data, taf_data = fetch_metar_taf_data(closest_airport['icao'], AVWX_API_KEY)
-        if isinstance(metar_data, dict):
-            metar_raw = metar_data.get('raw', '')
-            metar_report = parse_metar(metar_raw)
-            st.markdown("### Decoded METAR for Closest Airport")
-            st.table(pd.DataFrame({"METAR": [metar_report]}))
-
 # Calculate mission radius
 fuel_burn_kgph = H145D2_PERFORMANCE['fuel_burn_kgph']
 flight_time_hours = trip_fuel_kg / fuel_burn_kgph
@@ -262,6 +255,16 @@ cruise_speed_kt = H145D2_PERFORMANCE['cruise_speed_kt']
 
 # Get reachable airports
 reachable_airports = get_reachable_airports(selected_base['lat'], selected_base['lon'], flight_time_hours, cruise_speed_kt, wind_speed, wind_direction)
+
+# Decoded METAR for the closest airport
+if reachable_airports:
+    closest_airport = reachable_airports[0][0]  # Get the closest airport
+    metar_data, taf_data = fetch_metar_taf_data(closest_airport['icao'], AVWX_API_KEY)
+    if isinstance(metar_data, dict):
+        metar_raw = metar_data.get('raw', '')
+        metar_report = parse_metar(metar_raw)
+        st.markdown("### Decoded METAR for Closest Airport")
+        st.table(pd.DataFrame({"METAR": [metar_report]}))
 
 # Create map centered on selected base
 m = folium.Map(location=[selected_base['lat'], selected_base['lon']], zoom_start=7)
@@ -284,22 +287,36 @@ folium.Marker(
 reachable_airports_data = []
 for airport, distance in reachable_airports:
     metar_data, taf_data = fetch_metar_taf_data(airport['icao'], AVWX_API_KEY)
+    st.write(f"Fetched METAR for {airport['icao']}: {metar_data}")
+    st.write(f"Fetched TAF for {airport['icao']}: {taf_data}")
+    
     if isinstance(metar_data, dict) and isinstance(taf_data, dict):
-        metar_report = parse_metar(metar_data.get('raw', ''))
-        taf_report = parse_taf(taf_data.get('raw', ''))
+        metar_raw = metar_data.get('raw', '')
+        taf_raw = taf_data.get('raw', '')
+        metar_report = parse_metar(metar_raw)
+        taf_report = parse_taf(taf_raw)
+        
+        st.write(f"Decoded METAR for {airport['icao']}: {metar_report}")
+        st.write(f"Decoded TAF for {airport['icao']}: {taf_report}")
+        
         weather_category, color = categorize_weather(metar_report, taf_report, weather_time_window)
-        weather_info = f"METAR: {metar_data.get('raw', 'N/A')}\\nTAF: {taf_data.get('raw', 'N/A')}"
+        
+        metar_decoded = metar_report if metar_report else "N/A"
+        taf_decoded = taf_report if taf_report else "N/A"
+        
+        weather_info = f"METAR: {metar_decoded}\\nTAF: {taf_decoded}"
         popup_text = f"{airport['name']} ({airport['icao']})\\n{weather_info}"
         reachable_airports_data.append({
             "Airport": f"{airport['name']} ({airport['icao']})",
-            "METAR": metar_data.get('raw', 'N/A'),
-            "TAF": taf_data.get('raw', 'N/A')
+            "METAR": metar_decoded,
+            "TAF": taf_decoded
         })
         folium.Marker(
             location=[airport['lat'], airport['lon']],
             popup=popup_text,
             icon=folium.Icon(color=color, icon="plane"),
         ).add_to(m)
+
 
 # Display map
 folium_static(m, width=1280, height=800)
@@ -308,26 +325,7 @@ folium_static(m, width=1280, height=800)
 if reachable_airports_data:
     df_reachable_airports = pd.DataFrame(reachable_airports_data)
 
-    # Function to highlight METAR and TAF based on visibility and ceiling
-    def highlight_weather_conditions(text, vis_thresholds, ceil_thresholds):
-        for vis, color in vis_thresholds.items():
-            text = text.replace(str(vis), f"<span style='color:{color}'>{vis}</span>")
-        for ceil, color in ceil_thresholds.items():
-            text = text.replace(str(ceil), f"<span style='color:{color}'>{ceil}</span>")
-        return text
-
-    # Highlight visibility and ceiling in the METAR and TAF columns
-    vis_thresholds = {
-        "500": "red", "900": "yellow", "3000": "green", "5000": "blue"
-    }
-    ceil_thresholds = {
-        "200": "red", "400": "yellow", "700": "green", "1500": "blue"
-    }
-
-    df_reachable_airports['METAR'] = df_reachable_airports['METAR'].apply(lambda x: highlight_weather_conditions(str(x), vis_thresholds, ceil_thresholds))
-    df_reachable_airports['TAF'] = df_reachable_airports['TAF'].apply(lambda x: highlight_weather_conditions(str(x), vis_thresholds, ceil_thresholds))
-
-    # Display the table with highlighted METAR and TAF data
+    # Display the table with METAR and TAF data
     st.markdown(df_reachable_airports.to_html(escape=False), unsafe_allow_html=True)
 else:
     df_reachable_airports = pd.DataFrame(columns=["Airport", "METAR", "TAF"])
