@@ -300,7 +300,7 @@ if reachable_airports_data:
         airport_data["Time (hours)"] = f"{time_hours:02d}:{time_minutes:02d}"
         airport_data["Track (°)"] = f"{int(airport_data['Track (°)']):03d}°"
         airport_data["Ground Speed (kt)"] = f"{int(airport_data['Ground Speed (kt)']):03d} kt"
-        airport_data["Fuel Required (kg)"] = f"{int(airport_data['Fuel Required (kg)']):03d} kg"
+        airport_data["Fuel Required (kg)"] = f"{int(airport_data['Fuel Required (kg)'])} kg"
 
     df_reachable_airports = pd.DataFrame(reachable_airports_data)
 
@@ -311,4 +311,5 @@ else:
 
     # Display the table
     st.table(df_reachable_airports)
+
 
