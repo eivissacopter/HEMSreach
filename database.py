@@ -92,7 +92,6 @@ airports = [
     {"name": "Leipzig-Altenburg Airport", "icao": "EDAC", "lat": 50.9818, "lon": 12.5063},
     {"name": "Neubrandenburg Airport", "icao": "EDBN", "lat": 53.6022, "lon": 13.3067},
     {"name": "Schönhagen Airport", "icao": "EDAZ", "lat": 52.2033, "lon": 13.1583},
-    {"name": "Schwäbisch Hall Airport", "icao": "EDTY", "lat": 49.1181, "lon": 9.7831},
     {"name": "Strausberg Airport", "icao": "EDAY", "lat": 52.5794, "lon": 13.915},
     {"name": "Sylt Airport", "icao": "EDXW", "lat": 54.9132, "lon": 8.3405},
     {"name": "Westerland/Sylt Airport", "icao": "EDXW", "lat": 54.9132, "lon": 8.3405},
