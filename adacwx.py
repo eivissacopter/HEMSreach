@@ -180,7 +180,7 @@ with st.sidebar:
     wind_speed_cruise_alt = weather_data['hourly'].get(f'wind_speed_{cruise_pressure_hPa}hPa', [None])[0]
     
     # Display weather data below home base selector
-    st.markdown("### Weather Data at Home Base")
+    st.markdown("")
     col1, col2, col3 = st.columns(3)
     with col1:
         st.metric("Cloud Cover High", f"{cloud_cover_high}%")
