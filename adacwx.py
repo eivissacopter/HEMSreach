@@ -177,10 +177,11 @@ with st.sidebar:
     
     # Safely get wind aloft at the cruise altitude
     cruise_pressure_hPa = int(1013.25 - cruise_altitude_ft / 27)
-    wind_speed_cruise_alt = weather_data['hourly'].get(f'wind_speed_{cruise_pressure_hPa}hPa', [None])[0]
+    wind_speed_cruise_alt_key = f'wind_speed_{cruise_pressure_hPa}hPa'
+    wind_speed_cruise_alt = weather_data['hourly'].get(wind_speed_cruise_alt_key, [None])[0]
     
     # Display weather data below home base selector
-    st.markdown("")
+    st.markdown("### Weather Data at Home Base")
     col1, col2, col3 = st.columns(3)
     with col1:
         st.metric("Cloud Cover High", f"{cloud_cover_high}%")
@@ -188,6 +189,8 @@ with st.sidebar:
         st.metric("Freezing Level", f"{freezing_level_ft:.0f} ft" if freezing_level_ft else "N/A")
     with col3:
         st.metric("Wind Aloft", f"{wind_speed_cruise_alt} kt at {cruise_altitude_ft} ft" if wind_speed_cruise_alt is not None else "N/A")
+
+    st.markdown("")
     
     st.markdown("")
     cruise_altitude_ft = st.slider(
