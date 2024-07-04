@@ -309,10 +309,7 @@ if reachable_airports_data:
         metar_raw = airport_data["METAR"]
         taf_raw = airport_data["TAF"]
         
-        # Decode METAR and TAF if available
-        decoded_metar = parse_metar(metar_raw) if metar_raw else "No METAR data"
-        decoded_taf = parse_taf(taf_raw) if taf_raw else "No TAF data"
-
+        # Add the raw METAR and TAF data directly
         decoded_airports_data.append({
             "Airport": airport_data["Airport"],
             "Distance (NM)": distance_nm,
@@ -320,18 +317,18 @@ if reachable_airports_data:
             "Track (°)": track_deg,
             "Ground Speed (kt)": ground_speed_kt,
             "Fuel Required (kg)": fuel_required_kg,
-            "Decoded METAR": decoded_metar,
-            "Decoded TAF": decoded_taf
+            "METAR": metar_raw,
+            "TAF": taf_raw
         })
 
     df_decoded = pd.DataFrame(decoded_airports_data)
 
-    # Display the decoded table
-    st.markdown("### Decoded METAR/TAF Data")
+    # Display the table with the raw METAR and TAF data
+    st.markdown("### METAR/TAF Data")
     st.markdown(df_decoded.to_html(escape=False), unsafe_allow_html=True)
 else:
-    df_decoded = pd.DataFrame(columns=["Airport", "Distance (NM)", "Time (hours)", "Track (°)", "Ground Speed (kt)", "Fuel Required (kg)", "Decoded METAR", "Decoded TAF"])
+    df_decoded = pd.DataFrame(columns=["Airport", "Distance (NM)", "Time (hours)", "Track (°)", "Ground Speed (kt)", "Fuel Required (kg)", "METAR", "TAF"])
 
     # Display the table
-    st.markdown("### Decoded METAR/TAF Data")
+    st.markdown("### METAR/TAF Data")
     st.table(df_decoded)
