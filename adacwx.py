@@ -196,24 +196,29 @@ with st.sidebar:
         with col2:
             wind_speed = st.number_input("Wind Speed (kt)", value=0, step=1)
 
+# Ensure H145D2_PERFORMANCE keys exist before accessing them
+climb_performance = H145D2_PERFORMANCE.get('climb', {})
+cruise_performance = H145D2_PERFORMANCE.get('cruise', {})
+descend_performance = H145D2_PERFORMANCE.get('descend', {})
+
 # Calculate mission radius with climb, cruise, and descent performance
-climb_rate_fpm = H145D2_PERFORMANCE['climb']['climb_rate_fpm']
-descent_rate_fpm = H145D2_PERFORMANCE['descend']['descend_rate_fpm']
+climb_rate_fpm = climb_performance.get('climb_rate_fpm', 900)
+descent_rate_fpm = descend_performance.get('descend_rate_fpm', 500)
 
 climb_time_hours = (cruise_altitude_ft - 500) / climb_rate_fpm / 60
 descent_time_hours = (cruise_altitude_ft - 500) / descent_rate_fpm / 60
 
-climb_fuel_burn = climb_time_hours * H145D2_PERFORMANCE['climb']['fuel_burn_kgph']
-descent_fuel_burn = descent_time_hours * H145D2_PERFORMANCE['descend']['fuel_burn_kgph']
+climb_fuel_burn = climb_time_hours * climb_performance.get('fuel_burn_kgph', 250)
+descent_fuel_burn = descent_time_hours * descend_performance.get('fuel_burn_kgph', 220)
 
-cruise_fuel_burn_rate = H145D2_PERFORMANCE['cruise']['fuel_burn_kgph']
+cruise_fuel_burn_rate = cruise_performance.get('fuel_burn_kgph', 240)
 remaining_trip_fuel_kg = trip_fuel_kg - (climb_fuel_burn + descent_fuel_burn)
 cruise_time_hours = remaining_trip_fuel_kg / cruise_fuel_burn_rate
 
 total_flight_time_hours = climb_time_hours + cruise_time_hours + descent_time_hours
 
 # Get reachable airports
-reachable_airports = get_reachable_airports(selected_base['lat'], selected_base['lon'], total_flight_time_hours, climb_time_hours, descent_time_hours, H145D2_PERFORMANCE['cruise']['speed_kt'], wind_speed, wind_direction)
+reachable_airports = get_reachable_airports(selected_base['lat'], selected_base['lon'], total_flight_time_hours, climb_time_hours, descent_time_hours, cruise_performance.get('speed_kt', 115), wind_speed, wind_direction)
 
 # Create map centered on selected base
 m = folium.Map(location=[selected_base['lat'], selected_base['lon']], zoom_start=7)
