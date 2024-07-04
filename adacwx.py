@@ -13,6 +13,44 @@ import pytaf
 
 ###########################################################################################
 
+# Set the page configuration for wide mode and dark theme
+st.set_page_config(layout="wide")
+
+# Custom CSS to make the map full-screen and as the background, and to engage dark mode
+st.markdown(
+    """
+    <style>
+    body {
+        background-color: #2e2e2e;
+        color: white;
+    }
+    .reportview-container .main .block-container {
+        padding: 0;
+    }
+    .reportview-container .main {
+        background: none;
+        padding: 0;
+    }
+    .sidebar .sidebar-content {
+        background-color: #3e3e3e;
+    }
+    .fullScreenMap {
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0;
+    }
+    .stSlider, .stNumberInput, .stTextInput {
+        color: black;
+    }
+    .stNumberInput, .stTextInput {
+        display: inline-block;
+        margin-right: 10px;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+###########################################################################################
+
 # Auto-refresh every 30 minutes (1800 seconds)
 st_autorefresh(interval=1800 * 1000, key="data_refresh")
 
