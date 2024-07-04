@@ -187,6 +187,14 @@ with st.sidebar:
         df_fuel = pd.DataFrame(fuel_data)
         st.table(df_fuel)
 
+    # Input fields for wind direction and wind speed
+    with st.expander("Wind Conditions"):
+        col1, col2 = st.columns(2)
+        with col1:
+            wind_direction = st.number_input("Wind Direction (°)", value=0, step=1)
+        with col2:
+            wind_speed = st.number_input("Wind Speed (kt)", value=0, step=1)
+
 # Calculate mission radius
 fuel_burn_kgph = H145D2_PERFORMANCE['fuel_burn_kgph']
 flight_time_hours = trip_fuel_kg / fuel_burn_kgph
