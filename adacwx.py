@@ -74,7 +74,7 @@ def get_reachable_airports(base_lat, base_lon, flight_time_hours, cruise_speed_k
             continue
         time_to_airport_hours = distance / ground_speed_kt
         if time_to_airport_hours <= flight_time_hours:
-            reachable_airports.append((airport, distance))
+            reachable_airports.append((airport, distance, bearing, ground_speed_kt, time_to_airport_hours))
     reachable_airports.sort(key=lambda x: x[1])
     return reachable_airports
 
@@ -127,59 +127,22 @@ def parse_taf(taf_raw):
         st.error(f"Error decoding TAF: {e}")
         return None
 
-# Function to categorize weather data
-def categorize_weather(metar, taf, time_window_hours):
-    current_time = datetime.utcnow().replace(tzinfo=pytz.UTC)
-    end_time = current_time + timedelta(hours=time_window_hours)
-
-    def check_conditions(report):
-        visibilities = []
-        ceilings = []
-        if report:
-            if isinstance(report, pytaf.TAF):
-                if report['visibility']:
-                    visibilities.append(report['visibility'])
-                if report['clouds']:
-                    ceilings.append(report['clouds'][0]['base'])
-            if isinstance(report, pytaf.TAF):
-                for forecast in report['forecasts']:
-                    visibilities.append(forecast['visibility'])
-                    ceilings.extend([cloud['base'] for cloud in forecast['clouds'] if 'base' in cloud])
-        visibilities = [v for v in visibilities if v is not None]
-        ceilings = [c for c in ceilings if c is not None]
-        return visibilities, ceilings
-
-    metar_vis, metar_ceil = check_conditions(metar)
-    taf_vis, taf_ceil = check_conditions(taf)
-
-    visibilities = metar_vis + taf_vis
-    ceilings = metar_ceil + taf_ceil
-
-    def categorize(vis, ceil):
-        if vis < float(dest_ok_vis) or ceil > float(dest_ok_ceiling):
-            return "DEST OK", "red"
-        elif vis < float(alt_ok_vis) or ceil > float(alt_ok_ceiling):
-            return "ALT OK", "yellow"
-        elif vis < float(no_alt_vis) or ceil > float(no_alt_ceiling):
-            return "NO ALT REQ", "green"
-        elif vis < float(nvfr_vis) or ceil > float(nvfr_ceiling):
-            return "NVFR OK", "blue"
-        else:
-            return "UNKNOWN", "gray"
-
-    if visibilities and ceilings:
-        vis_category, vis_color = categorize(min(visibilities), max(ceilings))
-    else:
-        vis_category, vis_color = "UNKNOWN", "gray"
-
-    return vis_category, vis_color
-
 # Sidebar for base selection and radius filter
 with st.sidebar:
     base_names = [base['name'] for base in helicopter_bases]
     default_base = next(base for base in helicopter_bases if base['name'] == 'Christoph 77 Mainz')
     selected_base_name = st.selectbox('Select Home Base', base_names, index=base_names.index(default_base['name']))
     selected_base = next(base for base in helicopter_bases if base['name'] == selected_base_name)
+
+    # Fetch and display QNH and temperature of the nearest airport to the selected base
+    reachable_airports = get_reachable_airports(selected_base['lat'], selected_base['lon'], 2, 1, 0, 0)  # Dummy values for initial fetch
+    if reachable_airports:
+        closest_airport = reachable_airports[0][0]  # Get the closest airport
+        metar_data, taf_data = fetch_metar_taf_data(closest_airport['icao'], AVWX_API_KEY)
+        if isinstance(metar_data, dict):
+            qnh = metar_data.get('altimeter', {}).get('value', 'N/A')
+            temperature = metar_data.get('temperature', {}).get('value', 'N/A')
+            st.markdown(f"### Nearest Airport Data\n- **QNH:** {qnh} hPa\n- **Temperature:** {temperature}°C")
 
     st.markdown("")
     cruise_altitude_ft = st.slider(
@@ -258,16 +221,6 @@ cruise_speed_kt = H145D2_PERFORMANCE['cruise_speed_kt']
 # Get reachable airports
 reachable_airports = get_reachable_airports(selected_base['lat'], selected_base['lon'], flight_time_hours, cruise_speed_kt, wind_speed, wind_direction)
 
-# Decoded METAR for the closest airport
-if reachable_airports:
-    closest_airport = reachable_airports[0][0]  # Get the closest airport
-    metar_data, taf_data = fetch_metar_taf_data(closest_airport['icao'], AVWX_API_KEY)
-    if isinstance(metar_data, dict):
-        metar_raw = metar_data.get('raw', '')
-        metar_report = parse_metar(metar_raw)
-        st.markdown("### Decoded METAR for Closest Airport")
-        st.table(pd.DataFrame({"METAR": [metar_report]}))
-
 # Create map centered on selected base
 m = folium.Map(location=[selected_base['lat'], selected_base['lon']], zoom_start=7)
 
@@ -287,32 +240,32 @@ folium.Marker(
 
 # Add reachable airports to map
 reachable_airports_data = []
-for airport, distance in reachable_airports:
+for airport, distance, bearing, ground_speed_kt, time_to_airport_hours in reachable_airports:
     metar_data, taf_data = fetch_metar_taf_data(airport['icao'], AVWX_API_KEY)
-    st.write(f"Fetched METAR for {airport['icao']}: {metar_data}")
-    st.write(f"Fetched TAF for {airport['icao']}: {taf_data}")
     
     if isinstance(metar_data, dict) and isinstance(taf_data, dict):
         metar_raw = metar_data.get('raw', '')
         taf_raw = taf_data.get('raw', '')
         metar_report = parse_metar(metar_raw)
         taf_report = parse_taf(taf_raw)
-        
-        st.write(f"Decoded METAR for {airport['icao']}: {metar_report}")
-        st.write(f"Decoded TAF for {airport['icao']}: {taf_report}")
+
+        fuel_required = time_to_airport_hours * fuel_burn_kgph
+
+        reachable_airports_data.append({
+            "Airport": f"{airport['name']} ({airport['icao']})",
+            "METAR": metar_report,
+            "TAF": taf_report,
+            "Distance (NM)": round(distance, 2),
+            "Time (hours)": round(time_to_airport_hours, 2),
+            "Track (°)": round(bearing, 2),
+            "Ground Speed (kt)": round(ground_speed_kt, 2),
+            "Fuel Required (kg)": round(fuel_required, 2)
+        })
         
         weather_category, color = categorize_weather(metar_report, taf_report, weather_time_window)
         
-        metar_decoded = metar_report if metar_report else "N/A"
-        taf_decoded = taf_report if taf_report else "N/A"
-        
-        weather_info = f"METAR: {metar_decoded}\\nTAF: {taf_decoded}"
+        weather_info = f"METAR: {metar_report}\\nTAF: {taf_report}"
         popup_text = f"{airport['name']} ({airport['icao']})\\n{weather_info}"
-        reachable_airports_data.append({
-            "Airport": f"{airport['name']} ({airport['icao']})",
-            "METAR": metar_decoded,
-            "TAF": taf_decoded
-        })
         folium.Marker(
             location=[airport['lat'], airport['lon']],
             popup=popup_text,
@@ -327,10 +280,10 @@ folium_static(m, width=1280, height=800)
 if reachable_airports_data:
     df_reachable_airports = pd.DataFrame(reachable_airports_data)
 
-    # Display the table with METAR and TAF data
+    # Display the table with additional data
     st.markdown(df_reachable_airports.to_html(escape=False), unsafe_allow_html=True)
 else:
-    df_reachable_airports = pd.DataFrame(columns=["Airport", "METAR", "TAF"])
+    df_reachable_airports = pd.DataFrame(columns=["Airport", "METAR", "TAF", "Distance (NM)", "Time (hours)", "Track (°)", "Ground Speed (kt)", "Fuel Required (kg)"])
 
     # Display the table
     st.table(df_reachable_airports)
