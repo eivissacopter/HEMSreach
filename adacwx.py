@@ -128,22 +128,37 @@ def parse_taf(taf_raw):
         st.error(f"Error decoding TAF: {e}")
         return None
 
+# Function to convert pressure levels to altitude in feet
+def pressure_to_altitude(pressure_hPa):
+    return (1 - (pressure_hPa / 1013.25) ** 0.190284) * 145366.45
+
+# Function to get weather data from Open-Meteo API
+def get_weather_data(lat, lon):
+    base_url = "https://api.open-meteo.com/v1/forecast"
+    params = {
+        "latitude": lat,
+        "longitude": lon,
+        "hourly": ["cloud_cover_high", "temperature_700hPa", "temperature_850hPa", "temperature_900hPa", "wind_speed_10m", "wind_speed_700hPa", "wind_speed_850hPa", "wind_speed_900hPa"],
+        "start": datetime.utcnow().isoformat(),
+        "end": (datetime.utcnow() + timedelta(days=1)).isoformat()
+    }
+    response = requests.get(base_url, params=params)
+    return response.json()
+
+def calculate_freezing_level(temperature_profile):
+    freezing_level = None
+    for pressure, temp in temperature_profile.items():
+        if temp <= 0:
+            freezing_level = pressure_to_altitude(int(pressure.replace('hPa', '')))
+            break
+    return freezing_level
+
 # Sidebar for base selection and radius filter
 with st.sidebar:
     base_names = [base['name'] for base in helicopter_bases]
     default_base = next(base for base in helicopter_bases if base['name'] == 'Christoph 77 Mainz')
     selected_base_name = st.selectbox('Select Home Base', base_names, index=base_names.index(default_base['name']))
     selected_base = next(base for base in helicopter_bases if base['name'] == selected_base_name)
-
-    # Fetch and display QNH and temperature of the nearest airport to the selected base
-    reachable_airports = get_reachable_airports(selected_base['lat'], selected_base['lon'], 2, 0, 0, 1, 0, 0)  # Dummy values for initial fetch
-    if reachable_airports:
-        closest_airport = reachable_airports[0][0]  # Get the closest airport
-        metar_data, taf_data = fetch_metar_taf_data(closest_airport['icao'], AVWX_API_KEY)
-        if isinstance(metar_data, dict):
-            qnh = metar_data.get('altimeter', {}).get('value', 'N/A')
-            temperature = metar_data.get('temperature', {}).get('value', 'N/A')
-            st.markdown(f"### Nearest Airport Data\n- **QNH:** {qnh} hPa\n- **Temperature:** {temperature}°C")
 
     st.markdown("")
     cruise_altitude_ft = st.slider(
@@ -153,13 +168,39 @@ with st.sidebar:
     )
     total_fuel_kg = st.slider(
         'Total Fuel Upload',
-        min_value=400, max_value=723, value=500, step=50,
+        min_value=300, max_value=723, value=500, step=50,
         format="%d kg"
     )
 
     # Alternate required checkbox and input
     alternate_required = st.checkbox("Alternate Required")
     alternate_fuel = st.number_input("Alternate Fuel (kg)", value=0, step=10) if alternate_required else 0
+
+# Fetch weather data
+weather_data = get_weather_data(selected_base['lat'], selected_base['lon'])
+
+# Extract relevant weather data
+cloud_cover_high = weather_data['hourly']['cloud_cover_high'][0]
+temperature_profile = {
+    "700hPa": weather_data['hourly']['temperature_700hPa'][0],
+    "850hPa": weather_data['hourly']['temperature_850hPa'][0],
+    "900hPa": weather_data['hourly']['temperature_900hPa'][0],
+}
+wind_speed_10m = weather_data['hourly']['wind_speed_10m'][0]
+wind_speed_cruise_alt = weather_data['hourly'][f'wind_speed_{int(1013.25 - cruise_altitude_ft / 27)}hPa'][0]
+
+# Calculate freezing level
+freezing_level_ft = calculate_freezing_level(temperature_profile)
+
+# Display weather data below home base selector
+st.markdown("### Weather Data at Home Base")
+col1, col2, col3 = st.columns(3)
+with col1:
+    st.metric("Cloud Cover High", f"{cloud_cover_high}%")
+with col2:
+    st.metric("Freezing Level", f"{freezing_level_ft:.0f} ft" if freezing_level_ft else "N/A")
+with col3:
+    st.metric("Wind Aloft", f"{wind_speed_cruise_alt} kt at {cruise_altitude_ft} ft")
 
     # Expandable section for fuel breakdown
     with st.expander("Fuel Policy"):
