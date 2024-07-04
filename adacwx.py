@@ -305,6 +305,10 @@ if reachable_airports_data:
         ground_speed_kt = f"{int(airport_data['Ground Speed (kt)']):03d} kt"
         fuel_required_kg = f"{int(airport_data['Fuel Required (kg)'])} kg"
 
+        metar_raw = airport_data["METAR"]
+        taf_raw = airport_data["TAF"]
+        
+        # Append raw METAR and TAF data
         undecoded_airports_data.append({
             "Airport": airport_data["Airport"],
             "Distance (NM)": distance_nm,
@@ -312,12 +316,13 @@ if reachable_airports_data:
             "Track (°)": track_deg,
             "Ground Speed (kt)": ground_speed_kt,
             "Fuel Required (kg)": fuel_required_kg,
-            "METAR": airport_data["METAR"],
-            "TAF": airport_data["TAF"]
+            "METAR": metar_raw,
+            "TAF": taf_raw
         })
 
-        decoded_metar = parse_metar(airport_data["METAR"])
-        decoded_taf = parse_taf(airport_data["TAF"])
+        # Decode METAR and TAF if available
+        decoded_metar = parse_metar(metar_raw) if metar_raw else "No METAR data"
+        decoded_taf = parse_taf(taf_raw) if taf_raw else "No TAF data"
 
         decoded_airports_data.append({
             "Airport": airport_data["Airport"],
@@ -350,5 +355,4 @@ else:
 
     st.markdown("### Decoded METAR/TAF Data")
     st.table(df_decoded)
-
 
