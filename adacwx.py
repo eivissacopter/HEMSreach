@@ -160,6 +160,18 @@ with st.sidebar:
     selected_base_name = st.selectbox('Select Home Base', base_names, index=base_names.index(default_base['name']))
     selected_base = next(base for base in helicopter_bases if base['name'] == selected_base_name)
 
+    st.markdown("")
+    cruise_altitude_ft = st.slider(
+        'Cruise Altitude',
+        min_value=3000, max_value=10000, value=5000, step=1000,
+        format="%d ft"
+    )
+    total_fuel_kg = st.slider(
+        'Total Fuel Upload',
+        min_value=300, max_value=723, value=500, step=50,
+        format="%d kg"
+    )
+
     # Fetch weather data
     weather_data = get_weather_data(selected_base['lat'], selected_base['lon'])
     
