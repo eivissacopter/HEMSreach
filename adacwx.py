@@ -288,7 +288,7 @@ for airport, distance, bearing, ground_speed_kt, time_to_airport_hours in reacha
 ###########################################################################################
 
 # Display map
-folium_static(m, width=1500, height=750)
+folium_static(m, width=1440, height=720)
 
 # Ensure the columns exist before trying to highlight
 if reachable_airports_data:
