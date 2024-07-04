@@ -14,7 +14,7 @@ import pytaf
 # st.set_page_config(layout="wide")
 
 # Custom CSS to make the map full-screen and as the background
-# st.markdown(
+st.markdown(
     """
     <style>
     .reportview-container .main .block-container {
