@@ -112,7 +112,8 @@ def fetch_metar_taf_data(icao, api_key):
 def parse_metar(metar_raw):
     try:
         metar = pytaf.METAR(metar_raw)
-        return metar.decode()
+        decoded_metar = metar.decode()
+        return str(decoded_metar)
     except Exception as e:
         return None
 
@@ -120,7 +121,8 @@ def parse_metar(metar_raw):
 def parse_taf(taf_raw):
     try:
         taf = pytaf.TAF(taf_raw)
-        return taf.decode()
+        decoded_taf = taf.decode()
+        return str(decoded_taf)
     except Exception as e:
         return None
 
@@ -284,8 +286,8 @@ for airport, distance in reachable_airports:
         popup_text = f"{airport['name']} ({airport['icao']})\\n{weather_info}"
         reachable_airports_data.append({
             "Airport": f"{airport['name']} ({airport['icao']})",
-            "Decoded METAR": metar_report,
-            "Decoded TAF": taf_report
+            "Decoded METAR": metar_report if metar_report else "None",
+            "Decoded TAF": taf_report if taf_report else "None"
         })
         folium.Marker(
             location=[airport['lat'], airport['lon']],
