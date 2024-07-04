@@ -163,7 +163,7 @@ with st.sidebar:
         selected_location = next(airport for airport in airports if airport['name'] == selected_airport_name)
 
     selected_base_elevation = selected_location['elevation_ft']
-
+    
     st.markdown("")
     cruise_altitude_ft = st.slider(
         'Cruise Altitude',
@@ -286,8 +286,8 @@ reachable_airports = get_reachable_airports(
 
 ###########################################################################################
 
-# Create map centered on selected base
-m = folium.Map(location=[selected_base['lat'], selected_base['lon']], zoom_start=7)
+# Create map centered on selected location
+m = folium.Map(location=[selected_location['lat'], selected_location['lon']], zoom_start=7)
 
 # Add OpenFlightMap tiles
 folium.TileLayer(
@@ -296,10 +296,10 @@ folium.TileLayer(
     name='OpenFlightMaps'
 ).add_to(m)
 
-# Add selected base to map
+# Add selected location to map
 folium.Marker(
-    location=[selected_base['lat'], selected_base['lon']],
-    popup=selected_base_name,
+    location=[selected_location['lat'], selected_location['lon']],
+    popup=selected_location['name'],
     icon=folium.Icon(color="blue", icon="info-sign"),
 ).add_to(m)
 
