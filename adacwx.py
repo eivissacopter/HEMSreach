@@ -187,32 +187,6 @@ with st.sidebar:
         df_fuel = pd.DataFrame(fuel_data)
         st.table(df_fuel)
 
-    # Expandable section for weather configuration
-    with st.expander("Weather Policy"):
-        weather_time_window = st.slider('Weather Time Window (hours)', min_value=1, max_value=10, value=5, step=1)
-
-        col1, col2 = st.columns(2)
-        with col1:
-            dest_ok_vis = st.text_input("DEST OK Vis (m)", "500")
-            alt_ok_vis = st.text_input("ALT OK Vis (m)", "900")
-            no_alt_vis = st.text_input("NO ALT Vis (m)", "3000")
-            nvfr_vis = st.text_input("NVFR OK Vis (m)", "5000")
-        with col2:
-            dest_ok_ceiling = st.text_input("DEST OK Ceiling (ft)", "200")
-            alt_ok_ceiling = st.text_input("ALT OK Ceiling (ft)", "400")
-            no_alt_ceiling = st.text_input("NO ALT Ceiling (ft)", "700")
-            nvfr_ceiling = st.text_input("NVFR OK Ceiling (ft)", "1500")
-
-        wind_direction = st.text_input("Wind Direction (°)", "360")
-        wind_speed = st.text_input("Wind Speed (kt)", "0")
-        freezing_level = st.text_input("Freezing Level (ft)", "5000")
-        min_vectoring_altitude = st.text_input("Minimum Vectoring Altitude (ft)", "5000")
-
-        wind_direction = float(wind_direction) if wind_direction else 0
-        wind_speed = float(wind_speed) if wind_speed else 0
-        freezing_level = float(freezing_level) if freezing_level else 5000
-        min_vectoring_altitude = float(min_vectoring_altitude) if min_vectoring_altitude else 5000
-
 # Calculate mission radius
 fuel_burn_kgph = H145D2_PERFORMANCE['fuel_burn_kgph']
 flight_time_hours = trip_fuel_kg / fuel_burn_kgph
@@ -262,14 +236,12 @@ for airport, distance, bearing, ground_speed_kt, time_to_airport_hours in reacha
             "Fuel Required (kg)": round(fuel_required, 2)
         })
         
-        weather_category, color = categorize_weather(metar_report, taf_report, weather_time_window)
-        
         weather_info = f"METAR: {metar_report}\\nTAF: {taf_report}"
         popup_text = f"{airport['name']} ({airport['icao']})\\n{weather_info}"
         folium.Marker(
             location=[airport['lat'], airport['lon']],
             popup=popup_text,
-            icon=folium.Icon(color=color, icon="plane"),
+            icon=folium.Icon(color="blue", icon="plane"),
         ).add_to(m)
 
 
