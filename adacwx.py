@@ -171,36 +171,6 @@ with st.sidebar:
     alternate_required = st.checkbox("Alternate Required")
     alternate_fuel = st.number_input("Alternate Fuel (kg)", value=0, step=10) if alternate_required else 0
 
-    # Expandable section for fuel breakdown
-    with st.expander("Fuel Policy"):
-        system_test_and_air_taxi = 37
-        holding_final_reserve = 100
-        air_taxi_to_parking = 20
-        contingency_fuel = 0.1 * (total_fuel_kg - holding_final_reserve - system_test_and_air_taxi - air_taxi_to_parking)
-        trip_fuel_kg = total_fuel_kg - (system_test_and_air_taxi + holding_final_reserve + air_taxi_to_parking + contingency_fuel)
-    
-        # Ensure cruise_fuel_burn is defined before this block
-        cruise_fuel_burn = st.sidebar.number_input("Cruise Fuel Burn (kg/h)", value=250)
-    
-        # 15 minutes fuel calculation if alternate is not required
-        if not alternate_required:
-            fifteen_min_fuel = cruise_fuel_burn * 0.25
-            trip_fuel_kg -= fifteen_min_fuel
-            approach_fuel = 30
-        else:
-            fifteen_min_fuel = 0
-            approach_fuel = 60
-    
-        trip_fuel_kg -= (alternate_fuel + approach_fuel)
-    
-        fuel_data = {
-            "Fuel Policy": ["System Test / Air Taxi", "Trip Fuel", "Final Reserve", "15 Minutes Fuel" if not alternate_required else "Alternate Fuel", "Approach Fuel", "Air Taxi to Parking", "Contingency Fuel"],
-            "Fuel (kg)": [system_test_and_air_taxi, round(trip_fuel_kg), holding_final_reserve, round(fifteen_min_fuel) if not alternate_required else round(alternate_fuel), approach_fuel, air_taxi_to_parking, round(contingency_fuel)]
-        }
-    
-        df_fuel = pd.DataFrame(fuel_data)
-        st.table(df_fuel)
-
     # Input fields for wind direction and wind speed
     with st.expander("Wind Conditions"):
         col1, col2 = st.columns(2)
@@ -228,6 +198,33 @@ with st.sidebar:
             performance_penalty = st.number_input("Speed Penalty (%)", value=0)
             descend_rate = st.number_input("Descend Rate (fpm)", value=500)
 
+    # Expandable section for fuel breakdown
+    with st.expander("Fuel Policy"):
+        system_test_and_air_taxi = 37
+        holding_final_reserve = 100
+        air_taxi_to_parking = 20
+        contingency_fuel = 0.1 * (total_fuel_kg - holding_final_reserve - system_test_and_air_taxi - air_taxi_to_parking)
+        trip_fuel_kg = total_fuel_kg - (system_test_and_air_taxi + holding_final_reserve + air_taxi_to_parking + contingency_fuel)
+    
+        # 15 minutes fuel calculation if alternate is not required
+        if not alternate_required:
+            fifteen_min_fuel = cruise_fuel_burn * 0.25
+            trip_fuel_kg -= fifteen_min_fuel
+            approach_fuel = 30
+        else:
+            fifteen_min_fuel = 0
+            approach_fuel = 60
+    
+        trip_fuel_kg -= (alternate_fuel + approach_fuel)
+    
+        fuel_data = {
+            "Fuel Policy": ["System Test / Air Taxi", "Trip Fuel", "Final Reserve", "15 Minutes Fuel" if not alternate_required else "Alternate Fuel", "Approach Fuel", "Air Taxi to Parking", "Contingency Fuel"],
+            "Fuel (kg)": [system_test_and_air_taxi, round(trip_fuel_kg), holding_final_reserve, round(fifteen_min_fuel) if not alternate_required else round(alternate_fuel), approach_fuel, air_taxi_to_parking, round(contingency_fuel)]
+        }
+    
+        df_fuel = pd.DataFrame(fuel_data)
+        st.table(df_fuel)
+
 ###########################################################################################
 
 # Use the input values for performance calculations
@@ -248,9 +245,6 @@ descend_performance = {
     'fuel_burn_kgph': descend_fuel_burn,
     'descend_rate_fpm': descend_rate
 }
-
-# Extract cruise fuel burn rate for use in the fuel policy calculation
-cruise_fuel_burn = cruise_performance['fuel_burn_kgph']
 
 ###########################################################################################
 
