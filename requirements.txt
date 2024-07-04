@@ -1,3 +1,4 @@
+streamlit_autorefresh
 folium
 streamlit-folium
 opencv-python
