@@ -113,27 +113,6 @@ with st.sidebar:
     selected_base_name = st.selectbox('Select Home Base', base_names, index=base_names.index(default_base['name']))
     selected_base = next(base for base in helicopter_bases if base['name'] == selected_base_name)
 
-    # Fetch and display METAR data for the nearest airport to the selected base
-    reachable_airports = get_reachable_airports(selected_base['lat'], selected_base['lon'], 2, 0, 0, 1, 0, 0)  # Dummy values for initial fetch
-    if reachable_airports:
-        closest_airport = reachable_airports[0][0]  # Get the closest airport
-        metar_data = fetch_and_parse_metar(closest_airport['icao'], AVWX_API_KEY)
-        if isinstance(metar_data, dict):
-            airport_icao = closest_airport['icao']
-            observation_time = metar_data.get('time', {}).get('repr', 'N/A')
-            qnh = metar_data.get('altimeter', {}).get('value', 'No QNH Data')
-            temperature = metar_data.get('temperature', {}).get('value', 'N/A')
-            
-            col1, col2, col3, col4 = st.columns(4)
-            with col1:
-                st.metric("ICAO", f"{airport_icao}")
-            with col2:
-                st.metric("Time", f"{observation_time}")
-            with col3:
-                st.metric("QNH", f"{qnh}")
-            with col4:
-                st.metric("Temperature", f"{temperature}°C")
-
     st.markdown("")
     cruise_altitude_ft = st.slider(
         'Cruise Altitude',
