@@ -271,11 +271,15 @@ cruise_fuel_burn_rate = cruise_performance['fuel_burn_kgph']
 # Placeholder for remaining trip fuel, to be recalculated based on descent for each airport
 remaining_trip_fuel_kg = trip_fuel_kg - climb_fuel_burn
 
+# Calculate total flight time including climb, cruise, and descent
+descent_time_hours = 0  # Will be recalculated for each airport
+total_flight_time_hours = climb_time_hours + descent_time_hours + (remaining_trip_fuel_kg / cruise_fuel_burn_rate)
+
 # Get reachable airports
 reachable_airports = get_reachable_airports(
     selected_base['lat'], selected_base['lon'],
     total_flight_time_hours, climb_time_hours,
-    descent_time_hours, cruise_speed,
+    descent_time_hours, cruise_performance['speed_kt'],
     wind_speed, wind_direction
 )
 
