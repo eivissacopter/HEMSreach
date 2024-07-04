@@ -296,19 +296,30 @@ folium.Marker(
 reachable_airports_data = []
 for airport, distance, bearing, ground_speed_kt, time_to_airport_hours in reachable_airports:
     metar_data, taf_data = fetch_metar_taf_data(airport['icao'], AVWX_API_KEY)
-    
+
     if isinstance(metar_data, dict) and isinstance(taf_data, dict):
         metar_raw = metar_data.get('raw', '')
         taf_raw = taf_data.get('raw', '')
-        metar_report = parse_metar(metar_raw)
-        taf_report = parse_taf(taf_raw)
+
+        # Calculate descent time using destination airport elevation
+        airport_elevation_ft = airport.get('elevation', 500)  # Default to 500ft if not available
+        descent_time_hours = (cruise_altitude_ft - airport_elevation_ft) / descent_rate_fpm / 60
+
+        # Calculate fuel burn for descent
+        descent_fuel_burn = descent_time_hours * descend_performance['fuel_burn_kgph']
+
+        # Recalculate remaining trip fuel after descent
+        remaining_trip_fuel_kg = trip_fuel_kg - (climb_fuel_burn + descent_fuel_burn)
+
+        # Calculate cruise time based on remaining fuel
+        cruise_time_hours = remaining_trip_fuel_kg / cruise_fuel_burn_rate
 
         fuel_required = time_to_airport_hours * cruise_fuel_burn_rate
 
         reachable_airports_data.append({
             "Airport": f"{airport['name']} ({airport['icao']})",
-            "METAR": metar_report,
-            "TAF": taf_report,
+            "METAR": metar_raw,
+            "TAF": taf_raw,
             "Distance (NM)": round(distance, 2),
             "Time (hours)": round(time_to_airport_hours, 2),
             "Track (°)": round(bearing, 2),
@@ -316,7 +327,6 @@ for airport, distance, bearing, ground_speed_kt, time_to_airport_hours in reacha
             "Fuel Required (kg)": round(fuel_required, 2)
         })
         
-        weather_info = f"METAR: {metar_report}\\nTAF: {taf_report}"
         popup_text = f"{airport['name']} ({airport['icao']})"
         folium.Marker(
             location=[airport['lat'], airport['lon']],
