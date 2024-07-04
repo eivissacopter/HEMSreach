@@ -284,8 +284,8 @@ for airport, distance in reachable_airports:
         popup_text = f"{airport['name']} ({airport['icao']})\\n{weather_info}"
         reachable_airports_data.append({
             "Airport": f"{airport['name']} ({airport['icao']})",
-            "METAR": metar_data.get('raw', 'N/A'),
-            "TAF": taf_data.get('raw', 'N/A')
+            "Decoded METAR": metar_report,
+            "Decoded TAF": taf_report
         })
         folium.Marker(
             location=[airport['lat'], airport['lon']],
@@ -316,13 +316,13 @@ if reachable_airports_data:
         "200": "red", "400": "yellow", "700": "green", "1500": "blue"
     }
 
-    df_reachable_airports['METAR'] = df_reachable_airports['METAR'].apply(lambda x: highlight_weather_conditions(str(x), vis_thresholds, ceil_thresholds))
-    df_reachable_airports['TAF'] = df_reachable_airports['TAF'].apply(lambda x: highlight_weather_conditions(str(x), vis_thresholds, ceil_thresholds))
+    df_reachable_airports['Decoded METAR'] = df_reachable_airports['Decoded METAR'].apply(lambda x: highlight_weather_conditions(str(x), vis_thresholds, ceil_thresholds))
+    df_reachable_airports['Decoded TAF'] = df_reachable_airports['Decoded TAF'].apply(lambda x: highlight_weather_conditions(str(x), vis_thresholds, ceil_thresholds))
 
     # Display the table with highlighted METAR and TAF data
     st.markdown(df_reachable_airports.to_html(escape=False), unsafe_allow_html=True)
 else:
-    df_reachable_airports = pd.DataFrame(columns=["Airport", "METAR", "TAF"])
+    df_reachable_airports = pd.DataFrame(columns=["Airport", "Decoded METAR", "Decoded TAF"])
 
     # Display the table
     st.table(df_reachable_airports)
