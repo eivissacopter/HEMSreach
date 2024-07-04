@@ -20,40 +20,6 @@ AVWX_API_KEY = '6za8qC9A_ccwpCc_lus3atiuA7f3c4mwQKMGzW1RVvY'
 
 ###########################################################################################
 
-# Set the page configuration at the very top
-st.set_page_config(layout="wide")
-
-# Custom CSS to make the map full-screen and as the background
-st.markdown(
-    """
-    <style>
-    .reportview-container .main .block-container {
-        padding: 0;
-    }
-    .reportview-container .main {
-        background: none;
-        padding: 0;
-    }
-    .sidebar .sidebar-content {
-        background-color: #f8f9fa;
-    }
-    .fullScreenMap {
-        position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0;
-    }
-    .stSlider {
-        height: 100%;
-    }
-    .stNumberInput, .stTextInput {
-        display: inline-block;
-        margin-right: 10px;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
-
-###########################################################################################
-
 # Function to calculate distance and bearing between two points using the Haversine formula
 def haversine(lon1, lat1, lon2, lat2):
     R = 6371.0  # Earth radius in kilometers
