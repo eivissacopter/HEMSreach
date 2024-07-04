@@ -278,7 +278,7 @@ for airport, distance, bearing, ground_speed_kt, time_to_airport_hours in reacha
         })
         
         weather_info = f"METAR: {metar_report}\\nTAF: {taf_report}"
-        popup_text = f"{airport['name']} ({airport['icao']})\\n{weather_info}"
+        popup_text = f"{airport['name']} ({airport['icao']})"
         folium.Marker(
             location=[airport['lat'], airport['lon']],
             popup=popup_text,
