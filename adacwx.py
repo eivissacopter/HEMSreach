@@ -112,8 +112,7 @@ def fetch_metar_taf_data(icao, api_key):
 def parse_metar(metar_raw):
     try:
         metar = pytaf.METAR(metar_raw)
-        decoded_metar = metar.decode()
-        return str(decoded_metar)
+        return metar.decode()
     except Exception as e:
         return None
 
@@ -121,8 +120,7 @@ def parse_metar(metar_raw):
 def parse_taf(taf_raw):
     try:
         taf = pytaf.TAF(taf_raw)
-        decoded_taf = taf.decode()
-        return str(decoded_taf)
+        return taf.decode()
     except Exception as e:
         return None
 
@@ -286,8 +284,8 @@ for airport, distance in reachable_airports:
         popup_text = f"{airport['name']} ({airport['icao']})\\n{weather_info}"
         reachable_airports_data.append({
             "Airport": f"{airport['name']} ({airport['icao']})",
-            "Decoded METAR": metar_report if metar_report else "None",
-            "Decoded TAF": taf_report if taf_report else "None"
+            "METAR": metar_data.get('raw', 'N/A'),
+            "TAF": taf_data.get('raw', 'N/A')
         })
         folium.Marker(
             location=[airport['lat'], airport['lon']],
@@ -318,13 +316,13 @@ if reachable_airports_data:
         "200": "red", "400": "yellow", "700": "green", "1500": "blue"
     }
 
-    df_reachable_airports['Decoded METAR'] = df_reachable_airports['Decoded METAR'].apply(lambda x: highlight_weather_conditions(str(x), vis_thresholds, ceil_thresholds))
-    df_reachable_airports['Decoded TAF'] = df_reachable_airports['Decoded TAF'].apply(lambda x: highlight_weather_conditions(str(x), vis_thresholds, ceil_thresholds))
+    df_reachable_airports['METAR'] = df_reachable_airports['METAR'].apply(lambda x: highlight_weather_conditions(str(x), vis_thresholds, ceil_thresholds))
+    df_reachable_airports['TAF'] = df_reachable_airports['TAF'].apply(lambda x: highlight_weather_conditions(str(x), vis_thresholds, ceil_thresholds))
 
     # Display the table with highlighted METAR and TAF data
     st.markdown(df_reachable_airports.to_html(escape=False), unsafe_allow_html=True)
 else:
-    df_reachable_airports = pd.DataFrame(columns=["Airport", "Decoded METAR", "Decoded TAF"])
+    df_reachable_airports = pd.DataFrame(columns=["Airport", "METAR", "TAF"])
 
     # Display the table
     st.table(df_reachable_airports)
