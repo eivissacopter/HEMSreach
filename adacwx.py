@@ -8,6 +8,7 @@ from performance import H145D2_PERFORMANCE
 import folium
 from streamlit_folium import folium_static
 import pytz
+import pytaf
 
 # Set the page configuration at the very top
 st.set_page_config(layout="wide")
@@ -63,6 +64,7 @@ def haversine(lon1, lat1, lon2, lat2):
     return distance, bearing
 
 # Function to get reachable airports within a certain radius
+@st.cache_data
 def get_reachable_airports(base_lat, base_lon, flight_time_hours, cruise_speed_kt, wind_speed, wind_direction):
     reachable_airports = []
     for airport in airports:
@@ -84,6 +86,7 @@ def calculate_ground_speed(cruise_speed_kt, wind_speed, wind_direction, flight_d
     return ground_speed
 
 # Function to fetch METAR and TAF data from AVWX
+@st.cache_data
 def fetch_metar_taf_data(icao, api_key):
     headers = {"Authorization": f"Bearer {api_key}"}
     metar_url = f"https://avwx.rest/api/metar/{icao}?options=summary"
@@ -105,19 +108,19 @@ def fetch_metar_taf_data(icao, api_key):
 
     return metar_data, taf_data
 
-# Function to parse and interpret METAR data
+# Function to parse and interpret METAR data using pytaf
 def parse_metar(metar_raw):
     try:
-        metar = Metar(metar_raw)
-        return metar
+        metar = pytaf.METAR(metar_raw)
+        return metar.decode()
     except Exception as e:
         return None
 
-# Function to parse TAF data using python-metar-taf-parser
+# Function to parse TAF data using pytaf
 def parse_taf(taf_raw):
     try:
-        taf = Taf(taf_raw)
-        return taf
+        taf = pytaf.TAF(taf_raw)
+        return taf.decode()
     except Exception as e:
         return None
 
@@ -129,22 +132,18 @@ def categorize_weather(metar, taf, time_window_hours):
     def check_conditions(report):
         visibilities = []
         ceilings = []
-
         if report:
-            if isinstance(report, Metar):
-                if report.vis:
-                    visibilities.append(report.vis.distance.value)
-                if report.sky_conditions:
-                    ceilings.append(report.sky_conditions[0].base.value)
-
-            if isinstance(report, Taf):
-                for forecast in report.forecast:
-                    visibilities.append(forecast.visibility.distance.value)
-                    ceilings.extend([cloud.base.value for cloud in forecast.clouds if cloud.base])
-
+            if isinstance(report, pytaf.METAR):
+                if report['visibility']:
+                    visibilities.append(report['visibility'])
+                if report['clouds']:
+                    ceilings.append(report['clouds'][0]['base'])
+            if isinstance(report, pytaf.TAF):
+                for forecast in report['forecasts']:
+                    visibilities.append(forecast['visibility'])
+                    ceilings.extend([cloud['base'] for cloud in forecast['clouds'] if 'base' in cloud])
         visibilities = [v for v in visibilities if v is not None]
         ceilings = [c for c in ceilings if c is not None]
-
         return visibilities, ceilings
 
     metar_vis, metar_ceil = check_conditions(metar)
@@ -181,12 +180,12 @@ with st.sidebar:
 
     st.markdown("")
     cruise_altitude_ft = st.slider(
-        'Cruise Altitude', 
+        'Cruise Altitude',
         min_value=3000, max_value=10000, value=5000, step=1000,
         format="%d ft"
     )
     total_fuel_kg = st.slider(
-        'Total Fuel Upload', 
+        'Total Fuel Upload',
         min_value=300, max_value=723, value=500, step=50,
         format="%d kg"
     )
@@ -200,7 +199,6 @@ with st.sidebar:
         system_test_and_air_taxi = 37
         holding_final_reserve = 100
         air_taxi_to_parking = 20
-
         contingency_fuel = 0.1 * (total_fuel_kg - holding_final_reserve - system_test_and_air_taxi - air_taxi_to_parking)
         trip_fuel_kg = total_fuel_kg - (system_test_and_air_taxi + holding_final_reserve + air_taxi_to_parking + contingency_fuel)
 
@@ -219,6 +217,7 @@ with st.sidebar:
             "Fuel Policy": ["System Test / Air Taxi", "Trip Fuel", "Final Reserve", "15 Minutes Fuel" if not alternate_required else "Alternate Fuel", "Approach Fuel", "Air Taxi to Parking", "Contingency Fuel"],
             "Fuel (kg)": [system_test_and_air_taxi, round(trip_fuel_kg), holding_final_reserve, round(fifteen_min_fuel) if not alternate_required else round(alternate_fuel), approach_fuel, air_taxi_to_parking, round(contingency_fuel)]
         }
+
         df_fuel = pd.DataFrame(fuel_data)
         st.table(df_fuel)
 
@@ -232,22 +231,21 @@ with st.sidebar:
             alt_ok_vis = st.text_input("ALT OK Vis (m)", "900")
             no_alt_vis = st.text_input("NO ALT Vis (m)", "3000")
             nvfr_vis = st.text_input("NVFR OK Vis (m)", "5000")
-
         with col2:
             dest_ok_ceiling = st.text_input("DEST OK Ceiling (ft)", "200")
             alt_ok_ceiling = st.text_input("ALT OK Ceiling (ft)", "400")
             no_alt_ceiling = st.text_input("NO ALT Ceiling (ft)", "700")
             nvfr_ceiling = st.text_input("NVFR OK Ceiling (ft)", "1500")
 
-    wind_direction = st.text_input("Wind Direction (°)", "360")
-    wind_speed = st.text_input("Wind Speed (kt)", "0")
-    freezing_level = st.text_input("Freezing Level (ft)", "5000")
-    min_vectoring_altitude = st.text_input("Minimum Vectoring Altitude (ft)", "5000")
+        wind_direction = st.text_input("Wind Direction (°)", "360")
+        wind_speed = st.text_input("Wind Speed (kt)", "0")
+        freezing_level = st.text_input("Freezing Level (ft)", "5000")
+        min_vectoring_altitude = st.text_input("Minimum Vectoring Altitude (ft)", "5000")
 
-    wind_direction = float(wind_direction) if wind_direction else 0
-    wind_speed = float(wind_speed) if wind_speed else 0
-    freezing_level = float(freezing_level) if freezing_level else 5000
-    min_vectoring_altitude = float(min_vectoring_altitude) if min_vectoring_altitude else 5000
+        wind_direction = float(wind_direction) if wind_direction else 0
+        wind_speed = float(wind_speed) if wind_speed else 0
+        freezing_level = float(freezing_level) if freezing_level else 5000
+        min_vectoring_altitude = float(min_vectoring_altitude) if min_vectoring_altitude else 5000
 
 # Calculate mission radius
 fuel_burn_kgph = H145D2_PERFORMANCE['fuel_burn_kgph']
@@ -278,21 +276,17 @@ folium.Marker(
 reachable_airports_data = []
 for airport, distance in reachable_airports:
     metar_data, taf_data = fetch_metar_taf_data(airport['icao'], AVWX_API_KEY)
-    
     if isinstance(metar_data, dict) and isinstance(taf_data, dict):
         metar_report = parse_metar(metar_data.get('raw', ''))
         taf_report = parse_taf(taf_data.get('raw', ''))
         weather_category, color = categorize_weather(metar_report, taf_report, weather_time_window)
-        
-        weather_info = f"METAR: {metar_data.get('raw', 'N/A')}\nTAF: {taf_data.get('raw', 'N/A')}"
-        popup_text = f"{airport['name']} ({airport['icao']})\n{weather_info}"
-
+        weather_info = f"METAR: {metar_data.get('raw', 'N/A')}\\nTAF: {taf_data.get('raw', 'N/A')}"
+        popup_text = f"{airport['name']} ({airport['icao']})\\n{weather_info}"
         reachable_airports_data.append({
             "Airport": f"{airport['name']} ({airport['icao']})",
             "METAR": metar_data.get('raw', 'N/A'),
             "TAF": taf_data.get('raw', 'N/A')
         })
-
         folium.Marker(
             location=[airport['lat'], airport['lon']],
             popup=popup_text,
@@ -330,5 +324,5 @@ if reachable_airports_data:
 else:
     df_reachable_airports = pd.DataFrame(columns=["Airport", "METAR", "TAF"])
 
-# Display the table
-st.table(df_reachable_airports)
+    # Display the table
+    st.table(df_reachable_airports)
