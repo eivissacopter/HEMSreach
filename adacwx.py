@@ -128,6 +128,31 @@ def parse_taf(taf_raw):
         st.error(f"Error decoding TAF: {e}")
         return None
 
+# Function to convert pressure levels to altitude in feet
+def pressure_to_altitude(pressure_hPa):
+    return (1 - (pressure_hPa / 1013.25) ** 0.190284) * 145366.45
+
+# Function to get weather data from Open-Meteo API
+def get_weather_data(lat, lon):
+    base_url = "https://api.open-meteo.com/v1/forecast"
+    params = {
+        "latitude": lat,
+        "longitude": lon,
+        "hourly": ["cloud_cover_high", "temperature_700hPa", "temperature_850hPa", "temperature_900hPa", "wind_speed_10m", "wind_speed_700hPa", "wind_speed_850hPa", "wind_speed_900hPa"],
+        "start": datetime.utcnow().isoformat(),
+        "end": (datetime.utcnow() + timedelta(days=1)).isoformat()
+    }
+    response = requests.get(base_url, params=params)
+    return response.json()
+
+def calculate_freezing_level(temperature_profile):
+    freezing_level = None
+    for pressure, temp in temperature_profile.items():
+        if temp <= 0:
+            freezing_level = pressure_to_altitude(int(pressure.replace('hPa', '')))
+            break
+    return freezing_level
+
 # Sidebar for base selection and radius filter
 with st.sidebar:
     base_names = [base['name'] for base in helicopter_bases]
@@ -135,6 +160,35 @@ with st.sidebar:
     selected_base_name = st.selectbox('Select Home Base', base_names, index=base_names.index(default_base['name']))
     selected_base = next(base for base in helicopter_bases if base['name'] == selected_base_name)
 
+    # Fetch weather data
+    weather_data = get_weather_data(selected_base['lat'], selected_base['lon'])
+    
+    # Extract relevant weather data
+    cloud_cover_high = weather_data['hourly']['cloud_cover_high'][0]
+    temperature_profile = {
+        "700hPa": weather_data['hourly']['temperature_700hPa'][0],
+        "850hPa": weather_data['hourly']['temperature_850hPa'][0],
+        "900hPa": weather_data['hourly']['temperature_900hPa'][0],
+    }
+    wind_speed_10m = weather_data['hourly']['wind_speed_10m'][0]
+    
+    # Calculate freezing level
+    freezing_level_ft = calculate_freezing_level(temperature_profile)
+    
+    # Safely get wind aloft at the cruise altitude
+    cruise_pressure_hPa = int(1013.25 - cruise_altitude_ft / 27)
+    wind_speed_cruise_alt = weather_data['hourly'].get(f'wind_speed_{cruise_pressure_hPa}hPa', [None])[0]
+    
+    # Display weather data below home base selector
+    st.markdown("### Weather Data at Home Base")
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("Cloud Cover High", f"{cloud_cover_high}%")
+    with col2:
+        st.metric("Freezing Level", f"{freezing_level_ft:.0f} ft" if freezing_level_ft else "N/A")
+    with col3:
+        st.metric("Wind Aloft", f"{wind_speed_cruise_alt} kt at {cruise_altitude_ft} ft" if wind_speed_cruise_alt is not None else "N/A")
+    
     st.markdown("")
     cruise_altitude_ft = st.slider(
         'Cruise Altitude',
