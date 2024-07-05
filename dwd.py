@@ -17,7 +17,7 @@ def fetch_weather_data_sftp():
     sftp = paramiko.SFTPClient.from_transport(transport)
     
     # List the files in the directory and get the most recent file
-    directory_path = '/path/to/weather/data/'  # Adjust the path
+    directory_path = '/aviation/ACT/'  # Adjust the path as needed
     file_list = sftp.listdir(directory_path)
     
     # Assuming files are named in a way that most recent file is always at the end
