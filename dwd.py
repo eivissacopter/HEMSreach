@@ -7,11 +7,7 @@ from streamlit_folium import st_folium
 import io
 
 # Load secrets
-data_server = {
-    "server": "data.dwd.de",
-    "user": "wv22",
-    "password": "pGCabj;Iqv!wv7fbzjSVy"
-}
+data_server = st.secrets["data_server"]
 geo_server = st.secrets["geo_server"]
 
 # Single airport for demonstration
@@ -52,9 +48,16 @@ def find_latest_file(directory_path, hours_back=24):
 # Function to parse the .dat file content and return a DataFrame
 def parse_forecast_data(file_content):
     try:
-        # Decode the content and split by lines
-        lines = file_content.decode('utf-8').strip().split('\n')
-        
+        # Try different encodings
+        for encoding in ['utf-8', 'latin1', 'iso-8859-1']:
+            try:
+                lines = file_content.decode(encoding).strip().split('\n')
+                break
+            except UnicodeDecodeError:
+                continue
+        else:
+            raise UnicodeDecodeError("All decoding attempts failed.")
+
         # Extract the header row
         headers = lines[4].split(';')[1:-1]
         
@@ -81,7 +84,7 @@ def create_map():
     m = folium.Map(location=eddf_coords, zoom_start=10)
 
     # Add GeoServer WMS layer
-    wms_url = f"https://{geo_server['user']}:{geo_server['password']}@maps.dwd.de/geoserver/dwd/ICON_ADWICE_POLYGONE/ows?"
+    wms_url = f"https://{geo_server['user']}:{geo_server['password']}@{geo_server['server'].replace('https://', '')}/geoserver/dwd/ICON_ADWICE_POLYGONE/ows?"
 
     folium.raster_layers.WmsTileLayer(
         url=wms_url,
