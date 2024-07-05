@@ -59,8 +59,9 @@ def fetch_metar_data_sftp(airport):
 # Function to transform data into a DataFrame
 def transform_data_to_dataframe(file_content):
     try:
-        # Example: assuming the file content is CSV data
-        df = pd.read_csv(io.StringIO(file_content.decode('utf-8')))
+        # Assuming each line in the txt file is a METAR report
+        lines = file_content.decode('utf-8').strip().split('\n')
+        df = pd.DataFrame(lines, columns=['METAR Report'])
         return df
     except Exception as e:
         st.error(f"Error transforming data: {e}")
