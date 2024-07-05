@@ -9,6 +9,7 @@ import folium
 from streamlit_folium import folium_static
 import pytz
 import pytaf
+import json
 
 ###########################################################################################
 
@@ -54,6 +55,10 @@ st.markdown(
 st_autorefresh(interval=1800 * 1000, key="data_refresh")
 
 AVWX_API_KEY = '6za8qC9A_ccwpCc_lus3atiuA7f3c4mwQKMGzW1RVvY'
+
+# Load the GeoJSON file
+with open('mrva.geojson') as f:
+    geojson_data = json.load(f)
 
 ###########################################################################################
 
@@ -233,7 +238,10 @@ with st.sidebar:
     
         df_fuel = pd.DataFrame(fuel_data)
         st.table(df_fuel)
-        
+
+        # Add checkbox to toggle GeoJSON layer
+        show_geojson = st.sidebar.checkbox('Show GeoJSON Layer')
+
 ###########################################################################################
 
 # Use the input values for performance calculations
@@ -300,6 +308,10 @@ folium.TileLayer(
     overlay=True,
     control=True
 ).add_to(m)
+
+# Add GeoJSON layer to map if checkbox is checked
+if show_geojson:
+    folium.GeoJson(geojson_data, name="MRVA Layer").add_to(m)
 
 # Add selected location to map
 folium.Marker(
