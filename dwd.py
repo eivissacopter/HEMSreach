@@ -4,7 +4,6 @@ import streamlit as st
 from datetime import datetime
 import folium
 from streamlit_folium import st_folium
-from bs4 import BeautifulSoup
 import io
 
 # Load secrets
@@ -13,6 +12,12 @@ geo_server = st.secrets["geo_server"]
 
 # Single airport for demonstration
 airport = "EDDF"
+
+# Function to construct the expected file name based on the current date and time
+def construct_file_name():
+    now = datetime.utcnow()
+    file_name = f"airport_forecast_eddf_{now.strftime('%Y%m%d%H')}0000.dat"
+    return file_name
 
 # Function to fetch data via HTTPS
 def fetch_data_https(directory_path, file_name):
@@ -28,28 +33,6 @@ def fetch_data_https(directory_path, file_name):
             return None
     except Exception as e:
         st.error(f"Error fetching data: {e}")
-        return None
-
-# Function to get the latest file name via HTTPS
-def get_latest_file_name(directory_path):
-    try:
-        base_url = f"https://{data_server['server']}{directory_path}"
-        st.write(f"Listing files from URL: {base_url}")  # Log the URL for debugging
-        response = requests.get(base_url, auth=(data_server["user"], data_server["password"]))
-        
-        if response.status_code == 200:
-            # Parse the HTML content to extract file names
-            soup = BeautifulSoup(response.content, 'html.parser')
-            links = soup.find_all('a')
-            file_list = [link.get('href') for link in links if link.get('href').endswith('.dat')]
-            if file_list:
-                latest_file = sorted(file_list)[-1]
-                return latest_file
-        else:
-            st.error(f"Failed to list files: {response.status_code}")
-            return None
-    except Exception as e:
-        st.error(f"Error listing files: {e}")
         return None
 
 # Function to parse the .dat file content and return a DataFrame
@@ -103,16 +86,15 @@ st.title("Weather Forecast and Map for EDDF")
 
 # Fetch and display the weather forecast data for the airport EDDF
 directory_path = f'/aviation/ATM/AirportWxForecast/{airport}'
-latest_file = get_latest_file_name(directory_path)
+file_name = construct_file_name()
 
-if latest_file:
-    file_content = fetch_data_https(directory_path, latest_file)
-    if file_content:
-        forecast_df = parse_forecast_data(file_content)
-        if forecast_df is not None:
-            # Display the collected data
-            st.write(f"Data last updated at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-            st.dataframe(forecast_df)
+file_content = fetch_data_https(directory_path, file_name)
+if file_content:
+    forecast_df = parse_forecast_data(file_content)
+    if forecast_df is not None:
+        # Display the collected data
+        st.write(f"Data last updated at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        st.dataframe(forecast_df)
 else:
     st.write("No data available")
 
