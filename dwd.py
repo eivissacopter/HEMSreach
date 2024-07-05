@@ -4,6 +4,7 @@ import streamlit as st
 from datetime import datetime
 import folium
 from streamlit_folium import st_folium
+from bs4 import BeautifulSoup
 import io
 
 # Load secrets
@@ -17,6 +18,7 @@ airport = "EDDF"
 def fetch_data_https(directory_path, file_name):
     try:
         base_url = f"https://{data_server['server']}{directory_path}/{file_name}"
+        st.write(f"Fetching data from URL: {base_url}")  # Log the URL for debugging
         response = requests.get(base_url, auth=(data_server["user"], data_server["password"]))
         
         if response.status_code == 200:
@@ -32,10 +34,14 @@ def fetch_data_https(directory_path, file_name):
 def get_latest_file_name(directory_path):
     try:
         base_url = f"https://{data_server['server']}{directory_path}"
+        st.write(f"Listing files from URL: {base_url}")  # Log the URL for debugging
         response = requests.get(base_url, auth=(data_server["user"], data_server["password"]))
         
         if response.status_code == 200:
-            file_list = response.text.split('\n')
+            # Parse the HTML content to extract file names
+            soup = BeautifulSoup(response.content, 'html.parser')
+            links = soup.find_all('a')
+            file_list = [link.get('href') for link in links if link.get('href').endswith('.dat')]
             if file_list:
                 latest_file = sorted(file_list)[-1]
                 return latest_file
