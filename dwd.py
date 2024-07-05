@@ -1,7 +1,6 @@
 import paramiko
 import pandas as pd
 import streamlit as st
-import time
 from datetime import datetime
 import io
 
@@ -9,18 +8,22 @@ import io
 data_server = st.secrets["data_server"]
 geo_server = st.secrets["geo_server"]
 
-# Function to fetch weather data via SFTP
-def fetch_weather_data_sftp():
+# List of airports based on the document structure
+airports = ["EDDB", "EDDC", "EDDE", "EDDF", "EDDG", "EDDH", "EDDK", 
+            "EDDL", "EDDM", "EDDN", "EDDP", "EDDR", "EDDS", "EDDV", "EDDW"]
+
+# Function to fetch METAR data via SFTP
+def fetch_metar_data_sftp(airport):
     transport = paramiko.Transport((data_server["server"], data_server["port"]))
     transport.connect(username=data_server["user"], password=data_server["password"])
     
     sftp = paramiko.SFTPClient.from_transport(transport)
     
-    # List the files in the directory and get the most recent file
-    directory_path = '/aviation/ACT/'  # Adjust the path as needed
+    # List the files in the airport's METAR_SPECI directory and get the most recent file
+    directory_path = f'/aviation/ACT/{airport}/METAR_SPECI/'  # Adjust the path as needed
     file_list = sftp.listdir(directory_path)
     
-    # Assuming files are named in a way that most recent file is always at the end
+    # Assuming files are named in a way that the most recent file is always at the end
     latest_file = sorted(file_list)[-1]
     
     file_path = f"{directory_path}/{latest_file}"
@@ -40,20 +43,25 @@ def transform_data_to_dataframe(file_content):
     return df
 
 # Streamlit setup
-st.title("Weather Data Viewer")
+st.title("Latest METARs Viewer")
 
-# Main loop to update data every 30 minutes
-while True:
-    # Fetch and transform data
+# Fetch and display the latest METAR data for each airport
+metar_data = []
+
+for airport in airports:
     try:
-        file_content = fetch_weather_data_sftp()
+        file_content = fetch_metar_data_sftp(airport)
         df = transform_data_to_dataframe(file_content)
-
-        # Display the data in Streamlit
-        st.write(f"Data last updated at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-        st.dataframe(df)
+        
+        # Assuming each row in the CSV represents a METAR report
+        latest_metar = df.iloc[-1]  # Get the most recent METAR
+        metar_data.append((airport, latest_metar))
     except Exception as e:
-        st.error(f"Error fetching data: {e}")
+        st.error(f"Error fetching data for {airport}: {e}")
 
-    # Sleep for 30 minutes
-    time.sleep(1800)
+# Display the collected METAR data
+if metar_data:
+    st.write(f"Data last updated at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    for airport, metar in metar_data:
+        st.write(f"{airport}: {metar}")
+
