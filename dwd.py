@@ -11,8 +11,8 @@ data_server = st.secrets["data_server"]
 airports = ["EDDB", "EDDC", "EDDE", "EDDF", "EDDG", "EDDH", "EDDK", 
             "EDDL", "EDDM", "EDDN", "EDDP", "EDDR", "EDDS", "EDDV", "EDDW"]
 
-# Function to fetch METAR data via SFTP
-def fetch_metar_data_sftp(airport):
+# Function to fetch data via SFTP
+def fetch_data_sftp(airport, directory_path):
     try:
         hostname = data_server["server"]
         port = int(data_server["port"])  # Ensure the port is an integer
@@ -24,8 +24,7 @@ def fetch_metar_data_sftp(airport):
         
         sftp = paramiko.SFTPClient.from_transport(transport)
         
-        # List the files in the airport's METAR_SPECI directory and get the most recent file
-        directory_path = f'/aviation/ACT/{airport}/METAR_SPECI/'  # Adjust the path as needed
+        # List the files in the specified directory and get the most recent file
         file_list = sftp.listdir(directory_path)
         
         if not file_list:
@@ -46,32 +45,35 @@ def fetch_metar_data_sftp(airport):
     except:
         return None
 
-# Function to extract METAR report from file content
-def extract_metar_report(file_content):
+# Function to extract report from file content
+def extract_report(file_content, line_number):
     try:
         # Decode the content and split by lines
         lines = file_content.decode('utf-8').strip().split('\n')
-        # Assuming the METAR report is on the fourth line
-        metar_report = lines[3]
-        return metar_report
+        # Assuming the report is on the specified line
+        report = lines[line_number]
+        return report
     except:
         return None
 
 # Streamlit setup
-st.title("Latest METARs Viewer")
+st.title("Latest METAR and TAF Viewer")
 
-# Fetch and display the latest METAR data for each airport
-metar_data = []
+# Fetch and display the latest METAR and TAF data for each airport
+data = []
 
 for airport in airports:
-    file_content = fetch_metar_data_sftp(airport)
-    if file_content:
-        metar_report = extract_metar_report(file_content)
-        if metar_report:
-            metar_data.append((airport, metar_report))
+    metar_content = fetch_data_sftp(airport, f'/aviation/ACT/{airport}/METAR_SPECI')
+    taf_content = fetch_data_sftp(airport, f'/aviation/ATM/AirportWxForecast/{airport}')
+    
+    metar_report = extract_report(metar_content, 3) if metar_content else "No data"
+    taf_report = extract_report(taf_content, 3) if taf_content else "No data"
+    
+    data.append([airport, metar_report, taf_report])
 
-# Display the collected METAR data
-if metar_data:
-    st.write(f"Data last updated at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    for airport, metar in metar_data:
-        st.write(f"{airport}: {metar}")
+# Convert the data into a DataFrame
+df = pd.DataFrame(data, columns=["Airport", "METAR", "TAF"])
+
+# Display the collected data
+st.write(f"Data last updated at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+st.dataframe(df)
