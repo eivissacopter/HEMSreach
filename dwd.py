@@ -19,8 +19,6 @@ def fetch_metar_data_sftp(airport):
         username = data_server["user"]
         password = data_server["password"]
         
-        st.write(f"Connecting to {hostname} on port {port} for airport {airport}")
-        
         transport = paramiko.Transport((hostname, port))
         transport.connect(username=username, password=password)
         
@@ -31,12 +29,10 @@ def fetch_metar_data_sftp(airport):
         file_list = sftp.listdir(directory_path)
         
         if not file_list:
-            st.error(f"No files found in directory {directory_path} for {airport}")
             return None
         
         # Assuming files are named in a way that the most recent file is always at the end
         latest_file = sorted(file_list)[-1]
-        st.write(f"Latest file for {airport}: {latest_file}")
         
         file_path = f"{directory_path}/{latest_file}"
         
@@ -47,14 +43,8 @@ def fetch_metar_data_sftp(airport):
         transport.close()
         
         return file_content
-    except paramiko.SSHException as e:
-        st.error(f"SSH error for {airport}: {e}")
-    except paramiko.AuthenticationException as e:
-        st.error(f"Authentication error for {airport}: {e}")
-    except paramiko.SFTPError as e:
-        st.error(f"SFTP error for {airport}: {e}")
-    except Exception as e:
-        st.error(f"Error fetching data for {airport}: {e}")
+    except:
+        return None
 
 # Function to extract METAR report from file content
 def extract_metar_report(file_content):
@@ -64,8 +54,7 @@ def extract_metar_report(file_content):
         # Assuming the METAR report is on the fourth line
         metar_report = lines[3]
         return metar_report
-    except Exception as e:
-        st.error(f"Error extracting METAR report: {e}")
+    except:
         return None
 
 # Streamlit setup
@@ -75,19 +64,14 @@ st.title("Latest METARs Viewer")
 metar_data = []
 
 for airport in airports:
-    try:
-        file_content = fetch_metar_data_sftp(airport)
-        if file_content:
-            st.write(f"File content for {airport} received, length: {len(file_content)} bytes")
-            metar_report = extract_metar_report(file_content)
-            if metar_report:
-                metar_data.append((airport, metar_report))
-    except Exception as e:
-        st.error(f"Error processing data for {airport}: {e}")
+    file_content = fetch_metar_data_sftp(airport)
+    if file_content:
+        metar_report = extract_metar_report(file_content)
+        if metar_report:
+            metar_data.append((airport, metar_report))
 
 # Display the collected METAR data
 if metar_data:
     st.write(f"Data last updated at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     for airport, metar in metar_data:
         st.write(f"{airport}: {metar}")
-
