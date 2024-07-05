@@ -22,16 +22,15 @@ def construct_file_name(dt):
 def fetch_data_https(directory_path, file_name):
     try:
         base_url = f"https://{data_server['server']}{directory_path}/{file_name}"
-        st.write(f"Fetching data from URL: {base_url}")  # Log the URL for debugging
         response = requests.get(base_url, auth=(data_server["user"], data_server["password"]))
         
         if response.status_code == 200:
             return response.content
         else:
-            st.error(f"Failed to fetch data: {response.status_code}")
+            st.warning(f"Failed to fetch data from URL: {base_url} - Status code: {response.status_code}")
             return None
     except Exception as e:
-        st.error(f"Error fetching data: {e}")
+        st.error(f"Error fetching data from URL: {base_url} - Error: {e}")
         return None
 
 # Function to find the latest available file by iterating over the past few hours
@@ -109,8 +108,10 @@ if file_content:
     forecast_df = parse_forecast_data(file_content)
     if forecast_df is not None:
         # Display the collected data
-        st.write(f"Data last updated at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        st.write(f"Data last updated at {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')}")
         st.dataframe(forecast_df)
+    else:
+        st.write("Parsed data is empty or invalid.")
 else:
     st.write("No data available")
 
