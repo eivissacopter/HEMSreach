@@ -286,14 +286,19 @@ reachable_airports = get_reachable_airports(
 
 ###########################################################################################
 
+# Example URL from your Unraid server
+tile_url = 'https://nginx.eivissacopter.com/tiles/{z}/{x}/{y}.png'
+
 # Create map centered on selected location
 m = folium.Map(location=[selected_location['lat'], selected_location['lon']], zoom_start=7)
 
 # Add OpenFlightMap tiles
 folium.TileLayer(
-    tiles='https://{s}.tile.openflightmaps.org/{z}/{x}/{y}.png',
+    tiles=tile_url,
     attr='&copy; <a href="https://www.openflightmaps.org">OpenFlightMaps</a>',
-    name='OpenFlightMaps'
+    name='OpenFlightMaps',
+    overlay=True,
+    control=True
 ).add_to(m)
 
 # Add selected location to map
