@@ -56,15 +56,16 @@ def fetch_metar_data_sftp(airport):
     except Exception as e:
         st.error(f"Error fetching data for {airport}: {e}")
 
-# Function to transform data into a DataFrame
-def transform_data_to_dataframe(file_content):
+# Function to extract METAR report from file content
+def extract_metar_report(file_content):
     try:
-        # Assuming each line in the txt file is a METAR report
+        # Decode the content and split by lines
         lines = file_content.decode('utf-8').strip().split('\n')
-        df = pd.DataFrame(lines, columns=['METAR Report'])
-        return df
+        # Assuming the METAR report is on the fourth line
+        metar_report = lines[3]
+        return metar_report
     except Exception as e:
-        st.error(f"Error transforming data: {e}")
+        st.error(f"Error extracting METAR report: {e}")
         return None
 
 # Streamlit setup
@@ -78,11 +79,9 @@ for airport in airports:
         file_content = fetch_metar_data_sftp(airport)
         if file_content:
             st.write(f"File content for {airport} received, length: {len(file_content)} bytes")
-            df = transform_data_to_dataframe(file_content)
-            if df is not None:
-                # Assuming each row in the CSV represents a METAR report
-                latest_metar = df.iloc[-1]  # Get the most recent METAR
-                metar_data.append((airport, latest_metar))
+            metar_report = extract_metar_report(file_content)
+            if metar_report:
+                metar_data.append((airport, metar_report))
     except Exception as e:
         st.error(f"Error processing data for {airport}: {e}")
 
@@ -90,6 +89,5 @@ for airport in airports:
 if metar_data:
     st.write(f"Data last updated at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     for airport, metar in metar_data:
-        st.write(f"{airport}:")
-        st.dataframe(metar.to_frame().T)  # Display each METAR as a table
+        st.write(f"{airport}: {metar}")
 
