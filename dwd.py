@@ -3,6 +3,7 @@ import pandas as pd
 import streamlit as st
 from datetime import datetime
 import io
+from owslib.wms import WebMapService
 
 # Load secrets
 data_server = st.secrets["data_server"]
@@ -64,4 +65,31 @@ if metar_data:
     st.write(f"Data last updated at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     for airport, metar in metar_data:
         st.write(f"{airport}: {metar}")
+
+# Fetch and display map data from DWD WMS server
+wms_url = "https://maps.dwd.de/geoserver/dwd/ows?service=WMS&version=1.3.0&request=GetCapabilities"
+wms = WebMapService(wms_url)
+
+# List available layers
+layers = list(wms.contents)
+
+# Display available layers
+st.subheader("Available WMS Layers")
+for layer in layers:
+    st.write(layer)
+
+# Example of fetching and displaying a specific layer
+selected_layer = st.selectbox("Select a layer to display", layers)
+
+if selected_layer:
+    img = wms.getmap(
+        layers=[selected_layer],
+        srs='EPSG:4326',
+        bbox=(5.0, 47.0, 15.0, 55.0),  # Bounding box for Germany
+        size=(800, 600),
+        format='image/png',
+        transparent=True
+    )
+
+    st.image(img.read(), caption=f"{selected_layer} layer from DWD WMS")
 
