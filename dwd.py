@@ -13,55 +13,24 @@ airports = ["EDDB", "EDDC", "EDDE", "EDDF", "EDDG", "EDDH", "EDDK",
 
 # Function to fetch METAR data via SFTP
 def fetch_metar_data_sftp(airport):
-    transport = paramiko.Transport((data_server["server"], data_server["port"]))
-    transport.connect(username=data_server["user"], password=data_server["password"])
-    
-    sftp = paramiko.SFTPClient.from_transport(transport)
-    
-    # List the files in the airport's METAR_SPECI directory and get the most recent file
-    directory_path = f'/aviation/ACT/{airport}/METAR_SPECI/'  # Adjust the path as needed
-    file_list = sftp.listdir(directory_path)
-    
-    # Assuming files are named in a way that the most recent file is always at the end
-    latest_file = sorted(file_list)[-1]
-    
-    file_path = f"{directory_path}/{latest_file}"
-    
-    with sftp.file(file_path, mode='r') as file:
-        file_content = file.read()
-    
-    sftp.close()
-    transport.close()
-    
-    return file_content
-
-# Function to transform data into a DataFrame
-def transform_data_to_dataframe(file_content):
-    # Example: assuming the file content is CSV data
-    df = pd.read_csv(io.StringIO(file_content.decode('utf-8')))
-    return df
-
-# Streamlit setup
-st.title("Latest METARs Viewer")
-
-# Fetch and display the latest METAR data for each airport
-metar_data = []
-
-for airport in airports:
     try:
-        file_content = fetch_metar_data_sftp(airport)
-        df = transform_data_to_dataframe(file_content)
+        hostname = data_server["server"]
+        port = data_server["port"]
+        username = data_server["user"]
+        password = data_server["password"]
         
-        # Assuming each row in the CSV represents a METAR report
-        latest_metar = df.iloc[-1]  # Get the most recent METAR
-        metar_data.append((airport, latest_metar))
-    except Exception as e:
-        st.error(f"Error fetching data for {airport}: {e}")
-
-# Display the collected METAR data
-if metar_data:
-    st.write(f"Data last updated at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    for airport, metar in metar_data:
-        st.write(f"{airport}:")
-        st.dataframe(metar.to_frame().T)  # Display each METAR as a table
-
+        st.write(f"Connecting to {hostname} on port {port} for airport {airport}")
+        
+        transport = paramiko.Transport((hostname, port))
+        transport.connect(username=username, password=password)
+        
+        sftp = paramiko.SFTPClient.from_transport(transport)
+        
+        # List the files in the airport's METAR_SPECI directory and get the most recent file
+        directory_path = f'/aviation/ACT/{airport}/METAR_SPECI/'  # Adjust the path as needed
+        file_list = sftp.listdir(directory_path)
+        
+        # Assuming files are named in a way that the most recent file is always at the end
+        latest_file = sorted(file_list)[-1]
+        
+       
