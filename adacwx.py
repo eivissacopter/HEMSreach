@@ -9,6 +9,7 @@ import folium
 from streamlit_folium import folium_static
 import pytz
 import pytaf
+import os
 import json
 
 ###########################################################################################
@@ -56,9 +57,17 @@ st_autorefresh(interval=1800 * 1000, key="data_refresh")
 
 AVWX_API_KEY = '6za8qC9A_ccwpCc_lus3atiuA7f3c4mwQKMGzW1RVvY'
 
-# Load the GeoJSON file
-with open('mrva.geojson') as f:
-    geojson_data = json.load(f)
+geojson_data = None
+geojson_file_path = 'mrva.geojson'
+
+if os.path.exists(geojson_file_path):
+    try:
+        with open(geojson_file_path) as f:
+            geojson_data = json.load(f)
+    except json.JSONDecodeError as e:
+        st.error(f"Error loading GeoJSON file: {e}")
+else:
+    st.error("GeoJSON file not found.")
 
 ###########################################################################################
 
@@ -294,9 +303,6 @@ reachable_airports = get_reachable_airports(
 
 ###########################################################################################
 
-# Example URL from your Unraid server
-tile_url = 'https://nginx.eivissacopter.com/tiles/aero/512/latest/{z}/{x}/{y}.png'
-
 # Create map centered on selected location
 m = folium.Map(location=[selected_location['lat'], selected_location['lon']], zoom_start=7)
 
@@ -309,16 +315,9 @@ folium.TileLayer(
     control=True
 ).add_to(m)
 
-# Add GeoJSON layer to map if checkbox is checked
-if show_geojson:
+# Add GeoJSON layer to map if checkbox is checked and GeoJSON data is loaded
+if show_geojson and geojson_data:
     folium.GeoJson(geojson_data, name="MRVA Layer").add_to(m)
-
-# Add selected location to map
-folium.Marker(
-    location=[selected_location['lat'], selected_location['lon']],
-    popup=selected_location['name'],
-    icon=folium.Icon(color="blue", icon="info-sign"),
-).add_to(m)
 
 # Add reachable airports to map
 reachable_airports_data = []
