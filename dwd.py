@@ -15,7 +15,7 @@ airports = ["EDDB", "EDDC", "EDDE", "EDDF", "EDDG", "EDDH", "EDDK",
 def fetch_metar_data_sftp(airport):
     try:
         hostname = data_server["server"]
-        port = data_server["port"]
+        port = int(data_server["port"])  # Ensure the port is an integer
         username = data_server["user"]
         password = data_server["password"]
         
@@ -30,8 +30,13 @@ def fetch_metar_data_sftp(airport):
         directory_path = f'/aviation/ACT/{airport}/METAR_SPECI/'  # Adjust the path as needed
         file_list = sftp.listdir(directory_path)
         
+        if not file_list:
+            st.error(f"No files found in directory {directory_path} for {airport}")
+            return None
+        
         # Assuming files are named in a way that the most recent file is always at the end
         latest_file = sorted(file_list)[-1]
+        st.write(f"Latest file for {airport}: {latest_file}")
         
         file_path = f"{directory_path}/{latest_file}"
         
@@ -53,9 +58,13 @@ def fetch_metar_data_sftp(airport):
 
 # Function to transform data into a DataFrame
 def transform_data_to_dataframe(file_content):
-    # Example: assuming the file content is CSV data
-    df = pd.read_csv(io.StringIO(file_content.decode('utf-8')))
-    return df
+    try:
+        # Example: assuming the file content is CSV data
+        df = pd.read_csv(io.StringIO(file_content.decode('utf-8')))
+        return df
+    except Exception as e:
+        st.error(f"Error transforming data: {e}")
+        return None
 
 # Streamlit setup
 st.title("Latest METARs Viewer")
@@ -67,10 +76,12 @@ for airport in airports:
     try:
         file_content = fetch_metar_data_sftp(airport)
         if file_content:
+            st.write(f"File content for {airport} received, length: {len(file_content)} bytes")
             df = transform_data_to_dataframe(file_content)
-            # Assuming each row in the CSV represents a METAR report
-            latest_metar = df.iloc[-1]  # Get the most recent METAR
-            metar_data.append((airport, latest_metar))
+            if df is not None:
+                # Assuming each row in the CSV represents a METAR report
+                latest_metar = df.iloc[-1]  # Get the most recent METAR
+                metar_data.append((airport, latest_metar))
     except Exception as e:
         st.error(f"Error processing data for {airport}: {e}")
 
