@@ -7,12 +7,11 @@ import io
 # Load secrets
 data_server = st.secrets["data_server"]
 
-# List of airports based on the document structure
-airports = ["EDDB", "EDDC", "EDDE", "EDDF", "EDDG", "EDDH", "EDDK", 
-            "EDDL", "EDDM", "EDDN", "EDDP", "EDDR", "EDDS", "EDDV", "EDDW"]
+# Single airport for demonstration
+airport = "EDDF"
 
-# Function to fetch METAR data via SFTP
-def fetch_metar_data_sftp(airport):
+# Function to fetch data via SFTP
+def fetch_data_sftp(directory_path):
     try:
         hostname = data_server["server"]
         port = int(data_server["port"])  # Ensure the port is an integer
@@ -24,8 +23,7 @@ def fetch_metar_data_sftp(airport):
         
         sftp = paramiko.SFTPClient.from_transport(transport)
         
-        # List the files in the airport's METAR_SPECI directory and get the most recent file
-        directory_path = f'/aviation/ATM/AirportWxForecast/{airport}/'
+        # List the files in the specified directory and get the most recent file
         file_list = sftp.listdir(directory_path)
         
         if not file_list:
@@ -46,33 +44,42 @@ def fetch_metar_data_sftp(airport):
     except:
         return None
 
-# Function to extract METAR report from file content
-def extract_metar_report(file_content):
+# Function to parse the .dat file content and return a DataFrame
+def parse_forecast_data(file_content):
     try:
         # Decode the content and split by lines
         lines = file_content.decode('utf-8').strip().split('\n')
-        # Assuming the METAR report is on the fourth line
-        metar_report = lines[3]
-        return metar_report
-    except:
+        
+        # Extract the header row
+        headers = lines[4].split(';')[1:-1]
+        
+        # Extract the data rows starting from the 6th line
+        data_rows = []
+        for line in lines[5:]:
+            data = line.split(';')[1:-1]
+            if data:
+                data_rows.append(data)
+        
+        # Create a DataFrame
+        df = pd.DataFrame(data_rows, columns=headers)
+        return df
+    except Exception as e:
+        st.error(f"Error parsing data: {e}")
         return None
 
 # Streamlit setup
-st.title("Latest METARs Viewer")
+st.title("Weather Forecast for EDDF")
 
-# Fetch and display the latest METAR data for each airport
-metar_data = []
+# Fetch and display the weather forecast data for the airport EDDF
+directory_path = f'/aviation/ATM/AirportWxForecast/{airport}/'
+file_content = fetch_data_sftp(directory_path)
 
-for airport in airports:
-    file_content = fetch_metar_data_sftp(airport)
-    if file_content:
-        metar_report = extract_metar_report(file_content)
-        if metar_report:
-            metar_data.append((airport, metar_report))
+if file_content:
+    forecast_df = parse_forecast_data(file_content)
+    if forecast_df is not None:
+        # Display the collected data
+        st.write(f"Data last updated at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        st.dataframe(forecast_df)
+else:
+    st.write("No data available")
 
-# Convert the data into a DataFrame
-df = pd.DataFrame(metar_data, columns=["Airport", "METAR"])
-
-# Display the collected METAR data
-st.write(f"Data last updated at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-st.dataframe(df)
