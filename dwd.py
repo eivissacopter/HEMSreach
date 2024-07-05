@@ -1,47 +1,49 @@
-import paramiko
+import requests
 import pandas as pd
 import streamlit as st
 from datetime import datetime
+import folium
+from streamlit_folium import st_folium
 import io
 
 # Load secrets
 data_server = st.secrets["data_server"]
+geo_server = st.secrets["geo_server"]
 
 # Single airport for demonstration
 airport = "EDDF"
 
-# Function to fetch data via SFTP
-def fetch_data_sftp(directory_path):
+# Function to fetch data via HTTPS
+def fetch_data_https(directory_path, file_name):
     try:
-        hostname = data_server["server"]
-        port = int(data_server["port"])  # Ensure the port is an integer
-        username = data_server["user"]
-        password = data_server["password"]
+        base_url = f"https://{data_server['server']}{directory_path}/{file_name}"
+        response = requests.get(base_url, auth=(data_server["user"], data_server["password"]))
         
-        transport = paramiko.Transport((hostname, port))
-        transport.connect(username=username, password=password)
-        
-        sftp = paramiko.SFTPClient.from_transport(transport)
-        
-        # List the files in the specified directory and get the most recent file
-        file_list = sftp.listdir(directory_path)
-        
-        if not file_list:
+        if response.status_code == 200:
+            return response.content
+        else:
+            st.error(f"Failed to fetch data: {response.status_code}")
             return None
+    except Exception as e:
+        st.error(f"Error fetching data: {e}")
+        return None
+
+# Function to get the latest file name via HTTPS
+def get_latest_file_name(directory_path):
+    try:
+        base_url = f"https://{data_server['server']}{directory_path}"
+        response = requests.get(base_url, auth=(data_server["user"], data_server["password"]))
         
-        # Assuming files are named in a way that the most recent file is always at the end
-        latest_file = sorted(file_list)[-1]
-        
-        file_path = f"{directory_path}/{latest_file}"
-        
-        with sftp.file(file_path, mode='r') as file:
-            file_content = file.read()
-        
-        sftp.close()
-        transport.close()
-        
-        return file_content
-    except:
+        if response.status_code == 200:
+            file_list = response.text.split('\n')
+            if file_list:
+                latest_file = sorted(file_list)[-1]
+                return latest_file
+        else:
+            st.error(f"Failed to list files: {response.status_code}")
+            return None
+    except Exception as e:
+        st.error(f"Error listing files: {e}")
         return None
 
 # Function to parse the .dat file content and return a DataFrame
@@ -67,19 +69,48 @@ def parse_forecast_data(file_content):
         st.error(f"Error parsing data: {e}")
         return None
 
+# Function to create and display a folium map centered on EDDF
+def create_map():
+    # Coordinates for EDDF
+    eddf_coords = [50.0379, 8.5622]
+
+    # Create a folium map centered on EDDF
+    m = folium.Map(location=eddf_coords, zoom_start=10)
+
+    # Add GeoServer WMS layer
+    wms_url = f"https://{geo_server['user']}:{geo_server['password']}@maps.dwd.de/geoserver/dwd/ICON_ADWICE_POLYGONE/ows?"
+
+    folium.raster_layers.WmsTileLayer(
+        url=wms_url,
+        name='DWD WMS',
+        layers='dwd:ICON_ADWICE_POLYGONE',
+        attr='DWD',
+        fmt='image/png',
+        transparent=True,
+        version='1.3.0'
+    ).add_to(m)
+
+    return m
+
 # Streamlit setup
-st.title("Weather Forecast for EDDF")
+st.title("Weather Forecast and Map for EDDF")
 
 # Fetch and display the weather forecast data for the airport EDDF
-directory_path = f'/aviation/ATM/AirportWxForecast/{airport}/'
-file_content = fetch_data_sftp(directory_path)
+directory_path = f'/aviation/ATM/AirportWxForecast/{airport}'
+latest_file = get_latest_file_name(directory_path)
 
-if file_content:
-    forecast_df = parse_forecast_data(file_content)
-    if forecast_df is not None:
-        # Display the collected data
-        st.write(f"Data last updated at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-        st.dataframe(forecast_df)
+if latest_file:
+    file_content = fetch_data_https(directory_path, latest_file)
+    if file_content:
+        forecast_df = parse_forecast_data(file_content)
+        if forecast_df is not None:
+            # Display the collected data
+            st.write(f"Data last updated at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+            st.dataframe(forecast_df)
 else:
     st.write("No data available")
 
+# Create and display the map
+st.write("**Map centered on EDDF**")
+map_ = create_map()
+st_folium(map_, width=700, height=500)
