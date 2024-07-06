@@ -2,6 +2,14 @@ import streamlit as st
 import datetime
 import re
 
+def convert_qnh(qnh):
+    """Convert QNH from inches of mercury (A) to hectopascals (Q)."""
+    if qnh.startswith('A'):
+        inches = int(qnh[1:]) / 100
+        hpa = round(inches * 33.8639)
+        return f"Q{hpa}"
+    return qnh
+
 def decode_metar(metar):
     metar = re.sub(r'[\r\n]+', ' ', metar).strip()  # Remove \r and \n characters
 
@@ -12,16 +20,16 @@ def decode_metar(metar):
         'Wind': re.search(r'\d{3}\d{2}(G\d{2})?KT', metar).group(),
         'Visibility': re.search(r'\b\d{4}\b', metar).group(),
         'Variable Wind': re.search(r'\d{3}V\d{3}', metar).group() if re.search(r'\d{3}V\d{3}', metar) else '',
-        'Clouds': re.search(r'(FEW|SCT|BKN|OVC)\d{3}', metar).group() if re.search(r'(FEW|SCT|BKN|OVC)\d{3}', metar) else 'CAVOK',
-        'QNH': re.search(r'\bQ\d{4}\b', metar).group(),
+        'Clouds': re.findall(r'(FEW|SCT|BKN|OVC)\d{3}', metar),
+        'QNH': convert_qnh(re.search(r'\b(A\d{4}|Q\d{4})\b', metar).group()),
         'Trend': re.search(r'(TEMPO|BECMG|NOSIG)', metar).group() if re.search(r'(TEMPO|BECMG|NOSIG)', metar) else '',
         'Trend Details': re.search(r'(TEMPO|BECMG|NOSIG)\s+(.*)', metar).group(2) if re.search(r'(TEMPO|BECMG|NOSIG)\s+(.*)', metar) else ''
     }
 
     if 'Clouds' in data and data['Clouds'] != 'CAVOK':
-        cloud_base = re.search(r'\d{3}', data['Clouds'])
-        if cloud_base:
-            data['Ceiling'] = int(cloud_base.group()) * 100
+        if data['Clouds']:
+            cloud_bases = [int(cloud[3:]) * 100 for cloud in data['Clouds']]
+            data['Ceiling'] = min(cloud_bases)
         else:
             data['Ceiling'] = 'N/A'
     else:
@@ -46,7 +54,7 @@ def format_metar(data):
         "Wind": f"{data['Wind'][:3]}° / {data['Wind'][3:5]}kt",
         "Variable": f"{data['Variable Wind'][:3]}° - {data['Variable Wind'][4:]}°" if data['Variable Wind'] else "N/A",
         "Visibility": f"{data['Visibility']}m",
-        "Clouds": data['Clouds'][:3].capitalize(),
+        "Clouds": ', '.join([cloud[:3] for cloud in data['Clouds']]).capitalize() if data['Clouds'] else "CAVOK",
         "Ceiling": f"{data['Ceiling']}ft",
         "Temperature": f"{data['Temperature']}°C",
         "Dewpoint": f"{data['Dewpoint']}°C",
@@ -83,7 +91,7 @@ taf = st.text_area("Enter TAF:")
 hours_ahead = st.slider("Hours Ahead", 0, 9, 5)
 
 if st.button("Submit"):
-    if metar and taf:
+    if metar:
         metar_data = decode_metar(metar)
         formatted_metar_data = format_metar(metar_data)
 
@@ -91,18 +99,14 @@ if st.button("Submit"):
         st.table(list(formatted_metar_data.items()))
 
         # Process TAF similarly as METAR if needed
-        # ...
+        if taf:
+            taf_data = decode_metar(taf)  # Assuming similar decode function for TAF
+            formatted_taf_data = format_metar(taf_data)
 
-        # Assuming a function analyze_weather exists
-        # metar_data, taf_data, visibility, cloud_base, warnings = analyze_weather(metar, taf, hours_ahead)
-        # ...
+            st.subheader("Decoded TAF")
+            st.table(list(formatted_taf_data.items()))
 
         st.subheader("Analysis")
-        # if visibility is not None and cloud_base is not None:
-        #     st.write(f"Lowest Visibility in next {hours_ahead} hours: {visibility} meters")
-        #     st.write(f"Lowest Cloud Base in next {hours_ahead} hours: {cloud_base} feet")
-        # st.write("Warnings:")
-        # for warning in warnings:
-        #     st.write(f"- {warning}")
+        # Implement additional analysis if needed
     else:
-        st.warning("Please enter both METAR and TAF.")
+        st.warning("Please enter a METAR.")
