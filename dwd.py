@@ -48,8 +48,9 @@ def find_latest_file(base_url, hours_back=24):
     now = datetime.utcnow()
     for i in range(hours_back):
         dt = now - timedelta(hours=i)
+        date_time_str = dt.strftime('%d%H%M')
         for suffix in ['', '_CCA', '_CCB', '_CCC', '_CCD', '_CCE']:  # Variations with additional letters
-            url = f"{base_url}_{dt.strftime('%d%H%M')}{suffix}"
+            url = f"{base_url}_{date_time_str}{suffix}"
             file_content = fetch_data_https(url)
             if file_content:
                 return file_content
