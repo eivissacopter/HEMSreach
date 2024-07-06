@@ -117,14 +117,14 @@ def fetch_metar_taf_data_avwx(icao, api_key):
 
     try:
         response_metar = requests.get(metar_url, headers=headers)
-        response_metar.raise_for_status()  # Raise an HTTPError for bad responses
+        response_metar.raise_for_status()
         metar_data = response_metar.json()
     except requests.exceptions.RequestException as e:
         metar_data = f"Error fetching METAR data: {e}"
 
     try:
         response_taf = requests.get(taf_url, headers=headers)
-        response_taf.raise_for_status()  # Raise an HTTPError for bad responses
+        response_taf.raise_for_status()
         taf_data = response_taf.json()
     except requests.exceptions.RequestException as e:
         taf_data = f"Error fetching TAF data: {e}"
@@ -144,13 +144,12 @@ def fetch_metar_taf_data(icao, api_key):
 
     if not metar_data or not taf_data:
         avwx_metar, avwx_taf = fetch_metar_taf_data_avwx(icao, api_key)
-        if not metar_data:
+        if not metar_data and isinstance(avwx_metar, dict):
             metar_data = avwx_metar.get('raw', 'No METAR data available')
-        if not taf_data:
+        if not taf_data and isinstance(avwx_taf, dict):
             taf_data = avwx_taf.get('raw', 'No TAF data available')
 
     return metar_data, taf_data
-
 
 # Function to fetch directory listing
 def fetch_directory_listing(base_url):
