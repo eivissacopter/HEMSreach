@@ -4,40 +4,39 @@ import re
 
 def decode_metar(metar):
     metar = re.sub(r'[\r\n]+', ' ', metar).strip()  # Remove \r and \n characters
-    data = {}
 
-    # Regular expressions for different components
-    data['ICAO'] = re.search(r'\b[A-Z]{4}\b', metar).group()
-    data['Time'] = re.search(r'\d{6}Z', metar).group()
-    data['Wind'] = re.search(r'\d{5}(G\d{2})?KT', metar).group()
-    data['Visibility'] = re.search(r'\b\d{4}\b', metar).group()
-    data['Weather'] = re.search(r'(-|\+)?[A-Z]{2,4}', metar).group()
-    clouds = re.findall(r'(FEW|SCT|BKN|OVC)\d{3}', metar)
-    data['Clouds'] = ' '.join(clouds) if clouds else 'CAVOK'
-    temp_dew = re.search(r'\d{2}/\d{2}', metar)
-    data['Temperature/Dewpoint'] = temp_dew.group() if temp_dew else ''
-    qnh = re.search(r'\bQ\d{4}\b', metar)
-    data['QNH'] = qnh.group() if qnh else ''
-    remarks_match = re.search(r'REMARKS\s+(.*)', metar)
-    data['Remarks'] = remarks_match.group(1) if remarks_match else ''
+    data = {
+        'ICAO': re.search(r'\b[A-Z]{4}\b', metar).group(),
+        'Time': re.search(r'\d{6}Z', metar).group(),
+        'Wind': re.search(r'\d{3}\d{2}(G\d{2})?KT', metar).group(),
+        'Visibility': re.search(r'\b\d{4}\b', metar).group(),
+        'Variable Wind': re.search(r'\d{3}V\d{3}', metar).group() if re.search(r'\d{3}V\d{3}', metar) else '',
+        'Clouds': ' '.join(re.findall(r'(FEW|SCT|BKN|OVC)\d{3}', metar)),
+        'Temperature/Dewpoint': re.search(r'\d{2}/\d{2}', metar).group(),
+        'QNH': re.search(r'\bQ\d{4}\b', metar).group(),
+        'Trend': ' '.join(re.findall(r'(TEMPO|BECMG|NOSIG) .*?(?= TEMPO| BECMG| NOSIG|$)', metar))
+    }
 
+    # Split Temperature and Dewpoint
+    temp_dew = data['Temperature/Dewpoint'].split('/')
+    data['Temperature'] = temp_dew[0]
+    data['Dewpoint'] = temp_dew[1]
+    
     return data
 
 def decode_taf(taf):
     taf = re.sub(r'[\r\n]+', ' ', taf).strip()  # Remove \r and \n characters
-    data = {}
-
-    data['ICAO'] = re.search(r'\b[A-Z]{4}\b', taf).group()
-    data['Time'] = re.search(r'\d{6}Z', taf).group()
-    data['Validity'] = re.search(r'\d{4}/\d{4}', taf).group()
-    data['Wind'] = re.search(r'\d{5}(G\d{2})?KT', taf).group()
-    data['Visibility'] = re.search(r'\b\d{4}\b', taf).group()
-    data['Weather'] = re.search(r'(-|\+)?[A-Z]{2,4}', taf).group()
-    clouds = re.findall(r'(FEW|SCT|BKN|OVC)\d{3}', taf)
-    data['Clouds'] = ' '.join(clouds) if clouds else 'CAVOK'
-    changes_match = re.search(r'BECMG\s+(.*)', taf)
-    data['Changes'] = changes_match.group(1) if changes_match else ''
-
+    data = {
+        'ICAO': re.search(r'\b[A-Z]{4}\b', taf).group(),
+        'Time': re.search(r'\d{6}Z', taf).group(),
+        'Validity': re.search(r'\d{4}/\d{4}', taf).group(),
+        'Wind': re.search(r'\d{3}\d{2}(G\d{2})?KT', taf).group(),
+        'Visibility': re.search(r'\b\d{4}\b', taf).group(),
+        'Weather': re.search(r'(-|\+)?[A-Z]{2,4}', taf).group(),
+        'Clouds': ' '.join(re.findall(r'(FEW|SCT|BKN|OVC)\d{3}', taf)),
+        'Changes': ' '.join(re.findall(r'(TEMPO|BECMG|FM|TL|AT|PROB\d{2}) .*?(?= TEMPO| BECMG| FM| TL| AT| PROB\d{2}|$)', taf))
+    }
+    
     return data
 
 def parse_validity(validity):
@@ -50,12 +49,12 @@ def parse_validity(validity):
     except ValueError as e:
         raise ValueError(f"Error parsing TAF validity times: {e}")
 
-def parse_trends(remarks):
-    trends = re.findall(r'(BECMG|TEMPO|FM|TL|AT|PROB\d{2})\s+\d{4}/\d{4}\s+.*?(?=(BECMG|TEMPO|FM|TL|AT|PROB\d{2}|\s*$))', remarks)
-    parsed_trends = []
-    for trend in trends:
-        parsed_trends.append(trend[0] + ' ' + trend[1].strip())
-    return parsed_trends
+def parse_trends(trends):
+    trend_list = []
+    trend_patterns = re.findall(r'(TEMPO|BECMG|NOSIG) .*?(?= TEMPO| BECMG| NOSIG|$)', trends)
+    for trend in trend_patterns:
+        trend_list.append(trend.strip())
+    return trend_list
 
 def analyze_weather(metar, taf, hours_ahead):
     metar_data = decode_metar(metar)
@@ -82,39 +81,26 @@ def analyze_weather(metar, taf, hours_ahead):
     if 'TS' in metar_data['Weather'] or 'TS' in taf_data['Weather']:
         warnings.append('Thunderstorm detected.')
 
-    # Parse trends in METAR remarks
-    trends = parse_trends(metar_data['Remarks'])
+    trends = parse_trends(metar_data['Trend'])
 
-    # Create a timeline of weather changes
     timeline = []
 
-    # Add METAR trends to timeline
     for trend in trends:
         trend_type, trend_info = trend.split(maxsplit=1)
-        if trend_type == 'BECMG':
-            trend_start, trend_end, trend_details = trend_info.split(maxsplit=2)
-            trend_start_time = datetime.datetime.strptime(trend_start, '%d%H%M')
-            trend_end_time = datetime.datetime.strptime(trend_end, '%d%H%M')
-            timeline.append((trend_start_time, trend_end_time, trend_details))
+        if trend_type == 'TEMPO':
+            trend_details = trend_info.strip()
+            timeline.append((metar_time, future_time, trend_details))
 
-    # Add TAF changes to timeline
     taf_changes = taf_data['Changes'].split()
-    for i in range(0, len(taf_changes), 5):
-        change_time = taf_changes[i]
-        change_type = taf_changes[i + 1]
-        change_details = ' '.join(taf_changes[i + 2:i + 5])
-        if re.match(r'^\d{4}/\d{4}$', change_time):
-            change_start_time = datetime.datetime.strptime(change_time[:4] + "00", '%d%H%M')
-            change_end_time = datetime.datetime.strptime(change_time[5:] + "00", '%d%H%M')
-            timeline.append((change_start_time, change_end_time, change_details))
+    for change in taf_changes:
+        change_type, change_details = change.split(maxsplit=1)
+        timeline.append((taf_start_time, taf_end_time, change_details.strip()))
 
-    # Sort timeline by start time
     timeline.sort(key=lambda x: x[0])
 
     lowest_visibility = 9999
     lowest_cloud_base = 9999
 
-    # Evaluate timeline to find lowest visibility and cloud base in the specified hours ahead
     for start, end, details in timeline:
         if current_time <= start <= future_time:
             if 'CAVOK' in details:
@@ -132,7 +118,6 @@ def analyze_weather(metar, taf, hours_ahead):
             lowest_visibility = min(lowest_visibility, visibility)
             lowest_cloud_base = min(lowest_cloud_base, cloud_base)
 
-    # Add current METAR to timeline
     if current_time <= metar_time <= future_time:
         if 'CAVOK' in metar_data['Clouds']:
             visibility_metar = 9999
