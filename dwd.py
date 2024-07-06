@@ -8,14 +8,13 @@ import io
 
 # Load secrets
 data_server = st.secrets["data_server"]
-geo_server = st.secrets["geo_server"]
 
-# Single airport for demonstration
-airport = "eddf"
+# List of airports
+airports = ["edac", "eddr"]
 
 # Function to construct the expected file name based on a given datetime
-def construct_file_name(dt):
-    file_name = f"airport_forecast_eddf_{dt.strftime('%Y%m%d%H')}0000.dat"
+def construct_file_name(prefix, dt, airport_code):
+    file_name = f"{prefix}{airport_code.upper()}_{dt.strftime('%d%H%M')}"
     return file_name
 
 # Function to fetch data via HTTPS
@@ -34,45 +33,62 @@ def fetch_data_https(directory_path, file_name):
         return None
 
 # Function to find the latest available file by iterating over the past few hours
-def find_latest_file(directory_path, hours_back=24):
+def find_latest_file(directory_path, prefix, airport_code, hours_back=24):
     now = datetime.utcnow()
     for i in range(hours_back):
         dt = now - timedelta(hours=i)
-        file_name = construct_file_name(dt)
+        file_name = construct_file_name(prefix, dt, airport_code)
         file_content = fetch_data_https(directory_path, file_name)
         if file_content:
             return file_content
     return None
 
-# Function to parse the .dat file content and return a DataFrame
-def parse_forecast_data(file_content):
+# Function to parse the METAR data content
+def parse_metar_data(file_content):
     try:
-        # Try different encodings
-        for encoding in ['utf-8', 'latin1', 'iso-8859-1']:
-            try:
-                lines = file_content.decode(encoding).strip().split('\n')
-                break
-            except UnicodeDecodeError:
-                continue
-        else:
-            raise UnicodeDecodeError("All decoding attempts failed.")
-
-        # Extract the header row
-        headers = lines[4].split(';')[1:-1]
-        
-        # Extract the data rows starting from the 6th line
-        data_rows = []
-        for line in lines[5:]:
-            data = line.split(';')[1:-1]
-            if data:
-                data_rows.append(data)
-        
-        # Create a DataFrame
-        df = pd.DataFrame(data_rows, columns=headers)
-        return df
+        content = file_content.decode('utf-8').strip()
+        metar_message = content.split('METAR')[1].split('=')[0].strip()
+        return metar_message
     except Exception as e:
-        st.error(f"Error parsing data: {e}")
+        st.error(f"Error parsing METAR data: {e}")
         return None
+
+# Function to parse the TAF data content
+def parse_taf_data(file_content):
+    try:
+        content = file_content.decode('utf-8').strip()
+        taf_message = content.split('TAF')[1].split('=')[0].strip()
+        return taf_message
+    except Exception as e:
+        st.error(f"Error parsing TAF data: {e}")
+        return None
+
+# Streamlit setup
+st.title("Weather Forecast for Airports")
+
+# Dictionary to store METAR and TAF data
+airport_data = {}
+
+# Fetch METAR and TAF data for each airport
+for airport in airports:
+    directory_path_metar = f'/aviation/OPMET/METAR/DE/'
+    file_content_metar = find_latest_file(directory_path_metar, "SADL31_", airport)
+    metar_message = parse_metar_data(file_content_metar) if file_content_metar else None
+
+    directory_path_taf = f'/aviation/OPMET/TAF/DE/'
+    file_content_taf = find_latest_file(directory_path_taf, "FTDL31_", airport)
+    taf_message = parse_taf_data(file_content_taf) if file_content_taf else None
+
+    if metar_message and taf_message:
+        airport_data[airport.upper()] = {"METAR": metar_message, "TAF": taf_message}
+
+# Display data in a table
+if airport_data:
+    df = pd.DataFrame.from_dict(airport_data, orient='index')
+    st.write(f"Data last updated at {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')}")
+    st.dataframe(df)
+else:
+    st.write("No data available for airports with both METAR and TAF")
 
 # Function to create and display a folium map centered on EDDF
 def create_map():
@@ -81,39 +97,7 @@ def create_map():
 
     # Create a folium map centered on EDDF
     m = folium.Map(location=eddf_coords, zoom_start=10)
-
-    # Add GeoServer WMS layer
-    wms_url = f"https://{geo_server['user']}:{geo_server['password']}@{geo_server['server'].replace('https://', '')}/geoserver/dwd/ICON_ADWICE_POLYGONE/ows?"
-
-    folium.raster_layers.WmsTileLayer(
-        url=wms_url,
-        name='DWD WMS',
-        layers='dwd:ICON_ADWICE_POLYGONE',
-        attr='DWD',
-        fmt='image/png',
-        transparent=True,
-        version='1.3.0'
-    ).add_to(m)
-
     return m
-
-# Streamlit setup
-st.title("Weather Forecast and Map for EDDF")
-
-# Fetch and display the weather forecast data for the airport EDDF
-directory_path = f'/aviation/ATM/AirportWxForecast/{airport}'
-file_content = find_latest_file(directory_path)
-
-if file_content:
-    forecast_df = parse_forecast_data(file_content)
-    if forecast_df is not None:
-        # Display the collected data
-        st.write(f"Data last updated at {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')}")
-        st.dataframe(forecast_df)
-    else:
-        st.write("Parsed data is empty or invalid.")
-else:
-    st.write("No data available")
 
 # Create and display the map
 st.write("**Map centered on EDDF**")
