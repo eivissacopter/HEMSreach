@@ -4,34 +4,40 @@ import re
 
 def decode_metar(metar):
     metar = re.sub(r'[\r\n]+', ' ', metar).strip()  # Remove \r and \n characters
-    parts = metar.split()
-    data = {
-        'ICAO': parts[0],
-        'Time': parts[1],
-        'Wind': parts[2],
-        'Visibility': parts[3],
-        'Weather': parts[4] if parts[4] not in ('CAVOK', 'NSW') else '',
-        'Clouds': parts[5] if parts[4] not in ('CAVOK', 'NSW') else parts[4],
-        'Temperature/Dewpoint': parts[6],
-        'QNH': parts[7],
-        'Remarks': ' '.join(parts[8:])
-    }
+    data = {}
+
+    # Regular expressions for different components
+    data['ICAO'] = re.search(r'\b[A-Z]{4}\b', metar).group()
+    data['Time'] = re.search(r'\d{6}Z', metar).group()
+    data['Wind'] = re.search(r'\d{5}(G\d{2})?KT', metar).group()
+    data['Visibility'] = re.search(r'\b\d{4}\b', metar).group()
+    data['Weather'] = re.search(r'(-|\+)?[A-Z]{2,4}', metar).group()
+    clouds = re.findall(r'(FEW|SCT|BKN|OVC)\d{3}', metar)
+    data['Clouds'] = ' '.join(clouds) if clouds else 'CAVOK'
+    temp_dew = re.search(r'\d{2}/\d{2}', metar)
+    data['Temperature/Dewpoint'] = temp_dew.group() if temp_dew else ''
+    qnh = re.search(r'\bQ\d{4}\b', metar)
+    data['QNH'] = qnh.group() if qnh else ''
+    remarks_match = re.search(r'REMARKS\s+(.*)', metar)
+    data['Remarks'] = remarks_match.group(1) if remarks_match else ''
+
     return data
 
 def decode_taf(taf):
     taf = re.sub(r'[\r\n]+', ' ', taf).strip()  # Remove \r and \n characters
-    parts = taf.split()
-    validity_index = next(i for i, part in enumerate(parts) if '/' in part)
-    data = {
-        'ICAO': parts[0],
-        'Time': parts[1],
-        'Validity': parts[validity_index],
-        'Wind': parts[validity_index + 1],
-        'Visibility': parts[validity_index + 2],
-        'Weather': parts[validity_index + 3] if parts[validity_index + 3] not in ('CAVOK', 'NSW') else '',
-        'Clouds': parts[validity_index + 4] if parts[validity_index + 3] not in ('CAVOK', 'NSW') else parts[validity_index + 3],
-        'Changes': ' '.join(parts[validity_index + 5:])
-    }
+    data = {}
+
+    data['ICAO'] = re.search(r'\b[A-Z]{4}\b', taf).group()
+    data['Time'] = re.search(r'\d{6}Z', taf).group()
+    data['Validity'] = re.search(r'\d{4}/\d{4}', taf).group()
+    data['Wind'] = re.search(r'\d{5}(G\d{2})?KT', taf).group()
+    data['Visibility'] = re.search(r'\b\d{4}\b', taf).group()
+    data['Weather'] = re.search(r'(-|\+)?[A-Z]{2,4}', taf).group()
+    clouds = re.findall(r'(FEW|SCT|BKN|OVC)\d{3}', taf)
+    data['Clouds'] = ' '.join(clouds) if clouds else 'CAVOK'
+    changes_match = re.search(r'BECMG\s+(.*)', taf)
+    data['Changes'] = changes_match.group(1) if changes_match else ''
+
     return data
 
 def parse_validity(validity):
