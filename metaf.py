@@ -1,5 +1,6 @@
 import streamlit as st
 import datetime
+import re
 
 def decode_metar(metar):
     parts = metar.replace('\r', '').replace('\n', ' ').split()
@@ -8,35 +9,35 @@ def decode_metar(metar):
         'Time': parts[1],
         'Wind': parts[2],
         'Visibility': parts[3],
-        'Weather': parts[4],
-        'Clouds': parts[5],
-        'Temperature/Dewpoint': parts[6],
-        'QNH': parts[7],
-        'Remarks': ' '.join(parts[8:])
+        'Weather': ' '.join(parts[4:6]),  # Capture possible compound weather
+        'Clouds': parts[6] if 'CAVOK' not in parts[6] else 'CAVOK',  # Handle CAVOK
+        'Temperature/Dewpoint': parts[7],
+        'QNH': parts[8],
+        'Remarks': ' '.join(parts[9:])
     }
     return data
 
 def decode_taf(taf):
     parts = taf.replace('\r', '').replace('\n', ' ').split()
-    validity_index = next(i for i, part in enumerate(parts) if '/' in part)
+    validity_index = next(i for i, part in enumerate(parts) if re.match(r'^\d{4}/\d{4}$', part))
     data = {
         'ICAO': parts[0],
         'Time': parts[1],
         'Validity': parts[validity_index],
         'Wind': parts[validity_index + 1],
         'Visibility': parts[validity_index + 2],
-        'Weather': parts[validity_index + 3],
-        'Clouds': parts[validity_index + 4],
-        'Changes': ' '.join(parts[validity_index + 5:])
+        'Weather': ' '.join(parts[validity_index + 3:validity_index + 5]),  # Capture possible compound weather
+        'Clouds': parts[validity_index + 5],
+        'Changes': ' '.join(parts[validity_index + 6:])
     }
     return data
 
 def parse_validity(validity):
     try:
-        taf_start = validity[:6]
-        taf_end = validity[7:]
-        taf_start_time = datetime.datetime.strptime(taf_start, '%d%H%M')
-        taf_end_time = datetime.datetime.strptime(taf_end, '%d%H%M')
+        taf_start_day, taf_start_hour = validity[:2], validity[2:4]
+        taf_end_day, taf_end_hour = validity[5:7], validity[7:9]
+        taf_start_time = datetime.datetime.utcnow().replace(day=int(taf_start_day), hour=int(taf_start_hour), minute=0, second=0, microsecond=0)
+        taf_end_time = datetime.datetime.utcnow().replace(day=int(taf_end_day), hour=int(taf_end_hour), minute=0, second=0, microsecond=0)
         return taf_start_time, taf_end_time
     except ValueError as e:
         raise ValueError(f"Error parsing TAF validity times: {e}")
@@ -96,8 +97,8 @@ if st.button("Submit"):
 
         st.subheader("Analysis")
         if visibility is not None and cloud_base is not None:
-            st.write(f"Lowest Visibility: {visibility}m")
-            st.write(f"Lowest Cloud Base: {cloud_base}ft")
+            st.write(f"Lowest Visibility: {visibility} meters")
+            st.write(f"Lowest Cloud Base: {cloud_base} feet")
         st.write("Warnings:")
         for warning in warnings:
             st.write(f"- {warning}")
