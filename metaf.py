@@ -32,9 +32,9 @@ def decode_taf(taf):
     return data
 
 def parse_validity(validity):
-    taf_start = validity[:6]
-    taf_end = validity[7:]
     try:
+        taf_start = validity[:6]
+        taf_end = validity[7:]
         taf_start_time = datetime.datetime.strptime(taf_start, '%d%H%M')
         taf_end_time = datetime.datetime.strptime(taf_end, '%d%H%M')
         return taf_start_time, taf_end_time
@@ -66,12 +66,12 @@ def analyze_weather(metar, taf):
         warnings.append('Thunderstorm detected.')
 
     try:
-        visibility_metar = int(metar_data['Visibility'].rstrip('KM'))
-        visibility_taf = int(taf_data['Visibility'].rstrip('KM'))
+        visibility_metar = int(''.join(filter(str.isdigit, metar_data['Visibility'])))
+        visibility_taf = int(''.join(filter(str.isdigit, taf_data['Visibility'])))
         lowest_visibility = min(visibility_metar, visibility_taf)
         
-        cloud_base_metar = int(metar_data['Clouds'][3:6])
-        cloud_base_taf = int(taf_data['Clouds'][3:6])
+        cloud_base_metar = int(''.join(filter(str.isdigit, metar_data['Clouds'][3:6])))
+        cloud_base_taf = int(''.join(filter(str.isdigit, taf_data['Clouds'][3:6])))
         lowest_cloud_base = min(cloud_base_metar, cloud_base_taf)
     except ValueError as e:
         st.error(f"Error parsing visibility or cloud base: {e}")
