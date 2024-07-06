@@ -12,13 +12,22 @@ def decode_metar(metar):
         'Visibility': re.search(r'\b\d{4}\b', metar).group(),
         'Variable Wind': re.search(r'\d{3}V\d{3}', metar).group() if re.search(r'\d{3}V\d{3}', metar) else '',
         'Clouds': ' '.join(re.findall(r'(FEW|SCT|BKN|OVC)\d{3}', metar)) if re.findall(r'(FEW|SCT|BKN|OVC)\d{3}', metar) else 'CAVOK',
-        'Temperature/Dewpoint': re.search(r'\d{2}/\d{2}', metar).group(),
         'QNH': re.search(r'\bQ\d{4}\b', metar).group(),
         'Trend': ' '.join(re.findall(r'(TEMPO|BECMG|NOSIG) .*?(?= TEMPO| BECMG| NOSIG|$)', metar))
     }
 
-    if data['Temperature/Dewpoint']:
-        temp_dew_split = data['Temperature/Dewpoint'].split('/')
+    if 'Clouds' in data and data['Clouds'] != 'CAVOK':
+        cloud_base = re.search(r'\d{3}', data['Clouds'])
+        if cloud_base:
+            data['Ceiling'] = int(cloud_base.group()) * 100
+        else:
+            data['Ceiling'] = 'N/A'
+    else:
+        data['Ceiling'] = 'N/A'
+
+    temp_dew = re.search(r'\d{2}/\d{2}', metar)
+    if temp_dew:
+        temp_dew_split = temp_dew.group().split('/')
         data['Temperature'] = temp_dew_split[0]
         data['Dewpoint'] = temp_dew_split[1]
 
@@ -37,6 +46,15 @@ def decode_taf(taf):
         'Clouds': ' '.join(re.findall(r'(FEW|SCT|BKN|OVC)\d{3}', taf)) if re.findall(r'(FEW|SCT|BKN|OVC)\d{3}', taf) else 'CAVOK',
         'Changes': re.findall(r'(TEMPO|BECMG|FM|TL|AT|PROB\d{2}) .*?(?= TEMPO| BECMG| FM| TL| AT| PROB\d{2}|$)', taf)
     }
+
+    if 'Clouds' in data and data['Clouds'] != 'CAVOK':
+        cloud_base = re.search(r'\d{3}', data['Clouds'])
+        if cloud_base:
+            data['Ceiling'] = int(cloud_base.group()) * 100
+        else:
+            data['Ceiling'] = 'N/A'
+    else:
+        data['Ceiling'] = 'N/A'
 
     return data
 
