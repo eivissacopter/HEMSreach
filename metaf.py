@@ -17,7 +17,7 @@ def decode_metar(metar):
     return data
 
 def decode_taf(taf):
-    parts = taf.split()
+    parts = taf.replace('\r', '').replace('\n', ' ').split()
     validity_index = next(i for i, part in enumerate(parts) if '/' in part)
     data = {
         'ICAO': parts[0],
@@ -75,10 +75,10 @@ if st.button("Submit"):
         metar_data, taf_data, visibility, cloud_base, warnings = analyze_weather(metar, taf)
 
         st.subheader("Decoded METAR")
-        st.write(metar_data)
+        st.json(metar_data)
 
         st.subheader("Decoded TAF")
-        st.write(taf_data)
+        st.json(taf_data)
 
         st.subheader("Analysis")
         if visibility is not None and cloud_base is not None:
