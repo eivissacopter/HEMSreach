@@ -36,9 +36,9 @@ def fetch_data_https(directory_path, file_name):
         return None
 
 # Function to find the latest available file by iterating over the past few hours
-def find_latest_file(directory_path, construct_file_name, airport_code, hours_back=24):
+def find_latest_file(directory_path, construct_file_name, airport_code):
     now = datetime.utcnow()
-    for i in range(hours_back):
+    for i in range(24):  # check the last 24 hours
         dt = now - timedelta(hours=i)
         file_name = construct_file_name(dt, airport_code)
         file_content = fetch_data_https(directory_path, file_name)
@@ -67,12 +67,12 @@ def parse_taf_data(file_content):
         return None
 
 # Streamlit setup
-st.title("Weather Forecast for Airports")
+st.title("Latest METAR and TAF for Airports")
 
 # Dictionary to store METAR and TAF data
 airport_data = {}
 
-# Fetch METAR and TAF data for each airport
+# Fetch the latest METAR and TAF data for each airport
 for airport in airports:
     directory_path_metar = f'/aviation/OPMET/METAR/DE'
     file_content_metar = find_latest_file(directory_path_metar, construct_file_name_metar, airport)
