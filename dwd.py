@@ -10,16 +10,16 @@ data_server = st.secrets["data_server"]
 airports = ["EDDF", "EDFM", "EDFH"]
 
 # Function to fetch directory listing
-def fetch_directory_listing(url):
+def fetch_directory_listing(base_url):
     try:
-        response = requests.get(url, auth=(data_server["user"], data_server["password"]))
+        response = requests.get(base_url, auth=(data_server["user"], data_server["password"]))
         if response.status_code == 200:
             return response.text
         else:
-            st.warning(f"Failed to fetch directory listing from URL: {url} - Status code: {response.status_code}")
+            st.warning(f"Failed to fetch directory listing from URL: {base_url} - Status code: {response.status_code}")
             return None
     except Exception as e:
-        st.error(f"Error fetching directory listing from URL: {url} - Error: {e}")
+        st.error(f"Error fetching directory listing from URL: {base_url} - Error: {e}")
         return None
 
 # Function to fetch file content via HTTPS
