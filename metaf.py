@@ -37,10 +37,14 @@ def analyze_weather(metar, taf):
 
     current_time = datetime.datetime.utcnow()
     metar_time = datetime.datetime.strptime(metar_data['Time'], '%d%H%MZ')
+
+    taf_validity = taf_data['Validity']
+    taf_start_str = taf_validity[:4] + taf_validity[4:6]
+    taf_end_str = taf_validity[7:11] + taf_validity[11:13]
     
     try:
-        taf_start_time = datetime.datetime.strptime(taf_data['Validity'][:6], '%d%H%M')
-        taf_end_time = datetime.datetime.strptime(taf_data['Validity'][7:], '%d%H%M')
+        taf_start_time = datetime.datetime.strptime(taf_start_str, '%d%H%M')
+        taf_end_time = datetime.datetime.strptime(taf_end_str, '%d%H%M')
     except ValueError as e:
         st.error(f"Error parsing TAF validity times: {e}")
         return metar_data, taf_data, None, None, ["Invalid TAF validity times"]
