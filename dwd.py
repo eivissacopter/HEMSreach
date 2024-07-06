@@ -1,7 +1,7 @@
 import requests
 import pandas as pd
 import streamlit as st
-from datetime import datetime, timedelta
+from datetime import datetime
 
 # Load secrets from Streamlit configuration
 data_server = st.secrets["data_server"]
@@ -9,8 +9,21 @@ data_server = st.secrets["data_server"]
 # List of airports
 airports = ["EDDF", "EDFM", "EDFH"]
 
-# Function to fetch data via HTTPS
-def fetch_data_https(url):
+# Function to fetch directory listing
+def fetch_directory_listing(url):
+    try:
+        response = requests.get(url, auth=(data_server["user"], data_server["password"]))
+        if response.status_code == 200:
+            return response.text
+        else:
+            st.warning(f"Failed to fetch directory listing from URL: {url} - Status code: {response.status_code}")
+            return None
+    except Exception as e:
+        st.error(f"Error fetching directory listing from URL: {url} - Error: {e}")
+        return None
+
+# Function to fetch file content via HTTPS
+def fetch_file_content(url):
     try:
         response = requests.get(url, auth=(data_server["user"], data_server["password"]))
         if response.status_code == 200:
@@ -42,17 +55,17 @@ def parse_taf_data(file_content):
         st.error(f"Error parsing TAF data: {e}")
         return None
 
-# Function to find the latest available file by iterating over the past few hours
-def find_latest_file(base_url, airport_code, prefix_list, hours_back=24):
-    now = datetime.utcnow()
-    for i in range(hours_back):
-        dt = now - timedelta(hours=i)
-        date_time_str = dt.strftime('%d%H%M')
-        for prefix in prefix_list:
-            url = f"{base_url}/{prefix}_{airport_code}_{date_time_str}"
-            file_content = fetch_data_https(url)
-            if file_content:
-                return file_content
+# Function to find the latest available file by scanning the directory
+def find_latest_file(base_url, airport_code, prefix):
+    directory_listing = fetch_directory_listing(base_url)
+    if directory_listing:
+        lines = directory_listing.splitlines()
+        relevant_files = [line for line in lines if f"_{airport_code}_" in line]
+        if relevant_files:
+            latest_file = sorted(relevant_files, reverse=True)[0].split()[0]  # Assuming the first element is the filename
+            url = f"{base_url}/{latest_file}"
+            file_content = fetch_file_content(url)
+            return file_content
     return None
 
 # Streamlit setup
@@ -61,18 +74,16 @@ st.title("Latest METAR and TAF for Airports")
 # Dictionary to store METAR and TAF data
 airport_data = {}
 
-# Prefix lists for METAR and TAF
-metar_prefixes = ["SADL31", "FTDL31"]
-taf_prefixes = ["FCDL31"]
+# Base URLs for METAR and TAF directories
+metar_base_url = f"https://{data_server['server']}/aviation/OPMET/METAR/DE"
+taf_base_url = f"https://{data_server['server']}/aviation/OPMET/TAF/DE"
 
 # Fetch the latest METAR and TAF data for each airport
 for airport in airports:
-    metar_base_url = f"https://{data_server['server']}/aviation/OPMET/METAR/DE"
-    file_content_metar = find_latest_file(metar_base_url, airport, metar_prefixes)
+    file_content_metar = find_latest_file(metar_base_url, airport, "SADL31")
     metar_message = parse_metar_data(file_content_metar) if file_content_metar else None
 
-    taf_base_url = f"https://{data_server['server']}/aviation/OPMET/TAF/DE"
-    file_content_taf = find_latest_file(taf_base_url, airport, taf_prefixes)
+    file_content_taf = find_latest_file(taf_base_url, airport, "FCDL31")
     taf_message = parse_taf_data(file_content_taf) if file_content_taf else None
 
     if metar_message or taf_message:
