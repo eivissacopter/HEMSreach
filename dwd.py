@@ -36,14 +36,22 @@ def fetch_data_https(directory_path, file_name):
         return None
 
 # Function to find the latest available file by iterating over the past few hours
-def find_latest_file(directory_path, construct_file_name, airport_code):
+def find_latest_file(directory_path, construct_file_name, airport_code, hours_back=24):
     now = datetime.utcnow()
-    for i in range(24):  # check the last 24 hours
+    for i in range(hours_back):
         dt = now - timedelta(hours=i)
         file_name = construct_file_name(dt, airport_code)
         file_content = fetch_data_https(directory_path, file_name)
         if file_content:
             return file_content
+        else:
+            # Try variations with additional letters (e.g., SADL31_EDZO_050320_CCA)
+            variations = ['CCA', 'CCB', 'CCC', 'CCD', 'CCE']
+            for var in variations:
+                file_name_variation = f"{file_name}_{var}"
+                file_content = fetch_data_https(directory_path, file_name_variation)
+                if file_content:
+                    return file_content
     return None
 
 # Function to parse the METAR data content
@@ -74,11 +82,11 @@ airport_data = {}
 
 # Fetch the latest METAR and TAF data for each airport
 for airport in airports:
-    directory_path_metar = f'/aviation/OPMET/METAR/DE'
+    directory_path_metar = '/aviation/OPMET/METAR/DE'
     file_content_metar = find_latest_file(directory_path_metar, construct_file_name_metar, airport)
     metar_message = parse_metar_data(file_content_metar) if file_content_metar else None
 
-    directory_path_taf = f'/aviation/OPMET/TAF/DE'
+    directory_path_taf = '/aviation/OPMET/TAF/DE'
     file_content_taf = find_latest_file(directory_path_taf, construct_file_name_taf, airport)
     taf_message = parse_taf_data(file_content_taf) if file_content_taf else None
 
