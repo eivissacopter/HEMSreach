@@ -10,8 +10,8 @@ def decode_metar(metar):
         'Time': parts[1],
         'Wind': parts[2],
         'Visibility': parts[3],
-        'Weather': parts[4],
-        'Clouds': parts[5],
+        'Weather': parts[4] if parts[4] not in ('CAVOK', 'NSW') else '',
+        'Clouds': parts[5] if parts[4] not in ('CAVOK', 'NSW') else parts[4],
         'Temperature/Dewpoint': parts[6],
         'QNH': parts[7],
         'Remarks': ' '.join(parts[8:])
@@ -28,8 +28,8 @@ def decode_taf(taf):
         'Validity': parts[validity_index],
         'Wind': parts[validity_index + 1],
         'Visibility': parts[validity_index + 2],
-        'Weather': parts[validity_index + 3],
-        'Clouds': parts[validity_index + 4],
+        'Weather': parts[validity_index + 3] if parts[validity_index + 3] not in ('CAVOK', 'NSW') else '',
+        'Clouds': parts[validity_index + 4] if parts[validity_index + 3] not in ('CAVOK', 'NSW') else parts[validity_index + 3],
         'Changes': ' '.join(parts[validity_index + 5:])
     }
     return data
@@ -116,8 +116,10 @@ def analyze_weather(metar, taf, hours_ahead):
                 cloud_base = 9999
             else:
                 try:
-                    visibility = int(re.sub("[^0-9]", "", details.split()[0]))
-                    cloud_base = int(re.sub("[^0-9]", "", details.split()[1]))
+                    visibility_match = re.search(r'\b\d{4}\b', details)
+                    cloud_base_match = re.search(r'\b(FEW|SCT|BKN|OVC)\d{3}\b', details)
+                    visibility = int(visibility_match.group()) if visibility_match else 9999
+                    cloud_base = int(cloud_base_match.group()[-3:]) * 100 if cloud_base_match else 9999
                 except ValueError:
                     visibility = 9999
                     cloud_base = 9999
@@ -131,8 +133,8 @@ def analyze_weather(metar, taf, hours_ahead):
             cloud_base_metar = 9999
         else:
             try:
-                visibility_metar = int(re.sub("[^0-9]", "", metar_data['Visibility']))
-                cloud_base_metar = int(re.sub("[^0-9]", "", metar_data['Clouds'][3:6]))
+                visibility_metar = int(metar_data['Visibility'])
+                cloud_base_metar = int(metar_data['Clouds'][3:6]) * 100
             except ValueError:
                 visibility_metar = 9999
                 cloud_base_metar = 9999
