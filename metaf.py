@@ -27,8 +27,11 @@ def decode_metar(metar):
     }
 
     if 'Clouds' in data and data['Clouds']:
-        cloud_bases = [int(cloud[3:]) * 100 for cloud in data['Clouds']]
-        data['Ceiling'] = min(cloud_bases)
+        try:
+            cloud_bases = [int(cloud[3:]) * 100 for cloud in data['Clouds']]
+            data['Ceiling'] = min(cloud_bases)
+        except ValueError:
+            data['Ceiling'] = 'N/A'
     else:
         data['Ceiling'] = 'N/A'
 
