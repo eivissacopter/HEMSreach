@@ -3,7 +3,7 @@ import pandas as pd
 import streamlit as st
 from datetime import datetime, timedelta
 
-# Load secrets
+# Load secrets from Streamlit configuration
 data_server = st.secrets["data_server"]
 
 # List of airports
@@ -13,7 +13,6 @@ airports = ["EDDF", "EDFM", "EDFH"]
 def fetch_data_https(url):
     try:
         response = requests.get(url, auth=(data_server["user"], data_server["password"]))
-        
         if response.status_code == 200:
             return response.content
         else:
@@ -44,13 +43,13 @@ def parse_taf_data(file_content):
         return None
 
 # Function to find the latest available file by iterating over the past few hours
-def find_latest_file(base_url, hours_back=24):
+def find_latest_file(base_url, file_prefix, hours_back=24):
     now = datetime.utcnow()
     for i in range(hours_back):
         dt = now - timedelta(hours=i)
         date_time_str = dt.strftime('%d%H%M')
         for suffix in ['', '_CCA', '_CCB', '_CCC', '_CCD', '_CCE']:  # Variations with additional letters
-            url = f"{base_url}_{date_time_str}{suffix}"
+            url = f"{base_url}/{file_prefix}_{date_time_str}{suffix}"
             file_content = fetch_data_https(url)
             if file_content:
                 return file_content
@@ -64,12 +63,12 @@ airport_data = {}
 
 # Fetch the latest METAR and TAF data for each airport
 for airport in airports:
-    metar_base_url = f"https://{data_server['server']}/aviation/OPMET/METAR/DE/SADL31_{airport}"
-    file_content_metar = find_latest_file(metar_base_url)
+    metar_base_url = f"https://{data_server['server']}/aviation/OPMET/METAR/DE"
+    file_content_metar = find_latest_file(metar_base_url, f"SADL31_{airport}")
     metar_message = parse_metar_data(file_content_metar) if file_content_metar else None
 
-    taf_base_url = f"https://{data_server['server']}/aviation/OPMET/TAF/DE/FTDL31_{airport}"
-    file_content_taf = find_latest_file(taf_base_url)
+    taf_base_url = f"https://{data_server['server']}/aviation/OPMET/TAF/DE"
+    file_content_taf = find_latest_file(taf_base_url, f"FTDL31_{airport}")
     taf_message = parse_taf_data(file_content_taf) if file_content_taf else None
 
     if metar_message and taf_message:
@@ -82,3 +81,4 @@ if airport_data:
     st.dataframe(df)
 else:
     st.write("No data available for airports with both METAR and TAF")
+
