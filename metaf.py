@@ -36,8 +36,13 @@ def analyze_weather(metar, taf):
 
     current_time = datetime.datetime.utcnow()
     metar_time = datetime.datetime.strptime(metar_data['Time'], '%d%H%MZ')
-    taf_start_time = datetime.datetime.strptime(taf_data['Validity'][:6], '%d%H%M')
-    taf_end_time = datetime.datetime.strptime(taf_data['Validity'][7:], '%d%H%M')
+    
+    try:
+        taf_start_time = datetime.datetime.strptime(taf_data['Validity'][:6], '%d%H%M')
+        taf_end_time = datetime.datetime.strptime(taf_data['Validity'][7:], '%d%H%M')
+    except ValueError as e:
+        st.error(f"Error parsing TAF validity times: {e}")
+        return metar_data, taf_data, None, None, ["Invalid TAF validity times"]
 
     warnings = []
 
@@ -50,8 +55,12 @@ def analyze_weather(metar, taf):
     if 'TS' in metar_data['Weather'] or 'TS' in taf_data['Weather']:
         warnings.append('Thunderstorm detected.')
 
-    lowest_visibility = min(int(metar_data['Visibility']), int(taf_data['Visibility']))
-    lowest_cloud_base = min(int(metar_data['Clouds'][3:6]), int(taf_data['Clouds'][3:6]))
+    try:
+        lowest_visibility = min(int(metar_data['Visibility']), int(taf_data['Visibility']))
+        lowest_cloud_base = min(int(metar_data['Clouds'][3:6]), int(taf_data['Clouds'][3:6]))
+    except ValueError as e:
+        st.error(f"Error parsing visibility or cloud base: {e}")
+        return metar_data, taf_data, None, None, ["Invalid visibility or cloud base values"]
 
     return metar_data, taf_data, lowest_visibility, lowest_cloud_base, warnings
 
@@ -71,8 +80,9 @@ if st.button("Submit"):
         st.write(taf_data)
 
         st.subheader("Analysis")
-        st.write(f"Lowest Visibility: {visibility}m")
-        st.write(f"Lowest Cloud Base: {cloud_base}ft")
+        if visibility is not None and cloud_base is not None:
+            st.write(f"Lowest Visibility: {visibility}m")
+            st.write(f"Lowest Cloud Base: {cloud_base}ft")
         st.write("Warnings:")
         for warning in warnings:
             st.write(f"- {warning}")
