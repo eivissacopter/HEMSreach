@@ -28,16 +28,21 @@ def decode_metar(metar):
 
     if data['Clouds']:
         try:
+            first_cloud = data['Clouds'][0]
             cloud_bases = [int(cloud[3:]) * 100 for cloud in data['Clouds']]
-            data['Ceiling'] = min(cloud_bases)
-            data['First Cloud Base'] = f"{data['Clouds'][0][:3]} at {int(data['Clouds'][0][3:]) * 100}ft"
-            data['First Cloud Ceiling'] = f"{min(cloud_bases)}ft"
+            bkn_ovc_bases = [int(cloud[3:]) * 100 for cloud in data['Clouds'] if cloud.startswith('BKN') or cloud.startswith('OVC')]
+            
+            if first_cloud.startswith('FEW') or first_cloud.startswith('SCT'):
+                data['First Cloud Base'] = f"{first_cloud[:3]} at {int(first_cloud[3:]) * 100}ft"
+                data['First Cloud Ceiling'] = f"{min(bkn_ovc_bases)}ft" if bkn_ovc_bases else 'N/A'
+            else:
+                data['First Cloud Base'] = 'N/A'
+                data['First Cloud Ceiling'] = f"{int(first_cloud[3:]) * 100}ft"
+
         except ValueError:
-            data['Ceiling'] = 'N/A'
             data['First Cloud Base'] = 'N/A'
             data['First Cloud Ceiling'] = 'N/A'
     else:
-        data['Ceiling'] = 'N/A'
         data['First Cloud Base'] = 'N/A'
         data['First Cloud Ceiling'] = 'N/A'
 
