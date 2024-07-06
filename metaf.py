@@ -3,7 +3,8 @@ import datetime
 import re
 
 def decode_metar(metar):
-    parts = metar.replace('\r', '').replace('\n', ' ').split()
+    metar = re.sub(r'[\r\n]+', ' ', metar).strip()  # Remove \r and \n characters
+    parts = metar.split()
     data = {
         'ICAO': parts[0],
         'Time': parts[1],
@@ -18,7 +19,8 @@ def decode_metar(metar):
     return data
 
 def decode_taf(taf):
-    parts = taf.replace('\r', '').replace('\n', ' ').split()
+    taf = re.sub(r'[\r\n]+', ' ', taf).strip()  # Remove \r and \n characters
+    parts = taf.split()
     validity_index = next(i for i, part in enumerate(parts) if '/' in part)
     data = {
         'ICAO': parts[0],
@@ -41,6 +43,13 @@ def parse_validity(validity):
         return taf_start_time, taf_end_time
     except ValueError as e:
         raise ValueError(f"Error parsing TAF validity times: {e}")
+
+def parse_trends(remarks):
+    trends = re.findall(r'(BECMG|TEMPO|FM|TL|AT|PROB\d{2})\s+\d{4}/\d{4}\s+.*?(?=(BECMG|TEMPO|FM|TL|AT|PROB\d{2}|\s*$))', remarks)
+    parsed_trends = []
+    for trend in trends:
+        parsed_trends.append(trend[0] + ' ' + trend[1].strip())
+    return parsed_trends
 
 def analyze_weather(metar, taf, hours_ahead):
     metar_data = decode_metar(metar)
@@ -67,31 +76,55 @@ def analyze_weather(metar, taf, hours_ahead):
     if 'TS' in metar_data['Weather'] or 'TS' in taf_data['Weather']:
         warnings.append('Thunderstorm detected.')
 
-    try:
-        visibility_metar = 9999 if metar_data['Visibility'] == 'CAVOK' else int(re.sub("[^0-9]", "", metar_data['Visibility']))
-        visibility_taf = 9999 if taf_data['Visibility'] == 'CAVOK' else int(re.sub("[^0-9]", "", taf_data['Visibility']))
-        lowest_visibility = min(visibility_metar, visibility_taf)
-        
-        cloud_base_metar = 9999 if 'CAVOK' in metar_data['Clouds'] else int(re.sub("[^0-9]", "", metar_data['Clouds'][3:6]))
-        cloud_base_taf = 9999 if 'CAVOK' in taf_data['Clouds'] else int(re.sub("[^0-9]", "", taf_data['Clouds'][3:6]))
-        lowest_cloud_base = min(cloud_base_metar, cloud_base_taf)
-    except ValueError as e:
-        st.error(f"Error parsing visibility or cloud base: {e}")
-        return metar_data, taf_data, None, None, ["Invalid visibility or cloud base values"]
+    # Parse trends in METAR remarks
+    trends = parse_trends(metar_data['Remarks'])
 
-    # Compare METAR and TAF forecasts within the specified hours ahead
-    if metar_time < future_time:
-        visibility_ahead = visibility_metar
-        cloud_base_ahead = cloud_base_metar
-    else:
-        visibility_ahead = 9999
-        cloud_base_ahead = 9999
+    # Create a timeline of weather changes
+    timeline = []
 
-    if taf_start_time < future_time < taf_end_time:
-        visibility_ahead = min(visibility_ahead, visibility_taf)
-        cloud_base_ahead = min(cloud_base_ahead, cloud_base_taf)
+    # Add METAR trends to timeline
+    for trend in trends:
+        trend_type, trend_info = trend.split(maxsplit=1)
+        if trend_type == 'BECMG':
+            trend_start, trend_end, trend_details = trend_info.split(maxsplit=2)
+            trend_start_time = datetime.datetime.strptime(trend_start, '%d%H%M')
+            trend_end_time = datetime.datetime.strptime(trend_end, '%d%H%M')
+            timeline.append((trend_start_time, trend_end_time, trend_details))
 
-    return metar_data, taf_data, visibility_ahead, cloud_base_ahead, warnings
+    # Add TAF changes to timeline
+    taf_changes = taf_data['Changes'].split()
+    for i in range(0, len(taf_changes), 5):
+        change_time = taf_changes[i]
+        change_type = taf_changes[i + 1]
+        change_details = ' '.join(taf_changes[i + 2:i + 5])
+        if re.match(r'^\d{4}/\d{4}$', change_time):
+            change_start_time = datetime.datetime.strptime(change_time[:4] + "00", '%d%H%M')
+            change_end_time = datetime.datetime.strptime(change_time[5:] + "00", '%d%H%M')
+            timeline.append((change_start_time, change_end_time, change_details))
+
+    # Sort timeline by start time
+    timeline.sort(key=lambda x: x[0])
+
+    lowest_visibility = 9999
+    lowest_cloud_base = 9999
+
+    # Evaluate timeline to find lowest visibility and cloud base in the specified hours ahead
+    for start, end, details in timeline:
+        if current_time <= start <= future_time:
+            if 'CAVOK' in details:
+                visibility = 9999
+                cloud_base = 9999
+            else:
+                try:
+                    visibility = int(re.sub("[^0-9]", "", details.split()[0]))
+                    cloud_base = int(re.sub("[^0-9]", "", details.split()[1]))
+                except ValueError:
+                    visibility = 9999
+                    cloud_base = 9999
+            lowest_visibility = min(lowest_visibility, visibility)
+            lowest_cloud_base = min(lowest_cloud_base, cloud_base)
+
+    return metar_data, taf_data, lowest_visibility, lowest_cloud_base, warnings
 
 st.title("METAR/TAF Decoder")
 
