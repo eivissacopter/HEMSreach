@@ -43,13 +43,13 @@ def parse_taf_data(file_content):
         return None
 
 # Function to find the latest available file by iterating over the past few hours
-def find_latest_file(base_url, file_prefix, hours_back=24):
+def find_latest_file(base_url, airport_code, prefix_list, hours_back=24):
     now = datetime.utcnow()
     for i in range(hours_back):
         dt = now - timedelta(hours=i)
         date_time_str = dt.strftime('%d%H%M')
-        for suffix in ['', '_CCA', '_CCB', '_CCC', '_CCD', '_CCE']:  # Variations with additional letters
-            url = f"{base_url}/{file_prefix}_{date_time_str}{suffix}"
+        for prefix in prefix_list:
+            url = f"{base_url}/{prefix}_{airport_code}_{date_time_str}"
             file_content = fetch_data_https(url)
             if file_content:
                 return file_content
@@ -61,17 +61,21 @@ st.title("Latest METAR and TAF for Airports")
 # Dictionary to store METAR and TAF data
 airport_data = {}
 
+# Prefix lists for METAR and TAF
+metar_prefixes = ["SADL31", "FTDL31"]
+taf_prefixes = ["FCDL31"]
+
 # Fetch the latest METAR and TAF data for each airport
 for airport in airports:
     metar_base_url = f"https://{data_server['server']}/aviation/OPMET/METAR/DE"
-    file_content_metar = find_latest_file(metar_base_url, f"SADL31_{airport}")
+    file_content_metar = find_latest_file(metar_base_url, airport, metar_prefixes)
     metar_message = parse_metar_data(file_content_metar) if file_content_metar else None
 
     taf_base_url = f"https://{data_server['server']}/aviation/OPMET/TAF/DE"
-    file_content_taf = find_latest_file(taf_base_url, f"FTDL31_{airport}")
+    file_content_taf = find_latest_file(taf_base_url, airport, taf_prefixes)
     taf_message = parse_taf_data(file_content_taf) if file_content_taf else None
 
-    if metar_message and taf_message:
+    if metar_message or taf_message:
         airport_data[airport] = {"METAR": metar_message, "TAF": taf_message}
 
 # Display data in a table
@@ -81,4 +85,3 @@ if airport_data:
     st.dataframe(df)
 else:
     st.write("No data available for airports with both METAR and TAF")
-
