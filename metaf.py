@@ -19,7 +19,7 @@ def decode_metar(metar):
         'Time': re.search(r'\d{6}Z', metar).group(),
         'Wind': re.search(r'\d{3}\d{2}(G\d{2})?KT', metar).group(),
         'Visibility': re.search(r'\b\d{4}\b', metar).group(),
-        'Variable Wind': re.search(r'\d{3}V\d{3}', metar).group() if re.search(r'\d{3}V\d{3}', metar) else '',
+        'Variable Wind': re.search(r'\d{3}V\d{3}', metar).group() if re.search(r'\d{3}V\d{3}', metar) else 'N/A',
         'Clouds': re.findall(r'(FEW|SCT|BKN|OVC)\d{3}', metar),
         'QNH': convert_qnh(re.search(r'\b(A\d{4}|Q\d{4})\b', metar).group()) if re.search(r'\b(A\d{4}|Q\d{4})\b', metar) else 'N/A',
         'Trend': re.search(r'(TEMPO|BECMG|NOSIG)', metar).group() if re.search(r'(TEMPO|BECMG|NOSIG)', metar) else '',
@@ -32,12 +32,12 @@ def decode_metar(metar):
     for cloud in data['Clouds']:
         if first_cloud_base is None and (cloud.startswith('FEW') or cloud.startswith('SCT')):
             try:
-                first_cloud_base = f"{cloud[:3]} at {int(cloud[3:]) * 100}ft"
+                first_cloud_base = f"{cloud[:3].capitalize()} at {int(cloud[3:]) * 100}ft"
             except ValueError:
                 first_cloud_base = 'N/A'
         if first_cloud_ceiling is None and (cloud.startswith('BKN') or cloud.startswith('OVC')):
             try:
-                first_cloud_ceiling = f"{cloud[:3]} at {int(cloud[3:]) * 100}ft"
+                first_cloud_ceiling = f"{cloud[:3].capitalize()} at {int(cloud[3:]) * 100}ft"
                 break
             except ValueError:
                 first_cloud_ceiling = 'N/A'
@@ -87,7 +87,7 @@ def format_metar(data):
         "Day": data["Day"],
         "Time": f"{time_local_start.strftime('%H:%M')} - {time_local_end.strftime('%H:%M')} LT",
         "Wind": f"{data['Wind'][:3]}° / {data['Wind'][3:5]}kt",
-        "Variable": f"{data['Variable Wind'][:3]}° - {data['Variable Wind'][4:]}°" if data['Variable Wind'] else "N/A",
+        "Variable": f"{data['Variable Wind'][:3]}° - {data['Variable Wind'][4:]}°" if data['Variable Wind'] != 'N/A' else "N/A",
         "Visibility": f"{data['Visibility']}m",
         "First Cloud Base": data['First Cloud Base'],
         "First Cloud Ceiling": data['First Cloud Ceiling'],
