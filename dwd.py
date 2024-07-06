@@ -62,9 +62,11 @@ def find_latest_file(base_url, airport_code, file_prefix):
     if directory_listing:
         soup = BeautifulSoup(directory_listing, 'html.parser')
         files = [a['href'] for a in soup.find_all('a', href=True) if f"_{airport_code}_" in a['href'] and a['href'].startswith(file_prefix)]
+        st.write(f"Found {len(files)} files for {airport_code} with prefix {file_prefix}")
         if files:
             latest_file = sorted(files, reverse=True)[0]
             url = f"{base_url}/{latest_file}"
+            st.write(f"Fetching file: {url}")
             file_content = fetch_file_content(url)
             return file_content
     return None
@@ -79,21 +81,4 @@ airport_data = {}
 metar_base_url = f"https://{data_server['server']}/aviation/OPMET/METAR/DE"
 taf_base_url = f"https://{data_server['server']}/aviation/OPMET/TAF/DE"
 
-# Fetch the latest METAR and TAF data for each airport
-for airport in airports:
-    file_content_metar = find_latest_file(metar_base_url, airport, "SADL31")
-    metar_message = parse_metar_data(file_content_metar) if file_content_metar else None
-
-    file_content_taf = find_latest_file(taf_base_url, airport, "FCDL31")
-    taf_message = parse_taf_data(file_content_taf) if file_content_taf else None
-
-    if metar_message or taf_message:
-        airport_data[airport] = {"METAR": metar_message, "TAF": taf_message}
-
-# Display data in a table
-if airport_data:
-    df = pd.DataFrame.from_dict(airport_data, orient='index')
-    st.write(f"Data last updated at {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')}")
-    st.dataframe(df)
-else:
-    st.write("No data available for airports with both METAR and TAF")
+# Fetch the latest METAR and TAF data for
