@@ -67,7 +67,7 @@ def analyze_weather(metar, taf, hours_ahead):
 
     warnings = []
 
-    if metar_time < current_time - datetime.timedelta(hours=1):
+    if metar_time < current_time - datetime.timedelta(minutes=30):
         warnings.append('METAR is out of date.')
 
     if taf_end_time < current_time:
@@ -123,6 +123,21 @@ def analyze_weather(metar, taf, hours_ahead):
                     cloud_base = 9999
             lowest_visibility = min(lowest_visibility, visibility)
             lowest_cloud_base = min(lowest_cloud_base, cloud_base)
+
+    # Add current METAR to timeline
+    if current_time <= metar_time <= future_time:
+        if 'CAVOK' in metar_data['Clouds']:
+            visibility_metar = 9999
+            cloud_base_metar = 9999
+        else:
+            try:
+                visibility_metar = int(re.sub("[^0-9]", "", metar_data['Visibility']))
+                cloud_base_metar = int(re.sub("[^0-9]", "", metar_data['Clouds'][3:6]))
+            except ValueError:
+                visibility_metar = 9999
+                cloud_base_metar = 9999
+        lowest_visibility = min(lowest_visibility, visibility_metar)
+        lowest_cloud_base = min(lowest_cloud_base, cloud_base_metar)
 
     return metar_data, taf_data, lowest_visibility, lowest_cloud_base, warnings
 
