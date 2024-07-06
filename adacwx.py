@@ -56,6 +56,8 @@ st.markdown(
 # Auto-refresh every 30 minutes (1800 seconds)
 st_autorefresh(interval=1800 * 1000, key="data_refresh")
 
+AVWX_API_KEY = '6za8qC9A_ccwpCc_lus3atiuA7f3c4mwQKMGzW1RVvY'
+
 data_server = st.secrets["data_server"]
 
 ###########################################################################################
