@@ -2,7 +2,7 @@ import streamlit as st
 import datetime
 
 def decode_metar(metar):
-    parts = metar.split()
+    parts = metar.replace('\r', '').replace('\n', ' ').split()
     data = {
         'ICAO': parts[0],
         'Time': parts[1],
@@ -31,6 +31,16 @@ def decode_taf(taf):
     }
     return data
 
+def parse_validity(validity):
+    taf_start = validity[:6]
+    taf_end = validity[7:]
+    try:
+        taf_start_time = datetime.datetime.strptime(taf_start, '%d%H%M')
+        taf_end_time = datetime.datetime.strptime(taf_end, '%d%H%M')
+        return taf_start_time, taf_end_time
+    except ValueError as e:
+        raise ValueError(f"Error parsing TAF validity times: {e}")
+
 def analyze_weather(metar, taf):
     metar_data = decode_metar(metar)
     taf_data = decode_taf(taf)
@@ -38,15 +48,10 @@ def analyze_weather(metar, taf):
     current_time = datetime.datetime.utcnow()
     metar_time = datetime.datetime.strptime(metar_data['Time'], '%d%H%MZ')
 
-    taf_validity = taf_data['Validity']
-    taf_start_str = taf_validity[:4] + taf_validity[4:6]
-    taf_end_str = taf_validity[7:11] + taf_validity[11:13]
-    
     try:
-        taf_start_time = datetime.datetime.strptime(taf_start_str, '%d%H%M')
-        taf_end_time = datetime.datetime.strptime(taf_end_str, '%d%H%M')
+        taf_start_time, taf_end_time = parse_validity(taf_data['Validity'])
     except ValueError as e:
-        st.error(f"Error parsing TAF validity times: {e}")
+        st.error(e)
         return metar_data, taf_data, None, None, ["Invalid TAF validity times"]
 
     warnings = []
@@ -61,8 +66,13 @@ def analyze_weather(metar, taf):
         warnings.append('Thunderstorm detected.')
 
     try:
-        lowest_visibility = min(int(metar_data['Visibility'][:-2]), int(taf_data['Visibility'][:-2]))  # Assuming last 2 characters are units
-        lowest_cloud_base = min(int(metar_data['Clouds'][3:6]), int(taf_data['Clouds'][3:6]))
+        visibility_metar = int(metar_data['Visibility'].rstrip('KM'))
+        visibility_taf = int(taf_data['Visibility'].rstrip('KM'))
+        lowest_visibility = min(visibility_metar, visibility_taf)
+        
+        cloud_base_metar = int(metar_data['Clouds'][3:6])
+        cloud_base_taf = int(taf_data['Clouds'][3:6])
+        lowest_cloud_base = min(cloud_base_metar, cloud_base_taf)
     except ValueError as e:
         st.error(f"Error parsing visibility or cloud base: {e}")
         return metar_data, taf_data, None, None, ["Invalid visibility or cloud base values"]
