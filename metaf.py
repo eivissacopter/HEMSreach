@@ -26,12 +26,9 @@ def decode_metar(metar):
         'Trend Details': re.search(r'(TEMPO|BECMG|NOSIG)\s+(.*)', metar).group(2) if re.search(r'(TEMPO|BECMG|NOSIG)\s+(.*)', metar) else ''
     }
 
-    if 'Clouds' in data and data['Clouds'] != 'CAVOK':
-        if data['Clouds']:
-            cloud_bases = [int(cloud[3:]) * 100 for cloud in data['Clouds']]
-            data['Ceiling'] = min(cloud_bases)
-        else:
-            data['Ceiling'] = 'N/A'
+    if 'Clouds' in data and data['Clouds']:
+        cloud_bases = [int(cloud[3:]) * 100 for cloud in data['Clouds']]
+        data['Ceiling'] = min(cloud_bases)
     else:
         data['Ceiling'] = 'N/A'
 
@@ -98,7 +95,6 @@ if st.button("Submit"):
         st.subheader("Decoded METAR")
         st.table(list(formatted_metar_data.items()))
 
-        # Process TAF similarly as METAR if needed
         if taf:
             taf_data = decode_metar(taf)  # Assuming similar decode function for TAF
             formatted_taf_data = format_metar(taf_data)
