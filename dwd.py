@@ -57,11 +57,11 @@ def parse_taf_data(file_content):
         return None
 
 # Function to find the latest available file by scanning the directory
-def find_latest_file(base_url, airport_code, file_prefix):
+def find_latest_file(base_url, airport_code):
     directory_listing = fetch_directory_listing(base_url)
     if directory_listing:
         soup = BeautifulSoup(directory_listing, 'html.parser')
-        files = [a['href'] for a in soup.find_all('a', href=True) if f"_{airport_code}_" in a['href'] and a['href'].startswith(file_prefix)]
+        files = [a['href'] for a in soup.find_all('a', href=True) if f"_{airport_code}_" in a['href']]
         st.write(f"Found files for {airport_code}: {files}")
         if files:
             latest_file = sorted(files, reverse=True)[0]
@@ -83,10 +83,10 @@ taf_base_url = f"https://{data_server['server']}/aviation/OPMET/TAF/DE"
 
 # Fetch the latest METAR and TAF data for each airport
 for airport in airports:
-    file_content_metar = find_latest_file(metar_base_url, airport, "SADL31")
+    file_content_metar = find_latest_file(metar_base_url, airport)
     metar_message = parse_metar_data(file_content_metar) if file_content_metar else None
 
-    file_content_taf = find_latest_file(taf_base_url, airport, "FCDL31")
+    file_content_taf = find_latest_file(taf_base_url, airport)
     taf_message = parse_taf_data(file_content_taf) if file_content_taf else None
 
     if metar_message or taf_message:
