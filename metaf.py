@@ -26,25 +26,23 @@ def decode_metar(metar):
         'Trend Details': re.search(r'(TEMPO|BECMG|NOSIG)\s+(.*)', metar).group(2) if re.search(r'(TEMPO|BECMG|NOSIG)\s+(.*)', metar) else ''
     }
 
-    if data['Clouds']:
-        try:
-            first_cloud = data['Clouds'][0]
-            cloud_bases = [int(cloud[3:]) * 100 for cloud in data['Clouds']]
-            bkn_ovc_bases = [int(cloud[3:]) * 100 for cloud in data['Clouds'] if cloud.startswith('BKN') or cloud.startswith('OVC')]
-            
-            if first_cloud.startswith('FEW') or first_cloud.startswith('SCT'):
-                data['First Cloud Base'] = f"{first_cloud[:3]} at {int(first_cloud[3:]) * 100}ft"
-                data['First Cloud Ceiling'] = f"{min(bkn_ovc_bases)}ft" if bkn_ovc_bases else 'N/A'
-            else:
-                data['First Cloud Base'] = 'N/A'
-                data['First Cloud Ceiling'] = f"{int(first_cloud[3:]) * 100}ft"
+    first_cloud_base = None
+    first_cloud_ceiling = None
 
-        except ValueError:
-            data['First Cloud Base'] = 'N/A'
-            data['First Cloud Ceiling'] = 'N/A'
-    else:
-        data['First Cloud Base'] = 'N/A'
-        data['First Cloud Ceiling'] = 'N/A'
+    for cloud in data['Clouds']:
+        if first_cloud_base is None and (cloud.startswith('FEW') or cloud.startswith('SCT')):
+            first_cloud_base = f"{cloud[:3]} at {int(cloud[3:]) * 100}ft"
+        if first_cloud_ceiling is None and (cloud.startswith('BKN') or cloud.startswith('OVC')):
+            first_cloud_ceiling = f"{cloud[:3]} at {int(cloud[3:]) * 100}ft"
+            break
+
+    if first_cloud_base is None:
+        first_cloud_base = 'N/A'
+    if first_cloud_ceiling is None:
+        first_cloud_ceiling = 'N/A'
+
+    data['First Cloud Base'] = first_cloud_base
+    data['First Cloud Ceiling'] = first_cloud_ceiling
 
     temp_dew = re.search(r'\d{2}/\d{2}', metar)
     if temp_dew:
