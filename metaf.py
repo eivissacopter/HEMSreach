@@ -5,20 +5,17 @@ import re
 def decode_metar(metar):
     metar = re.sub(r'[\r\n]+', ' ', metar).strip()  # Remove \r and \n characters
 
-    data = {}
-    data['ICAO'] = re.search(r'\b[A-Z]{4}\b', metar).group()
-    data['Time'] = re.search(r'\d{6}Z', metar).group()
-    data['Wind'] = re.search(r'\d{3}\d{2}(G\d{2})?KT', metar).group()
-    data['Visibility'] = re.search(r'\b\d{4}\b', metar).group()
-    data['Variable Wind'] = re.search(r'\d{3}V\d{3}', metar).group() if re.search(r'\d{3}V\d{3}', metar) else ''
-    clouds = re.findall(r'(FEW|SCT|BKN|OVC)\d{3}', metar)
-    data['Clouds'] = ' '.join(clouds) if clouds else 'CAVOK'
-    temp_dew = re.search(r'\d{2}/\d{2}', metar)
-    data['Temperature/Dewpoint'] = temp_dew.group() if temp_dew else ''
-    qnh = re.search(r'\bQ\d{4}\b', metar)
-    data['QNH'] = qnh.group() if qnh else ''
-    trend = re.search(r'(TEMPO|BECMG|NOSIG) .*', metar)
-    data['Trend'] = trend.group(0) if trend else ''
+    data = {
+        'ICAO': re.search(r'\b[A-Z]{4}\b', metar).group(),
+        'Time': re.search(r'\d{6}Z', metar).group(),
+        'Wind': re.search(r'\d{3}\d{2}(G\d{2})?KT', metar).group(),
+        'Visibility': re.search(r'\b\d{4}\b', metar).group(),
+        'Variable Wind': re.search(r'\d{3}V\d{3}', metar).group() if re.search(r'\d{3}V\d{3}', metar) else '',
+        'Clouds': ' '.join(re.findall(r'(FEW|SCT|BKN|OVC)\d{3}', metar)) if re.findall(r'(FEW|SCT|BKN|OVC)\d{3}', metar) else 'CAVOK',
+        'Temperature/Dewpoint': re.search(r'\d{2}/\d{2}', metar).group(),
+        'QNH': re.search(r'\bQ\d{4}\b', metar).group(),
+        'Trend': ' '.join(re.findall(r'(TEMPO|BECMG|NOSIG) .*?(?= TEMPO| BECMG| NOSIG|$)', metar))
+    }
 
     if data['Temperature/Dewpoint']:
         temp_dew_split = data['Temperature/Dewpoint'].split('/')
@@ -29,17 +26,17 @@ def decode_metar(metar):
 
 def decode_taf(taf):
     taf = re.sub(r'[\r\n]+', ' ', taf).strip()  # Remove \r and \n characters
-    data = {}
-    data['ICAO'] = re.search(r'\b[A-Z]{4}\b', taf).group()
-    data['Time'] = re.search(r'\d{6}Z', taf).group()
-    data['Validity'] = re.search(r'\d{4}/\d{4}', taf).group()
-    data['Wind'] = re.search(r'\d{3}\d{2}(G\d{2})?KT', taf).group()
-    data['Visibility'] = re.search(r'\b\d{4}\b', taf).group()
-    data['Weather'] = re.search(r'(-|\+)?[A-Z]{2,4}', taf).group() if re.search(r'(-|\+)?[A-Z]{2,4}', taf) else ''
-    clouds = re.findall(r'(FEW|SCT|BKN|OVC)\d{3}', taf)
-    data['Clouds'] = ' '.join(clouds) if clouds else 'CAVOK'
-    changes_match = re.findall(r'(TEMPO|BECMG|FM|TL|AT|PROB\d{2}) .*?(?= TEMPO| BECMG| FM| TL| AT| PROB\d{2}|$)', taf)
-    data['Changes'] = ' '.join(changes_match) if changes_match else ''
+
+    data = {
+        'ICAO': re.search(r'\b[A-Z]{4}\b', taf).group(),
+        'Time': re.search(r'\d{6}Z', taf).group(),
+        'Validity': re.search(r'\d{4}/\d{4}', taf).group(),
+        'Wind': re.search(r'\d{3}\d{2}(G\d{2})?KT', taf).group(),
+        'Visibility': re.search(r'\b\d{4}\b', taf).group(),
+        'Weather': re.search(r'(-|\+)?[A-Z]{2,4}', taf).group() if re.search(r'(-|\+)?[A-Z]{2,4}', taf) else '',
+        'Clouds': ' '.join(re.findall(r'(FEW|SCT|BKN|OVC)\d{3}', taf)) if re.findall(r'(FEW|SCT|BKN|OVC)\d{3}', taf) else 'CAVOK',
+        'Changes': re.findall(r'(TEMPO|BECMG|FM|TL|AT|PROB\d{2}) .*?(?= TEMPO| BECMG| FM| TL| AT| PROB\d{2}|$)', taf)
+    }
 
     return data
 
@@ -90,15 +87,19 @@ def analyze_weather(metar, taf, hours_ahead):
     timeline = []
 
     for trend in trends:
-        trend_type, trend_info = trend.split(maxsplit=1)
-        if trend_type == 'TEMPO':
+        try:
+            trend_type, trend_info = trend.split(maxsplit=1)
             trend_details = trend_info.strip()
             timeline.append((metar_time, future_time, trend_details))
+        except ValueError:
+            continue
 
-    taf_changes = taf_data['Changes'].split()
-    for change in taf_changes:
-        change_type, change_details = change.split(maxsplit=1)
-        timeline.append((taf_start_time, taf_end_time, change_details.strip()))
+    for change in taf_data['Changes']:
+        try:
+            change_type, change_details = change.split(maxsplit=1)
+            timeline.append((taf_start_time, taf_end_time, change_details.strip()))
+        except ValueError:
+            continue
 
     timeline.sort(key=lambda x: x[0])
 
