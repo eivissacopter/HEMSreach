@@ -62,11 +62,9 @@ def find_latest_file(base_url, airport_code):
     if directory_listing:
         soup = BeautifulSoup(directory_listing, 'html.parser')
         files = [a['href'] for a in soup.find_all('a', href=True) if f"_{airport_code}_" in a['href']]
-        st.write(f"Found files for {airport_code}: {files}")
         if files:
             latest_file = sorted(files, reverse=True)[0]
             url = f"{base_url}/{latest_file}"
-            st.write(f"Fetching file: {url}")
             file_content = fetch_file_content(url)
             return file_content
     return None
