@@ -10,4 +10,3 @@ pytaf
 paramiko
 OWSLib
 beautifulsoup4
-ttk
