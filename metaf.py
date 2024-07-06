@@ -14,7 +14,8 @@ def decode_metar(metar):
         'Variable Wind': re.search(r'\d{3}V\d{3}', metar).group() if re.search(r'\d{3}V\d{3}', metar) else '',
         'Clouds': re.search(r'(FEW|SCT|BKN|OVC)\d{3}', metar).group() if re.search(r'(FEW|SCT|BKN|OVC)\d{3}', metar) else 'CAVOK',
         'QNH': re.search(r'\bQ\d{4}\b', metar).group(),
-        'Trend': ' '.join(re.findall(r'(TEMPO|BECMG|NOSIG) .*?(?= TEMPO| BECMG| NOSIG|$)', metar))
+        'Trend': ' '.join(re.findall(r'(TEMPO|BECMG|NOSIG) .*?(?= TEMPO| BECMG| NOSIG|$)', metar)),
+        'Trend Details': re.search(r'(TEMPO|BECMG|NOSIG)\s+(.*)', metar).group(2) if re.search(r'(TEMPO|BECMG|NOSIG)\s+(.*)', metar) else ''
     }
 
     if 'Clouds' in data and data['Clouds'] != 'CAVOK':
@@ -51,7 +52,8 @@ def format_metar(data):
         "Dewpoint": f"{data['Dewpoint']}°C",
         "Spread": f"{data['Spread']}°C",
         "QNH": data['QNH'][1:],  # Remove the 'Q'
-        "Trend": data['Trend']
+        "Trend": data['Trend'],
+        "Trend Details": data['Trend Details']
     }
 
     if "G" in data["Wind"]:
@@ -61,7 +63,7 @@ def format_metar(data):
             formatted_data["Wind"] += f" / Gusts {gust}kt"
 
     if "Trend" in data:
-        trend_wind_match = re.search(r'\d{3}\d{2}(G\d{2})?KT', data["Trend"])
+        trend_wind_match = re.search(r'\d{3}\d{2}(G\d{2})?KT', data["Trend Details"])
         if trend_wind_match:
             trend_wind = trend_wind_match.group()
             trend_wind_formatted = f"{trend_wind[:3]}° / {trend_wind[3:5]}kt"
@@ -70,7 +72,7 @@ def format_metar(data):
                 if gust_match:
                     gust = gust_match.group()[1:]
                     trend_wind_formatted += f" / Gusts {gust}kt"
-            formatted_data["Trend"] += f" {trend_wind_formatted}"
+            formatted_data["Trend Details"] += f" {trend_wind_formatted}"
 
     return formatted_data
 
@@ -86,7 +88,7 @@ if st.button("Submit"):
         formatted_metar_data = format_metar(metar_data)
 
         st.subheader("Decoded METAR")
-        st.json(formatted_metar_data)
+        st.table(formatted_metar_data.items())
 
         # Process TAF similarly as METAR if needed
         # ...
