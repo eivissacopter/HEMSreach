@@ -2,6 +2,7 @@ import requests
 import pandas as pd
 import streamlit as st
 from datetime import datetime
+from bs4 import BeautifulSoup
 
 # Load secrets from Streamlit configuration
 data_server = st.secrets["data_server"]
@@ -59,10 +60,10 @@ def parse_taf_data(file_content):
 def find_latest_file(base_url, airport_code, file_prefix):
     directory_listing = fetch_directory_listing(base_url)
     if directory_listing:
-        lines = directory_listing.splitlines()
-        relevant_files = [line.split()[0] for line in lines if f"_{airport_code}_" in line and line.startswith(file_prefix)]
-        if relevant_files:
-            latest_file = sorted(relevant_files, reverse=True)[0]
+        soup = BeautifulSoup(directory_listing, 'html.parser')
+        files = [a['href'] for a in soup.find_all('a', href=True) if f"_{airport_code}_" in a['href'] and a['href'].startswith(file_prefix)]
+        if files:
+            latest_file = sorted(files, reverse=True)[0]
             url = f"{base_url}/{latest_file}"
             file_content = fetch_file_content(url)
             return file_content
