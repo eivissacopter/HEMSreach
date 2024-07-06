@@ -18,15 +18,16 @@ def decode_metar(metar):
 
 def decode_taf(taf):
     parts = taf.split()
+    validity_index = next(i for i, part in enumerate(parts) if '/' in part)
     data = {
         'ICAO': parts[0],
         'Time': parts[1],
-        'Validity': parts[2],
-        'Wind': parts[3],
-        'Visibility': parts[4],
-        'Weather': parts[5],
-        'Clouds': parts[6],
-        'Changes': ' '.join(parts[7:])
+        'Validity': parts[validity_index],
+        'Wind': parts[validity_index + 1],
+        'Visibility': parts[validity_index + 2],
+        'Weather': parts[validity_index + 3],
+        'Clouds': parts[validity_index + 4],
+        'Changes': ' '.join(parts[validity_index + 5:])
     }
     return data
 
@@ -56,7 +57,7 @@ def analyze_weather(metar, taf):
         warnings.append('Thunderstorm detected.')
 
     try:
-        lowest_visibility = min(int(metar_data['Visibility']), int(taf_data['Visibility']))
+        lowest_visibility = min(int(metar_data['Visibility'][:-2]), int(taf_data['Visibility'][:-2]))  # Assuming last 2 characters are units
         lowest_cloud_base = min(int(metar_data['Clouds'][3:6]), int(taf_data['Clouds'][3:6]))
     except ValueError as e:
         st.error(f"Error parsing visibility or cloud base: {e}")
