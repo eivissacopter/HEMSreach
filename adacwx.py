@@ -56,20 +56,6 @@ st.markdown(
 # Auto-refresh every 30 minutes (1800 seconds)
 st_autorefresh(interval=1800 * 1000, key="data_refresh")
 
-AVWX_API_KEY = '6za8qC9A_ccwpCc_lus3atiuA7f3c4mwQKMGzW1RVvY'
-
-geojson_data = None
-geojson_file_path = 'mrva.geojson'
-
-if os.path.exists(geojson_file_path):
-    try:
-        with open(geojson_file_path) as f:
-            geojson_data = json.load(f)
-    except json.JSONDecodeError as e:
-        st.error(f"Error loading GeoJSON file: {e}")
-else:
-    st.error("GeoJSON file not found.")
-
 ###########################################################################################
 
 # Function to calculate distance and bearing between two points using the Haversine formula
@@ -266,9 +252,6 @@ with st.sidebar:
         df_fuel = pd.DataFrame(fuel_data)
         st.table(df_fuel)
 
-        # Add checkbox to toggle GeoJSON layer
-        show_geojson = st.sidebar.checkbox('Show GeoJSON Layer')
-
 ###########################################################################################
 
 # Use the input values for performance calculations
@@ -332,10 +315,6 @@ folium.TileLayer(
     overlay=True,
     control=True
 ).add_to(m)
-
-# Add GeoJSON layer to map if checkbox is checked and GeoJSON data is loaded
-if show_geojson and geojson_data:
-    folium.GeoJson(geojson_data, name="MRVA Layer").add_to(m)
 
 # Add reachable airports to map
 reachable_airports_data = []
