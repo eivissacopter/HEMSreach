@@ -31,10 +31,16 @@ def decode_metar(metar):
 
     for cloud in data['Clouds']:
         if first_cloud_base is None and (cloud.startswith('FEW') or cloud.startswith('SCT')):
-            first_cloud_base = f"{cloud[:3]} at {int(cloud[3:]) * 100}ft"
+            try:
+                first_cloud_base = f"{cloud[:3]} at {int(cloud[3:]) * 100}ft"
+            except ValueError:
+                first_cloud_base = 'N/A'
         if first_cloud_ceiling is None and (cloud.startswith('BKN') or cloud.startswith('OVC')):
-            first_cloud_ceiling = f"{cloud[:3]} at {int(cloud[3:]) * 100}ft"
-            break
+            try:
+                first_cloud_ceiling = f"{cloud[:3]} at {int(cloud[3:]) * 100}ft"
+                break
+            except ValueError:
+                first_cloud_ceiling = 'N/A'
 
     if first_cloud_base is None:
         first_cloud_base = 'N/A'
@@ -70,11 +76,15 @@ def decode_taf(taf):
 
 def format_metar(data):
     time_utc = datetime.datetime.strptime(data['Time'], '%d%H%MZ')
-    time_local = time_utc + datetime.timedelta(hours=2)  # Assuming local time is UTC+2
+    time_local_start = time_utc + datetime.timedelta(hours=2)  # Assuming local time is UTC+2
+    time_local_end = time_local_start + datetime.timedelta(minutes=30)
+    trend_end = time_local_start + datetime.timedelta(hours=2)
+
     formatted_data = {
         "ICAO": data["ICAO"],
         "Day": data["Day"],
-        "Time": f"{time_local.strftime('%H:%M')} LT",
+        "Time": f"{time_local_start.strftime('%H:%M')} - {time_local_end.strftime('%H:%M')} LT",
+        "Trend Time": f"{time_local_start.strftime('%H:%M')} - {trend_end.strftime('%H:%M')} LT",
         "Wind": f"{data['Wind'][:3]}° / {data['Wind'][3:5]}kt",
         "Variable": f"{data['Variable Wind'][:3]}° - {data['Variable Wind'][4:]}°" if data['Variable Wind'] else "N/A",
         "Visibility": f"{data['Visibility']}m",
