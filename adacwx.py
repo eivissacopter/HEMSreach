@@ -108,18 +108,49 @@ def calculate_ground_speed(cruise_speed_kt, wind_speed, wind_direction, flight_d
 
 ###########################################################################################
 
-# Function to fetch METAR and TAF data from DWD server
-def fetch_metar_taf_data(icao):
+# Function to fetch METAR and TAF data from AVWX
+@st.cache_data
+def fetch_metar_taf_data_avwx(icao, api_key):
+    headers = {"Authorization": f"Bearer {api_key}"}
+    metar_url = f"https://avwx.rest/api/metar/{icao}?options=summary"
+    taf_url = f"https://avwx.rest/api/taf/{icao}?options=summary"
+
+    try:
+        response_metar = requests.get(metar_url, headers=headers)
+        response_metar.raise_for_status()  # Raise an HTTPError for bad responses
+        metar_data = response_metar.json()
+    except requests.exceptions.RequestException as e:
+        metar_data = f"Error fetching METAR data: {e}"
+
+    try:
+        response_taf = requests.get(taf_url, headers=headers)
+        response_taf.raise_for_status()  # Raise an HTTPError for bad responses
+        taf_data = response_taf.json()
+    except requests.exceptions.RequestException as e:
+        taf_data = f"Error fetching TAF data: {e}"
+
+    return metar_data, taf_data
+
+# Function to fetch METAR and TAF data from DWD server with AVWX fallback
+def fetch_metar_taf_data(icao, api_key):
     metar_base_url = f"https://{data_server['server']}/aviation/OPMET/METAR/DE"
     taf_base_url = f"https://{data_server['server']}/aviation/OPMET/TAF/DE"
 
     metar_file_content = find_latest_file(metar_base_url, icao)
     taf_file_content = find_latest_file(taf_base_url, icao)
 
-    metar_data = parse_metar_data(metar_file_content) if metar_file_content else "No METAR data available"
-    taf_data = parse_taf_data(taf_file_content) if taf_file_content else "No TAF data available"
+    metar_data = parse_metar_data(metar_file_content) if metar_file_content else None
+    taf_data = parse_taf_data(taf_file_content) if taf_file_content else None
+
+    if not metar_data or not taf_data:
+        avwx_metar, avwx_taf = fetch_metar_taf_data_avwx(icao, api_key)
+        if not metar_data:
+            metar_data = avwx_metar.get('raw', 'No METAR data available')
+        if not taf_data:
+            taf_data = avwx_taf.get('raw', 'No TAF data available')
 
     return metar_data, taf_data
+
 
 # Function to fetch directory listing
 def fetch_directory_listing(base_url):
@@ -327,7 +358,7 @@ m = folium.Map(location=[selected_location['lat'], selected_location['lon']], zo
 # Add reachable airports to map
 reachable_airports_data = []
 for airport, distance, bearing, ground_speed_kt, time_to_airport_hours in reachable_airports:
-    metar_data, taf_data = fetch_metar_taf_data(airport['icao'])
+    metar_data, taf_data = fetch_metar_taf_data(airport['icao'], AVWX_API_KEY)
 
     if metar_data and taf_data:
         metar_raw = metar_data if isinstance(metar_data, str) else metar_data.get('raw', '')
