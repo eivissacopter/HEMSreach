@@ -4,17 +4,20 @@ import streamlit as st
 from datetime import datetime, timedelta
 import folium
 from streamlit_folium import st_folium
-import io
 
 # Load secrets
 data_server = st.secrets["data_server"]
 
 # List of airports
-airports = ["edac", "eddr"]
+airports = ["EDAC", "EDDR"]
 
 # Function to construct the expected file name based on a given datetime
-def construct_file_name(prefix, dt, airport_code):
-    file_name = f"{prefix}{airport_code.upper()}_{dt.strftime('%d%H%M')}"
+def construct_file_name_metar(dt, airport_code):
+    file_name = f"SADL31_{airport_code}_{dt.strftime('%d%H%M')}"
+    return file_name
+
+def construct_file_name_taf(dt, airport_code):
+    file_name = f"FTDL31_{airport_code}_{dt.strftime('%d%H%M')}"
     return file_name
 
 # Function to fetch data via HTTPS
@@ -33,11 +36,11 @@ def fetch_data_https(directory_path, file_name):
         return None
 
 # Function to find the latest available file by iterating over the past few hours
-def find_latest_file(directory_path, prefix, airport_code, hours_back=24):
+def find_latest_file(directory_path, construct_file_name, airport_code, hours_back=24):
     now = datetime.utcnow()
     for i in range(hours_back):
         dt = now - timedelta(hours=i)
-        file_name = construct_file_name(prefix, dt, airport_code)
+        file_name = construct_file_name(dt, airport_code)
         file_content = fetch_data_https(directory_path, file_name)
         if file_content:
             return file_content
@@ -71,16 +74,16 @@ airport_data = {}
 
 # Fetch METAR and TAF data for each airport
 for airport in airports:
-    directory_path_metar = f'/aviation/OPMET/METAR/DE/'
-    file_content_metar = find_latest_file(directory_path_metar, "SADL31_", airport)
+    directory_path_metar = f'/aviation/OPMET/METAR/DE'
+    file_content_metar = find_latest_file(directory_path_metar, construct_file_name_metar, airport)
     metar_message = parse_metar_data(file_content_metar) if file_content_metar else None
 
-    directory_path_taf = f'/aviation/OPMET/TAF/DE/'
-    file_content_taf = find_latest_file(directory_path_taf, "FTDL31_", airport)
+    directory_path_taf = f'/aviation/OPMET/TAF/DE'
+    file_content_taf = find_latest_file(directory_path_taf, construct_file_name_taf, airport)
     taf_message = parse_taf_data(file_content_taf) if file_content_taf else None
 
     if metar_message and taf_message:
-        airport_data[airport.upper()] = {"METAR": metar_message, "TAF": taf_message}
+        airport_data[airport] = {"METAR": metar_message, "TAF": taf_message}
 
 # Display data in a table
 if airport_data:
