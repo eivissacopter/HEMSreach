@@ -14,7 +14,7 @@ def decode_metar(metar):
         'Variable Wind': re.search(r'\d{3}V\d{3}', metar).group() if re.search(r'\d{3}V\d{3}', metar) else '',
         'Clouds': re.search(r'(FEW|SCT|BKN|OVC)\d{3}', metar).group() if re.search(r'(FEW|SCT|BKN|OVC)\d{3}', metar) else 'CAVOK',
         'QNH': re.search(r'\bQ\d{4}\b', metar).group(),
-        'Trend': ' '.join(re.findall(r'(TEMPO|BECMG|NOSIG) .*?(?= TEMPO| BECMG| NOSIG|$)', metar)),
+        'Trend': re.search(r'(TEMPO|BECMG|NOSIG)', metar).group() if re.search(r'(TEMPO|BECMG|NOSIG)', metar) else '',
         'Trend Details': re.search(r'(TEMPO|BECMG|NOSIG)\s+(.*)', metar).group(2) if re.search(r'(TEMPO|BECMG|NOSIG)\s+(.*)', metar) else ''
     }
 
@@ -42,18 +42,18 @@ def format_metar(data):
     formatted_data = {
         "ICAO": data["ICAO"],
         "Day": data["Day"],
-        "Time": f"{data['Time']} / {time_local.strftime('%H%M')}L",
+        "Time": f"{time_local.strftime('%H:%M')} LT",
         "Wind": f"{data['Wind'][:3]}° / {data['Wind'][3:5]}kt",
         "Variable": f"{data['Variable Wind'][:3]}° - {data['Variable Wind'][4:]}°" if data['Variable Wind'] else "N/A",
         "Visibility": f"{data['Visibility']}m",
-        "Clouds": data['Clouds'][:3],
+        "Clouds": data['Clouds'][:3].capitalize(),
         "Ceiling": f"{data['Ceiling']}ft",
         "Temperature": f"{data['Temperature']}°C",
         "Dewpoint": f"{data['Dewpoint']}°C",
         "Spread": f"{data['Spread']}°C",
-        "QNH": data['QNH'][1:],  # Remove the 'Q'
-        "Trend": data['Trend'],
-        "Trend Details": data['Trend Details']
+        "QNH": f"{data['QNH'][1:]}hPa",  # Remove the 'Q' and add 'hPa'
+        "Trend Duration": data['Trend'].capitalize(),
+        "Trend Wx Change": data['Trend Details']
     }
 
     if "G" in data["Wind"]:
@@ -62,8 +62,8 @@ def format_metar(data):
             gust = gust_match.group()[1:]
             formatted_data["Wind"] += f" / Gusts {gust}kt"
 
-    if "Trend" in data:
-        trend_wind_match = re.search(r'\d{3}\d{2}(G\d{2})?KT', data["Trend Details"])
+    if "Trend Wx Change" in formatted_data and formatted_data["Trend Wx Change"]:
+        trend_wind_match = re.search(r'\d{3}\d{2}(G\d{2})?KT', formatted_data["Trend Wx Change"])
         if trend_wind_match:
             trend_wind = trend_wind_match.group()
             trend_wind_formatted = f"{trend_wind[:3]}° / {trend_wind[3:5]}kt"
@@ -71,8 +71,8 @@ def format_metar(data):
                 gust_match = re.search(r'G\d{2}', trend_wind)
                 if gust_match:
                     gust = gust_match.group()[1:]
-                    trend_wind_formatted += f" / Gusts {gust}kt"
-            formatted_data["Trend Details"] += f" {trend_wind_formatted}"
+                    trend_wind_formatted += f" - {gust}kt"
+            formatted_data["Trend Wx Change"] = trend_wind_formatted
 
     return formatted_data
 
@@ -88,7 +88,7 @@ if st.button("Submit"):
         formatted_metar_data = format_metar(metar_data)
 
         st.subheader("Decoded METAR")
-        st.table(formatted_metar_data.items())
+        st.table(list(formatted_metar_data.items()))
 
         # Process TAF similarly as METAR if needed
         # ...
