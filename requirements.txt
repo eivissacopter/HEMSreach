@@ -10,4 +10,4 @@ pytaf
 paramiko
 OWSLib
 beautifulsoup4
-tkinter
+ttk
