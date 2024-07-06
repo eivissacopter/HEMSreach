@@ -1,9 +1,7 @@
-import tkinter as tk
-from tkinter import ttk
+import streamlit as st
 import datetime
 
 def decode_metar(metar):
-    # Simplified decoding logic, should be expanded as needed
     parts = metar.split()
     data = {
         'ICAO': parts[0],
@@ -19,7 +17,6 @@ def decode_metar(metar):
     return data
 
 def decode_taf(taf):
-    # Simplified decoding logic, should be expanded as needed
     parts = taf.split()
     data = {
         'ICAO': parts[0],
@@ -53,50 +50,31 @@ def analyze_weather(metar, taf):
     if 'TS' in metar_data['Weather'] or 'TS' in taf_data['Weather']:
         warnings.append('Thunderstorm detected.')
 
-    # Example of extracting specific weather details
     lowest_visibility = min(int(metar_data['Visibility']), int(taf_data['Visibility']))
     lowest_cloud_base = min(int(metar_data['Clouds'][3:6]), int(taf_data['Clouds'][3:6]))
 
     return metar_data, taf_data, lowest_visibility, lowest_cloud_base, warnings
 
-def submit():
-    metar = metar_entry.get()
-    taf = taf_entry.get()
-    metar_data, taf_data, visibility, cloud_base, warnings = analyze_weather(metar, taf)
+st.title("METAR/TAF Decoder")
 
-    for key, value in metar_data.items():
-        metar_table.insert("", "end", values=(key, value))
-    
-    for key, value in taf_data.items():
-        taf_table.insert("", "end", values=(key, value))
+metar = st.text_area("Enter METAR:")
+taf = st.text_area("Enter TAF:")
 
-    result_label.config(text=f"Lowest Visibility: {visibility}m\nLowest Cloud Base: {cloud_base}ft\nWarnings: {', '.join(warnings)}")
+if st.button("Submit"):
+    if metar and taf:
+        metar_data, taf_data, visibility, cloud_base, warnings = analyze_weather(metar, taf)
 
-app = tk.Tk()
-app.title("METAR/TAF Decoder")
+        st.subheader("Decoded METAR")
+        st.write(metar_data)
 
-tk.Label(app, text="Enter METAR:").pack()
-metar_entry = tk.Entry(app, width=100)
-metar_entry.pack()
+        st.subheader("Decoded TAF")
+        st.write(taf_data)
 
-tk.Label(app, text="Enter TAF:").pack()
-taf_entry = tk.Entry(app, width=100)
-taf_entry.pack()
-
-submit_button = tk.Button(app, text="Submit", command=submit)
-submit_button.pack()
-
-metar_table = ttk.Treeview(app, columns=("Field", "Value"), show="headings")
-metar_table.heading("Field", text="Field")
-metar_table.heading("Value", text="Value")
-metar_table.pack()
-
-taf_table = ttk.Treeview(app, columns=("Field", "Value"), show="headings")
-taf_table.heading("Field", text="Field")
-taf_table.heading("Value", text="Value")
-taf_table.pack()
-
-result_label = tk.Label(app, text="", wraplength=400)
-result_label.pack()
-
-app.mainloop()
+        st.subheader("Analysis")
+        st.write(f"Lowest Visibility: {visibility}m")
+        st.write(f"Lowest Cloud Base: {cloud_base}ft")
+        st.write("Warnings:")
+        for warning in warnings:
+            st.write(f"- {warning}")
+    else:
+        st.warning("Please enter both METAR and TAF.")
