@@ -31,16 +31,10 @@ def decode_metar(metar):
 
     for cloud in data['Clouds']:
         if first_cloud_base is None and (cloud.startswith('FEW') or cloud.startswith('SCT')):
-            try:
-                first_cloud_base = f"{cloud[:3].capitalize()} at {int(cloud[3:]) * 100}ft"
-            except ValueError:
-                first_cloud_base = 'N/A'
+            first_cloud_base = f"{cloud[:3].capitalize()} at {int(cloud[3:]) * 100}ft"
         if first_cloud_ceiling is None and (cloud.startswith('BKN') or cloud.startswith('OVC')):
-            try:
-                first_cloud_ceiling = f"{cloud[:3].capitalize()} at {int(cloud[3:]) * 100}ft"
-                break
-            except ValueError:
-                first_cloud_ceiling = 'N/A'
+            first_cloud_ceiling = f"{cloud[:3].capitalize()} at {int(cloud[3:]) * 100}ft"
+            break
 
     if first_cloud_base is None:
         first_cloud_base = 'N/A'
