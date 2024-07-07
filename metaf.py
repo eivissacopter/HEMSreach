@@ -25,8 +25,8 @@ def decode_metar(metar):
         'Trend Details': re.search(r'(TEMPO|BECMG|NOSIG)\s+(.*)', metar).group(2) if re.search(r'(TEMPO|BECMG|NOSIG)\s+(.*)', metar) else ''
     }
 
-    clouds = re.findall(r'(FEW|SCT|BKN|OVC|VV|SKC|NSC|CLR)\d{3}', metar)
     cloud_details = []
+    clouds = re.findall(r'(FEW|SCT|BKN|OVC|VV|SKC|NSC|CLR)\d{3}', metar)
     for cloud in clouds:
         try:
             cloud_type = cloud[:3]
@@ -35,7 +35,7 @@ def decode_metar(metar):
         except ValueError:
             cloud_details.append(f"{cloud_type} unknown altitude")
 
-    data['Cloud Details'] = ', '.join(cloud_details) if cloud_details else 'N/A'
+    data['Cloud Details'] = cloud_details
 
     temp_dew = re.search(r'\d{2}/\d{2}', metar)
     if temp_dew:
@@ -130,7 +130,21 @@ if st.button("Submit"):
         formatted_metar_data = format_metar(metar_data)
 
         st.subheader("Decoded METAR")
-        st.table(list(formatted_metar_data.items()))
+        st.table([["ICAO", formatted_metar_data["ICAO"]],
+                  ["Day", formatted_metar_data["Day"]],
+                  ["Time", formatted_metar_data["Time"]],
+                  ["Wind", formatted_metar_data["Wind"]],
+                  ["Variable", formatted_metar_data["Variable"]],
+                  ["Visibility", formatted_metar_data["Visibility"]],
+                  ["Temperature", formatted_metar_data["Temperature"]],
+                  ["Dewpoint", formatted_metar_data["Dewpoint"]],
+                  ["Spread", formatted_metar_data["Spread"]],
+                  ["QNH", formatted_metar_data["QNH"]],
+                  ["Trend Duration", formatted_metar_data["Trend Duration"]],
+                  ["Trend Change", formatted_metar_data["Trend Change"]]])
+
+        for cloud_detail in formatted_metar_data["Cloud Details"]:
+            st.write(f"Cloud Detail: {cloud_detail}")
 
         if taf:
             taf_data = decode_taf(taf)
