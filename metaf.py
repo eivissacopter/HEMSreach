@@ -121,15 +121,15 @@ def format_metar(data):
         "End Time": time_local_end.strftime('%H:%M'),
         "Wind Direction": data["Wind"][:3],
         "Wind Speed": data["Wind"][3:5],
-        "Wind Gust": data["Wind"][7:9] if 'G' in data["Wind"] else 'N/A',
-        "Variable": f"{data['Variable Wind'][:3]} - {data['Variable Wind'][4:]}" if data['Variable Wind'] != 'N/A' else "N/A",
+        "Wind Gust": data["Wind"][7:9] if 'G' in data["Wind"] else '',
+        "Variable": f"{data['Variable Wind'][:3]} - {data['Variable Wind'][4:]}" if data['Variable Wind'] != '' else "",
         "Visibility": f"{data['Visibility']}",
         "Temperature": f"{data['Temperature']}",
         "Dewpoint": f"{data['Dewpoint']}",
         "Spread": f"{data['Spread']}",
-        "QNH": f"{data['QNH'][1:]}" if data['QNH'] != 'N/A' else 'N/A',
-        "Trend Duration": data['Trend'].capitalize() if data['Trend'] != 'N/A' else 'N/A',
-        "Trend Change": data['Trend Details'] if data['Trend Details'] != 'N/A' else 'N/A',
+        "QNH": f"{data['QNH'][1:]}" if data['QNH'] != 'Missing!' else 'Missing!',
+        "Trend Duration": data['Trend'].capitalize() if data['Trend'] != '' else '',
+        "Trend Change": data['Trend Details'] if data['Trend Details'] != '' else '',
         "Warnings": data['Warnings']
     }
 
