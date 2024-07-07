@@ -84,6 +84,15 @@ if uploaded_file:
                     st.write(f"Map bounds set to: {bounds}")
                 else:
                     st.warning(f"No bounding box available for layer: {layer_title}")
+                    # Allow user to manually set the map bounds if no bounding box is available
+                    if st.sidebar.checkbox("Set Custom Map Bounds"):
+                        south = st.sidebar.number_input("South Bound Latitude", value=-90.0)
+                        west = st.sidebar.number_input("West Bound Longitude", value=-180.0)
+                        north = st.sidebar.number_input("North Bound Latitude", value=90.0)
+                        east = st.sidebar.number_input("East Bound Longitude", value=180.0)
+                        bounds = [[south, west], [north, east]]
+                        m.fit_bounds(bounds)
+                        st.write(f"Map bounds set to custom bounds: {bounds}")
             except Exception as e:
                 st.error(f"Failed to add layer {layer_title}: {e}")
                 st.write(e)
