@@ -69,6 +69,9 @@ if uploaded_file:
                     bounds = [[float(bbox['southBoundLatitude']), float(bbox['westBoundLongitude'])],
                               [float(bbox['northBoundLatitude']), float(bbox['eastBoundLongitude'])]]
                     m.fit_bounds(bounds)
+                    st.write(f"Map bounds set to: {bounds}")
+                else:
+                    st.warning(f"No bounding box available for layer: {layer_title}")
             except Exception as e:
                 st.error(f"Failed to add layer {layer_title}: {e}")
 
