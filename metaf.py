@@ -131,15 +131,16 @@ def format_cloud_details(cloud_details):
         cloud_rows.append([f"Cloud {i+1} Altitude", detail[1]])
     return cloud_rows
 
+#################################################################################################
+
 def decode_taf(taf):
     taf = re.sub(r'[\r\n]+', ' ', taf).strip()  # Remove \r and \n characters
 
     data = {
         'ICAO': re.search(r'\b[A-Z]{4}\b', taf).group(),
-        'Time': re.search(r'\d{6}Z', taf).group(),
-        'Validity': re.search(r'\d{4}/\d{4}', taf).group(),
-        'Day': re.search(r'\d{2}(?=\d{4}/\d{4})', taf).group(),
+        'Day': re.search(r'\d{2}(?=\d{6}Z)', taf).group(),
         'Start Time': re.search(r'\d{6}Z', taf).group(),
+        'Validity': re.search(r'\d{4}/\d{4}', taf).group(),
         'Wind': re.search(r'\d{3}\d{2}(G\d{2})?KT', taf).group(),
         'Visibility': re.search(r'\b\d{4}\b', taf).group(),
         'Clouds': re.findall(r'(FEW|SCT|BKN|OVC)(\d{3})', taf),
@@ -147,8 +148,6 @@ def decode_taf(taf):
     }
 
     return data
-
-#################################################################################################
 
 def format_taf(data):
     time_utc = datetime.datetime.strptime(data['Start Time'], '%d%H%MZ')
@@ -169,11 +168,6 @@ def format_taf(data):
     }
 
     return formatted_data
-
-st.title("METAR/TAF Decoder")
-
-metar = st.text_area("Enter METAR:")
-taf = st.text_area("Enter TAF:")
 
 if st.button("Submit", key="submit_button"):
     if metar:
