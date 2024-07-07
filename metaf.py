@@ -86,7 +86,7 @@ def decode_metar(metar):
     }
     
     for code, description in warnings_patterns.items():
-        if re.search(r'\b' + code.strip() + r'\b', metar):
+        if re.search(r'\b' + code.strip() + r'\b', ' ' + metar + ' '):
             data['Warnings'].append(description)
     
     data['Warnings'] = ', '.join(data['Warnings']) if data['Warnings'] else 'N/A'
@@ -148,6 +148,8 @@ st.title("METAR/TAF Decoder")
 metar = st.text_area("Enter METAR:")
 taf = st.text_area("Enter TAF:")
 hours_ahead = st.slider("Hours Ahead", 0, 9, 5)
+
+##########################################################################################################
 
 if st.button("Submit"):
     if metar:
