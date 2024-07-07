@@ -1,7 +1,6 @@
 import streamlit as st
 import folium
 from streamlit_folium import st_folium
-import json
 import xmltodict
 import requests
 from requests.auth import HTTPBasicAuth
@@ -74,35 +73,6 @@ if uploaded_file:
         for title, name in layer_info:
             if title == selected_layer:
                 add_wms_layer(m, name, title)
-
-        # Load GeoJSON file from URL
-        def add_geojson_layer(m, url):
-            try:
-                response = requests.get(url)
-                response.raise_for_status()
-                if response.headers.get('Content-Type').startswith('application/json'):
-                    geojson_data = response.json()
-                    folium.GeoJson(
-                        geojson_data,
-                        name="MRVA Overlay"
-                    ).add_to(m)
-                    st.success("MRVA Overlay added successfully")
-                    st.write(f"GeoJSON data: {geojson_data}")
-                else:
-                    st.error(f"Unexpected content type: {response.headers.get('Content-Type')}")
-            except requests.exceptions.RequestException as e:
-                st.error(f"Failed to fetch GeoJSON: {e}")
-            except json.JSONDecodeError as e:
-                st.error(f"Failed to load MRVA Overlay: {e}")
-            except Exception as e:
-                st.error(f"Failed to add MRVA Overlay: {e}")
-
-        # Sidebar switch to enable/disable GeoJSON overlay
-        enable_geojson = st.sidebar.checkbox("Enable MRVA Overlay")
-
-        if enable_geojson:
-            geojson_url = 'https://filebin.net/opbm1223wsobw8uf/MRVA.geojson'  # Replace with the correct GeoJSON URL
-            add_geojson_layer(m, geojson_url)
 
         # Display the map with layer control
         folium.LayerControl().add_to(m)
