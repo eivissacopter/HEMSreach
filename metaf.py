@@ -158,6 +158,12 @@ if st.button("Submit"):
         formatted_metar_data = format_metar(metar_data)
         cloud_rows = format_cloud_details(metar_data['Cloud Details'])
        
+if st.button("Submit"):
+    if metar:
+        metar_data = decode_metar(metar)
+        formatted_metar_data = format_metar(metar_data)
+        cloud_rows = format_cloud_details(metar_data['Cloud Details'])
+
         st.subheader("Decoded METAR")
         metar_table = [
             ["ICAO", formatted_metar_data["ICAO"]],
