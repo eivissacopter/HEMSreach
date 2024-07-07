@@ -35,10 +35,10 @@ def decode_metar(metar):
         try:
             altitude = int(cloud[3:]) * 100
             cloud_type = cloud[:3]
-            if cloud_type in ['FEW', 'SCT'] and cloud_base == 'N/A':
+            if cloud_type in ['FEW', 'SCT']:
                 cloud_base = cloud_type.capitalize()
                 base_altitude = f"{altitude}ft"
-            if cloud_type in ['BKN', 'OVC'] and cloud_ceiling == 'N/A':
+            if cloud_type in ['BKN', 'OVC']:
                 cloud_ceiling = cloud_type.capitalize()
                 ceiling_altitude = f"{altitude}ft"
         except ValueError:
