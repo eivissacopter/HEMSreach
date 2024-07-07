@@ -25,8 +25,8 @@ def decode_metar(metar):
         'Trend Details': re.search(r'(TEMPO|BECMG|NOSIG)\s+(.*)', metar).group(2) if re.search(r'(TEMPO|BECMG|NOSIG)\s+(.*)', metar) else ''
     }
 
-    cloud_details = []
     clouds = re.findall(r'(FEW|SCT|BKN|OVC|VV|SKC|NSC|CLR)\d{3}', metar)
+    cloud_details = []
     for cloud in clouds:
         try:
             cloud_type = cloud[:3]
@@ -76,7 +76,6 @@ def format_metar(data):
         "Wind": f"{data['Wind'][:3]}° / {data['Wind'][3:5]}kt",
         "Variable": f"{data['Variable Wind'][:3]}° - {data['Variable Wind'][4:]}°" if data['Variable Wind'] != 'N/A' else "N/A",
         "Visibility": f"{data['Visibility']}m",
-        "Cloud Details": data['Cloud Details'],
         "Temperature": f"{data['Temperature']}°C",
         "Dewpoint": f"{data['Dewpoint']}°C",
         "Spread": f"{data['Spread']}°C",
@@ -85,25 +84,9 @@ def format_metar(data):
         "Trend Change": data['Trend Details'] if data['Trend Details'] else ''
     }
 
-    if "G" in data["Wind"]:
-        gust_match = re.search(r'G\d{2}', data["Wind"])
-        if gust_match:
-            gust = gust_match.group()[1:]
-            formatted_data["Wind"] += f" / Gusts {gust}kt"
+    cloud_rows = [[f"Cloud {i+1}", detail] for i, detail in enumerate(data['Cloud Details'])]
 
-    if "Trend Change" in formatted_data and formatted_data["Trend Change"]:
-        trend_wind_match = re.search(r'\d{3}\d{2}(G\d{2})?KT', formatted_data["Trend Change"])
-        if trend_wind_match:
-            trend_wind = trend_wind_match.group()
-            trend_wind_formatted = f"{trend_wind[:3]}° / {trend_wind[3:5]}kt"
-            if "G" in trend_wind:
-                gust_match = re.search(r'G\d{2}', trend_wind)
-                if gust_match:
-                    gust = gust_match.group()[1:]
-                    trend_wind_formatted += f" - {gust}kt"
-            formatted_data["Trend Change"] = trend_wind_formatted
-
-    return formatted_data
+    return formatted_data, cloud_rows
 
 def format_taf(data):
     formatted_data = {
@@ -126,8 +109,8 @@ hours_ahead = st.slider("Hours Ahead", 0, 9, 5)
 
 if st.button("Submit"):
     if metar:
-        metar_data = decode_metar(metar)
-        formatted_metar_data = format_metar(metar_data)
+        metar_data, cloud_rows = decode_metar(metar)
+        formatted_metar_data, cloud_rows = format_metar(metar_data)
 
         st.subheader("Decoded METAR")
         st.table([["ICAO", formatted_metar_data["ICAO"]],
@@ -141,10 +124,7 @@ if st.button("Submit"):
                   ["Spread", formatted_metar_data["Spread"]],
                   ["QNH", formatted_metar_data["QNH"]],
                   ["Trend Duration", formatted_metar_data["Trend Duration"]],
-                  ["Trend Change", formatted_metar_data["Trend Change"]]])
-
-        for cloud_detail in formatted_metar_data["Cloud Details"]:
-            st.write(f"Cloud Detail: {cloud_detail}")
+                  ["Trend Change", formatted_metar_data["Trend Change"]]] + cloud_rows)
 
         if taf:
             taf_data = decode_taf(taf)
