@@ -32,32 +32,31 @@ def decode_metar(metar):
 
     # Find cloud base (FEW or SCT) with the lowest altitude
     for cloud in re.findall(r'(FEW|SCT)\d{3}', metar):
-        if len(cloud) == 6:  # Ensure the cloud string has 6 characters (3 for type, 3 for altitude)
-            try:
-                altitude = int(cloud[3:]) * 100
-                if altitude < base_altitude:
-                    cloud_base = cloud[:3].capitalize()
-                    base_altitude = altitude
-            except ValueError as e:
-                st.error(f"Error parsing cloud base information: {e}")
-                st.error(f"Cloud data: {cloud}")
+        try:
+            altitude = int(cloud[3:]) * 100
+            if altitude < base_altitude:
+                cloud_base = cloud[:3].capitalize()
+                base_altitude = altitude
+        except ValueError as e:
+            st.error(f"Error parsing cloud base information: {e}")
+            st.error(f"Cloud data: {cloud}")
 
     # Find cloud ceiling (BKN or OVC) with the lowest altitude
     for cloud in re.findall(r'(BKN|OVC)\d{3}', metar):
-        if len(cloud) == 6:  # Ensure the cloud string has 6 characters (3 for type, 3 for altitude)
-            try:
-                altitude = int(cloud[3:]) * 100
-                if altitude < ceiling_altitude:
-                    cloud_ceiling = cloud[:3].capitalize()
-                    ceiling_altitude = altitude
-            except ValueError as e:
-                st.error(f"Error parsing cloud ceiling information: {e}")
-                st.error(f"Cloud data: {cloud}")
+        try:
+            altitude = int(cloud[3:]) * 100
+            if altitude < ceiling_altitude:
+                cloud_ceiling = cloud[:3].capitalize()
+                ceiling_altitude = altitude
+        except ValueError as e:
+            st.error(f"Error parsing cloud ceiling information: {e}")
+            st.error(f"Cloud data: {cloud}")
 
     data['Cloud Base'] = cloud_base if cloud_base else 'N/A'
     data['Base Altitude'] = f"{base_altitude}ft" if base_altitude != float('inf') else 'N/A'
     data['Cloud Ceiling'] = cloud_ceiling if cloud_ceiling else 'N/A'
     data['Ceiling Altitude'] = f"{ceiling_altitude}ft" if ceiling_altitude != float('inf') else 'N/A'
+
 
     temp_dew = re.search(r'\d{2}/\d{2}', metar)
     if temp_dew:
