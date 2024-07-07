@@ -192,4 +192,4 @@ if st.button("Submit"):
         st.subheader("Analysis")
         # Implement additional analysis if needed
     else:
-        st.warning("Please enter
+        st.warning("Please enter a METAR.")
