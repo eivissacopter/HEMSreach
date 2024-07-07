@@ -20,7 +20,6 @@ def decode_metar(metar):
         'Wind': re.search(r'\d{3}\d{2}(G\d{2})?KT', metar).group(),
         'Visibility': re.search(r'\b\d{4}\b', metar).group(),
         'Variable Wind': re.search(r'\d{3}V\d{3}', metar).group() if re.search(r'\d{3}V\d{3}', metar) else 'N/A',
-        'Clouds': re.findall(r'(FEW|SCT|BKN|OVC)\d{3}', metar),
         'QNH': convert_qnh(re.search(r'\b(A\d{4}|Q\d{4})\b', metar).group()) if re.search(r'\b(A\d{4}|Q\d{4})\b', metar) else 'N/A',
         'Trend': re.search(r'(TEMPO|BECMG|NOSIG)', metar).group() if re.search(r'(TEMPO|BECMG|NOSIG)', metar) else '',
         'Trend Details': re.search(r'(TEMPO|BECMG|NOSIG)\s+(.*)', metar).group(2) if re.search(r'(TEMPO|BECMG|NOSIG)\s+(.*)', metar) else ''
@@ -31,20 +30,26 @@ def decode_metar(metar):
     cloud_ceiling = None
     ceiling_altitude = float('inf')
 
-    for cloud in data['Clouds']:
+    # Find cloud base (FEW or SCT) with the lowest altitude
+    for cloud in re.findall(r'(FEW|SCT)\d{3}', metar):
         try:
-            altitude_str = cloud[3:]
-            if altitude_str.isdigit():  # Check if the altitude string is valid
-                altitude = int(altitude_str) * 100
-                cloud_type = cloud[:3]
-                if cloud_type in ['FEW', 'SCT'] and altitude < base_altitude:
-                    cloud_base = cloud_type.capitalize()
-                    base_altitude = altitude
-                if cloud_type in ['BKN', 'OVC'] and altitude < ceiling_altitude:
-                    cloud_ceiling = cloud_type.capitalize()
-                    ceiling_altitude = altitude
+            altitude = int(cloud[3:]) * 100
+            if altitude < base_altitude:
+                cloud_base = cloud[:3].capitalize()
+                base_altitude = altitude
         except ValueError as e:
-            st.error(f"Error parsing cloud information: {e}")
+            st.error(f"Error parsing cloud base information: {e}")
+            st.error(f"Cloud data: {cloud}")
+
+    # Find cloud ceiling (BKN or OVC) with the lowest altitude
+    for cloud in re.findall(r'(BKN|OVC)\d{3}', metar):
+        try:
+            altitude = int(cloud[3:]) * 100
+            if altitude < ceiling_altitude:
+                cloud_ceiling = cloud[:3].capitalize()
+                ceiling_altitude = altitude
+        except ValueError as e:
+            st.error(f"Error parsing cloud ceiling information: {e}")
             st.error(f"Cloud data: {cloud}")
 
     data['Cloud Base'] = cloud_base if cloud_base else 'N/A'
