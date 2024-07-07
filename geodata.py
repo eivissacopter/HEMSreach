@@ -14,11 +14,10 @@ st.title("Weather Overlay Map")
 
 # Fetch layers from GeoServer
 def fetch_layers():
-    wms_url = f"{server_url}/geoserver/ows?service=wms&version=1.3.0&request=GetCapabilities"
+    wms_url = f"{server_url}/geoserver/dwd/ows?service=wms&version=1.3.0&request=GetCapabilities"
     try:
         response = requests.get(wms_url, auth=HTTPBasicAuth(username, password))
         response.raise_for_status()  # Raise an error for bad status codes
-        st.text(response.content)  # For debugging purposes
         tree = ElementTree.fromstring(response.content)
         layers = []
         for layer in tree.findall('.//{http://www.opengis.net/wms}Layer/{http://www.opengis.net/wms}Layer'):
@@ -47,7 +46,7 @@ if layers:
     # Add selected layer to map
     def add_wms_layer(m, layer_name, layer_title):
         try:
-            wms_url = f"{server_url}/geoserver/ows"
+            wms_url = f"{server_url}/geoserver/dwd/ows"
             folium.raster_layers.WmsTileLayer(
                 url=wms_url,
                 name=layer_title,
