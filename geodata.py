@@ -57,7 +57,8 @@ if uploaded_file:
                     fmt='image/png',
                     transparent=True,
                     version='1.3.0',
-                    name=layer_title
+                    name=layer_title,
+                    control=True
                 ).add_to(m)
                 st.success(f"Layer {layer_title} added successfully")
             except Exception as e:
