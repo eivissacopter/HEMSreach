@@ -26,23 +26,28 @@ def decode_metar(metar):
         'Trend Details': re.search(r'(TEMPO|BECMG|NOSIG)\s+(.*)', metar).group(2) if re.search(r'(TEMPO|BECMG|NOSIG)\s+(.*)', metar) else ''
     }
 
-    cloud_bases = []
-    cloud_ceilings = []
+    cloud_base = 'N/A'
+    base_altitude = 'N/A'
+    cloud_ceiling = 'N/A'
+    ceiling_altitude = 'N/A'
 
     for cloud in data['Clouds']:
         try:
             altitude = int(cloud[3:]) * 100
             cloud_type = cloud[:3]
-            cloud_description = f"{cloud_type.capitalize()} at {altitude}ft"
-            if cloud_type in ['FEW', 'SCT']:
-                cloud_bases.append(cloud_description)
-            if cloud_type in ['BKN', 'OVC']:
-                cloud_ceilings.append(cloud_description)
+            if cloud_type in ['FEW', 'SCT'] and cloud_base == 'N/A':
+                cloud_base = cloud_type.capitalize()
+                base_altitude = f"{altitude}ft"
+            if cloud_type in ['BKN', 'OVC'] and cloud_ceiling == 'N/A':
+                cloud_ceiling = cloud_type.capitalize()
+                ceiling_altitude = f"{altitude}ft"
         except ValueError:
             continue
 
-    data['First Cloud Base'] = cloud_bases[0] if cloud_bases else 'N/A'
-    data['First Cloud Ceiling'] = cloud_ceilings[0] if cloud_ceilings else 'N/A'
+    data['Cloud Base'] = cloud_base
+    data['Base Altitude'] = base_altitude
+    data['Cloud Ceiling'] = cloud_ceiling
+    data['Ceiling Altitude'] = ceiling_altitude
 
     temp_dew = re.search(r'\d{2}/\d{2}', metar)
     if temp_dew:
@@ -83,14 +88,16 @@ def format_metar(data):
         "Wind": f"{data['Wind'][:3]}° / {data['Wind'][3:5]}kt",
         "Variable": f"{data['Variable Wind'][:3]}° - {data['Variable Wind'][4:]}°" if data['Variable Wind'] != 'N/A' else "N/A",
         "Visibility": f"{data['Visibility']}m",
-        "First Cloud Base": data['First Cloud Base'],
-        "First Cloud Ceiling": data['First Cloud Ceiling'],
+        "Cloud Base": data['Cloud Base'],
+        "Base Altitude": data['Base Altitude'],
+        "Cloud Ceiling": data['Cloud Ceiling'],
+        "Ceiling Altitude": data['Ceiling Altitude'],
         "Temperature": f"{data['Temperature']}°C",
         "Dewpoint": f"{data['Dewpoint']}°C",
         "Spread": f"{data['Spread']}°C",
         "QNH": f"{data['QNH'][1:]}hPa" if data['QNH'] != 'N/A' else 'N/A',
         "Trend Duration": data['Trend'].capitalize() if data['Trend'] else '',
-        "Trend Wx Change": data['Trend Details'] if data['Trend Details'] else ''
+        "Trend Change": data['Trend Details'] if data['Trend Details'] else ''
     }
 
     if "G" in data["Wind"]:
@@ -99,8 +106,8 @@ def format_metar(data):
             gust = gust_match.group()[1:]
             formatted_data["Wind"] += f" / Gusts {gust}kt"
 
-    if "Trend Wx Change" in formatted_data and formatted_data["Trend Wx Change"]:
-        trend_wind_match = re.search(r'\d{3}\d{2}(G\d{2})?KT', formatted_data["Trend Wx Change"])
+    if "Trend Change" in formatted_data and formatted_data["Trend Change"]:
+        trend_wind_match = re.search(r'\d{3}\d{2}(G\d{2})?KT', formatted_data["Trend Change"])
         if trend_wind_match:
             trend_wind = trend_wind_match.group()
             trend_wind_formatted = f"{trend_wind[:3]}° / {trend_wind[3:5]}kt"
@@ -109,7 +116,7 @@ def format_metar(data):
                 if gust_match:
                     gust = gust_match.group()[1:]
                     trend_wind_formatted += f" - {gust}kt"
-            formatted_data["Trend Wx Change"] = trend_wind_formatted
+            formatted_data["Trend Change"] = trend_wind_formatted
 
     return formatted_data
 
