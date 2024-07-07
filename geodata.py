@@ -13,101 +13,70 @@ password = st.secrets["geoserver"]["password"]
 st.title("Weather Overlay Map")
 
 # Recursive function to extract layers and bounding boxes
-def extract_layers(layers):
+def extract_wmts_layers(contents):
     extracted_layers = []
-    for layer in layers:
-        if 'Layer' in layer:
-            sublayers = layer['Layer'] if isinstance(layer['Layer'], list) else [layer['Layer']]
-            extracted_layers.extend(extract_layers(sublayers))
-        else:
-            title = layer.get('Title')
-            name = layer.get('Name')
-            bbox = layer.get('EX_GeographicBoundingBox')
-            if title and name:
-                extracted_layers.append((title, name, bbox))
+    for layer in contents.get('Layer', []):
+        title = layer.get('ows:Title')
+        name = layer.get('ows:Identifier')
+        if title and name:
+            extracted_layers.append((title, name))
     return extracted_layers
 
-# Upload XML file
-uploaded_file = st.file_uploader("Choose a GetCapabilities XML file", type="xml")
-if uploaded_file:
-    xml_content = uploaded_file.read().decode("utf-8")
+# Upload WMTS GetCapabilities XML file
+uploaded_file_wmts = st.file_uploader("Choose a WMTS GetCapabilities XML file", type="xml")
+if uploaded_file_wmts:
+    xml_content_wmts = uploaded_file_wmts.read().decode("utf-8")
     
     try:
-        data_dict = xmltodict.parse(xml_content)
-        layers = data_dict['WMS_Capabilities']['Capability']['Layer']['Layer']
-        
-        if not isinstance(layers, list):
-            layers = [layers]
+        data_dict_wmts = xmltodict.parse(xml_content_wmts)
+        contents = data_dict_wmts['Capabilities']['Contents']
+        wmts_layer_info = extract_wmts_layers(contents)
 
-        layer_info = extract_layers(layers)
+        if not wmts_layer_info:
+            st.error("No WMTS layers found in the GetCapabilities XML.")
 
-        if not layer_info:
-            st.error("No layers found in the GetCapabilities XML.")
+        # Sidebar to select WMTS layers
+        st.sidebar.title("Select Weather Overlays (WMTS)")
+        selected_wmts_layer_title = st.sidebar.selectbox("Choose a WMTS layer to display", [title for title, name in wmts_layer_info])
 
-        # Sidebar to select layers and set map controls
-        st.sidebar.title("Map Controls")
-        selected_layer_title = st.sidebar.selectbox("Choose a layer to display", [title for title, name, bbox in layer_info])
+        # Initialize Folium map with a default location and zoom level
         default_location = [50, 10]
         default_zoom_start = 3
+        m = folium.Map(location=default_location, zoom_start=default_zoom_start, control_scale=True)
 
-        # Allow user to manually adjust the map view
-        lat = st.sidebar.number_input("Latitude", value=default_location[0])
-        lon = st.sidebar.number_input("Longitude", value=default_location[1])
-        zoom = st.sidebar.slider("Zoom Level", min_value=1, max_value=18, value=default_zoom_start)
-
-        # Initialize Folium map with user-defined location and zoom level
-        m = folium.Map(location=[lat, lon], zoom_start=zoom, control_scale=True)
-
-        # Function to add WMS layer to map
-        def add_wms_layer(m, layer_name, layer_title, bbox):
+        # Function to add WMTS layer to map
+        def add_wmts_layer(m, layer_name, layer_title):
             try:
-                wms_url = f"{server_url}/geoserver/dwd/ows"
-                wms_layer = folium.raster_layers.WmsTileLayer(
-                    url=wms_url,
-                    layers=layer_name,
+                wmts_url = f"{server_url}/geoserver/gwc/service/wmts"
+                wmts_layer = folium.raster_layers.WmtsTileLayer(
+                    url=wmts_url,
+                    layer=layer_name,
+                    name=layer_title,
                     fmt='image/png',
                     transparent=True,
-                    version='1.3.0',
-                    name=layer_title,
+                    version='1.0.0',
+                    tilematrixset='EPSG:3857',  # Adjust the tile matrix set according to the layer's configuration
                     control=True,
                     opacity=0.6  # Adjust opacity for better visibility
                 )
-                wms_layer.add_to(m)
-                st.success(f"Layer {layer_title} added successfully")
-                st.write(f"Added WMS layer: {layer_name} ({layer_title})")
-
-                # Fit map to layer bounds if bbox is available
-                if bbox:
-                    bounds = [[float(bbox['southBoundLatitude']), float(bbox['westBoundLongitude'])],
-                              [float(bbox['northBoundLatitude']), float(bbox['eastBoundLongitude'])]]
-                    m.fit_bounds(bounds)
-                    st.write(f"Map bounds set to: {bounds}")
-                else:
-                    st.warning(f"No bounding box available for layer: {layer_title}")
-                    # Allow user to manually set the map bounds if no bounding box is available
-                    if st.sidebar.checkbox("Set Custom Map Bounds"):
-                        south = st.sidebar.number_input("South Bound Latitude", value=-90.0)
-                        west = st.sidebar.number_input("West Bound Longitude", value=-180.0)
-                        north = st.sidebar.number_input("North Bound Latitude", value=90.0)
-                        east = st.sidebar.number_input("East Bound Longitude", value=180.0)
-                        bounds = [[south, west], [north, east]]
-                        m.fit_bounds(bounds)
-                        st.write(f"Map bounds set to custom bounds: {bounds}")
+                wmts_layer.add_to(m)
+                st.success(f"WMTS layer {layer_title} added successfully")
+                st.write(f"Added WMTS layer: {layer_name} ({layer_title})")
             except Exception as e:
-                st.error(f"Failed to add layer {layer_title}: {e}")
+                st.error(f"Failed to add WMTS layer {layer_title}: {e}")
                 st.write(e)
 
-        # Add the selected layer to the map
-        for title, name, bbox in layer_info:
-            if title == selected_layer_title:
-                add_wms_layer(m, name, title, bbox)
+        # Add the selected WMTS layer to the map
+        for title, name in wmts_layer_info:
+            if title == selected_wmts_layer_title:
+                add_wmts_layer(m, name, title)
 
         # Display the map with layer control
         folium.LayerControl().add_to(m)
         st_folium(m, width=700, height=500)
 
     except Exception as e:
-        st.error(f"Failed to parse the GetCapabilities XML: {e}")
+        st.error(f"Failed to parse the WMTS GetCapabilities XML: {e}")
         st.write(e)
 else:
-    st.warning("Please upload a GetCapabilities XML file.")
+    st.warning("Please upload a WMTS GetCapabilities XML file.")
