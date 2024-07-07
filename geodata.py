@@ -13,6 +13,20 @@ password = st.secrets["geoserver"]["password"]
 
 st.title("Weather Overlay Map")
 
+# Recursive function to extract layers
+def extract_layers(layers):
+    extracted_layers = []
+    for layer in layers:
+        if 'Layer' in layer:
+            sublayers = layer['Layer'] if isinstance(layer['Layer'], list) else [layer['Layer']]
+            extracted_layers.extend(extract_layers(sublayers))
+        else:
+            title = layer.get('Title')
+            name = layer.get('Name')
+            if title and name:
+                extracted_layers.append((title, name))
+    return extracted_layers
+
 # Upload XML file
 uploaded_file = st.file_uploader("Choose a GetCapabilities XML file", type="xml")
 if uploaded_file:
@@ -25,12 +39,7 @@ if uploaded_file:
         if not isinstance(layers, list):
             layers = [layers]
 
-        layer_info = []
-        for layer in layers:
-            title = layer.get('Title')
-            name = layer.get('Name')
-            if title and name:
-                layer_info.append((title, name))
+        layer_info = extract_layers(layers)
 
         if not layer_info:
             st.error("No layers found in the GetCapabilities XML.")
@@ -68,7 +77,7 @@ if uploaded_file:
             try:
                 response = requests.get(url)
                 response.raise_for_status()
-                if response.headers.get('Content-Type') == 'application/json':
+                if response.headers.get('Content-Type').startswith('application/json'):
                     geojson_data = response.json()
                     folium.GeoJson(
                         geojson_data,
@@ -88,7 +97,7 @@ if uploaded_file:
         enable_geojson = st.sidebar.checkbox("Enable MRVA Overlay")
 
         if enable_geojson:
-            geojson_url = 'https://filebin.net/opbm1223wsobw8uf/MRVA.geojson'
+            geojson_url = 'https://filebin.net/opbm1223wsobw8uf/MRVA.geojson'  # Replace with the correct GeoJSON URL
             add_geojson_layer(m, geojson_url)
 
         # Display the map
