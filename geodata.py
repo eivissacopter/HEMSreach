@@ -12,7 +12,7 @@ password = st.secrets["geoserver"]["password"]
 
 st.title("Weather Overlay Map")
 
-# Recursive function to extract layers
+# Recursive function to extract layers and bounding boxes
 def extract_layers(layers):
     extracted_layers = []
     for layer in layers:
@@ -22,8 +22,9 @@ def extract_layers(layers):
         else:
             title = layer.get('Title')
             name = layer.get('Name')
+            bbox = layer.get('EX_GeographicBoundingBox')
             if title and name:
-                extracted_layers.append((title, name))
+                extracted_layers.append((title, name, bbox))
     return extracted_layers
 
 # Upload XML file
@@ -47,7 +48,7 @@ if uploaded_file:
         m = folium.Map(location=[50, 10], zoom_start=6, control_scale=True)
 
         # Function to add WMS layer to map
-        def add_wms_layer(m, layer_name, layer_title):
+        def add_wms_layer(m, layer_name, layer_title, bbox):
             try:
                 wms_url = f"{server_url}/geoserver/dwd/ows"
                 wms_layer = folium.raster_layers.WmsTileLayer(
@@ -63,29 +64,22 @@ if uploaded_file:
                 st.success(f"Layer {layer_title} added successfully")
                 st.write(f"Added WMS layer: {layer_name} ({layer_title})")
 
-                # Fit map to layer bounds
-                bbox_url = f"{wms_url}?service=WMS&version=1.3.0&request=GetCapabilities"
-                response = requests.get(bbox_url, auth=HTTPBasicAuth(username, password))
-                data_dict = xmltodict.parse(response.content)
-                layers = data_dict['WMS_Capabilities']['Capability']['Layer']['Layer']
-                for layer in layers:
-                    if 'Name' in layer and layer['Name'] == layer_name:
-                        bbox = layer['EX_GeographicBoundingBox']
-                        bounds = [[float(bbox['southBoundLatitude']), float(bbox['westBoundLongitude'])],
-                                  [float(bbox['northBoundLatitude']), float(bbox['eastBoundLongitude'])]]
-                        m.fit_bounds(bounds)
-                        break
+                # Fit map to layer bounds if bbox is available
+                if bbox:
+                    bounds = [[float(bbox['southBoundLatitude']), float(bbox['westBoundLongitude'])],
+                              [float(bbox['northBoundLatitude']), float(bbox['eastBoundLongitude'])]]
+                    m.fit_bounds(bounds)
             except Exception as e:
                 st.error(f"Failed to add layer {layer_title}: {e}")
 
         # Sidebar to select layers
         st.sidebar.title("Select Weather Overlays")
-        selected_layer = st.sidebar.selectbox("Choose a layer to display", [title for title, name in layer_info])
+        selected_layer_title = st.sidebar.selectbox("Choose a layer to display", [title for title, name, bbox in layer_info])
 
         # Add the selected layer to the map
-        for title, name in layer_info:
-            if title == selected_layer:
-                add_wms_layer(m, name, title)
+        for title, name, bbox in layer_info:
+            if title == selected_layer_title:
+                add_wms_layer(m, name, title, bbox)
 
         # Display the map with layer control
         folium.LayerControl().add_to(m)
