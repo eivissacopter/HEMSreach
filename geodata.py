@@ -2,6 +2,7 @@ import streamlit as st
 import folium
 from streamlit_folium import st_folium
 import json
+import os
 
 # Load secrets from secrets.toml
 server_url = st.secrets["geoserver"]["server"]
@@ -21,14 +22,15 @@ m = folium.Map(location=[50, 10], zoom_start=6, control_scale=True)
 def add_wms_layer(m, layer_name, layer_title):
     try:
         wms_url = f"{server_url}/geoserver/dwd/ows"
-        folium.raster_layers.WmsTileLayer(
+        tile_layer = folium.raster_layers.WmsTileLayer(
             url=wms_url,
             layers=layer_name,
             fmt='image/png',
             transparent=True,
             version='1.3.0',
-            attribution="Weather data © 2024 Deutscher Wetterdienst"
-        ).add_to(m)
+            name=layer_title
+        )
+        tile_layer.add_to(m)
         st.success(f"Layer {layer_title} added successfully")
     except Exception as e:
         st.error(f"Failed to add layer {layer_title}: {e}")
@@ -53,7 +55,7 @@ def add_geojson_layer(m, geojson_path):
 enable_geojson = st.sidebar.checkbox("Enable MRVA Overlay")
 
 if enable_geojson:
-    geojson_path = "path/to/mrva.geojson"  # Replace with the actual path to your mrva.geojson file
+    geojson_path = os.path.join(os.path.dirname(__file__), 'mrva.geojson')  # Replace with the actual path to your mrva.geojson file
     add_geojson_layer(m, geojson_path)
 
 # Display the map
