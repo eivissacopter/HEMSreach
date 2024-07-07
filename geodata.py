@@ -62,7 +62,7 @@ def add_geojson_layer(m, geojson_path):
 enable_geojson = st.sidebar.checkbox("Enable MRVA Overlay")
 
 if enable_geojson:
-    geojson_path = 'MRVA.geojson'  # Path to the provided MRVA.geojson file
+    geojson_path = os.path.join(os.path.dirname(__file__), 'mrva.geojson')  # Ensure the path is correct
     st.write(f"GeoJSON path: {geojson_path}")  # Debugging output to verify the path
     add_geojson_layer(m, geojson_path)
 
