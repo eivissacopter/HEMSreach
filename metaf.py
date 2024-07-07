@@ -25,6 +25,15 @@ def decode_metar(metar):
         'Trend Details': re.search(r'(TEMPO|BECMG|NOSIG)\s+(.*)', metar).group(2) if re.search(r'(TEMPO|BECMG|NOSIG)\s+(.*)', metar) else ''
     }
 
+    wind = re.search(r'\d{3}\d{2}(G\d{2})?KT', metar)
+    if wind:
+        data['Wind Direction'] = wind.group()[:3] + '°'
+        data['Wind Speed'] = wind.group()[3:5] + 'kt'
+        if 'G' in wind.group():
+            data['Wind Gust'] = wind.group().split('G')[1][:2] + 'kt'
+        else:
+            data['Wind Gust'] = 'N/A'
+
     cloud_details = []
     clouds = re.findall(r'(FEW|SCT|BKN|OVC)\d{3}', metar)
     for cloud in clouds:
@@ -72,14 +81,17 @@ def format_metar(data):
     formatted_data = {
         "ICAO": data["ICAO"],
         "Day": data["Day"],
-        "Time": f"{time_local_start.strftime('%H:%M')} - {time_local_end.strftime('%H:%M')} LT",
-        "Wind": f"{data['Wind'][:3]} / {data['Wind'][3:5]}",
+        "Start Time": time_local_start.strftime('%H:%M'),
+        "End Time": time_local_end.strftime('%H:%M'),
+        "Wind Direction": data["Wind Direction"],
+        "Wind Speed": data["Wind Speed"],
+        "Wind Gust": data["Wind Gust"],
         "Variable": f"{data['Variable Wind'][:3]}° - {data['Variable Wind'][4:]}" if data['Variable Wind'] != 'N/A' else "N/A",
-        "Visibility": f"{data['Visibility']}",
-        "Temperature": f"{data['Temperature']}",
-        "Dewpoint": f"{data['Dewpoint']}",
-        "Spread": f"{data['Spread']}",
-        "QNH": f"{data['QNH'][1:]}" if data['QNH'] != 'N/A' else 'N/A',
+        "Visibility": f"{data['Visibility']}m",
+        "Temperature": f"{data['Temperature']}°C",
+        "Dewpoint": f"{data['Dewpoint']}°C",
+        "Spread": f"{data['Spread']}°C",
+        "QNH": f"{data['QNH'][1:]}hPa" if data['QNH'] != 'N/A' else 'N/A',
         "Trend Duration": data['Trend'].capitalize() if data['Trend'] else '',
         "Trend Change": data['Trend Details'] if data['Trend Details'] else ''
     }
@@ -122,8 +134,11 @@ if st.button("Submit"):
         metar_table = [
             ["ICAO", formatted_metar_data["ICAO"]],
             ["Day", formatted_metar_data["Day"]],
-            ["Time", formatted_metar_data["Time"]],
-            ["Wind", formatted_metar_data["Wind"]],
+            ["Start Time", formatted_metar_data["Start Time"]],
+            ["End Time", formatted_metar_data["End Time"]],
+            ["Wind Direction", formatted_metar_data["Wind Direction"]],
+            ["Wind Speed", formatted_metar_data["Wind Speed"]],
+            ["Wind Gust", formatted_metar_data["Wind Gust"]],
             ["Variable", formatted_metar_data["Variable"]],
             ["Visibility", formatted_metar_data["Visibility"]],
         ] + cloud_rows + [
