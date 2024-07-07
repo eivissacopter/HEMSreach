@@ -18,7 +18,7 @@ def decode_metar(metar):
         'Day': re.search(r'\d{2}(?=\d{4}Z)', metar).group(),
         'Time': re.search(r'\d{6}Z', metar).group(),
         'Wind': re.search(r'\d{3}\d{2}(G\d{2})?KT', metar).group(),
-        'Visibility': re.search(r'\b\d{4}\b', metar).group(),
+        'Visibility': '9999' if 'CAVOK' in metar else re.search(r'\b\d{4}\b', metar).group(),
         'Variable Wind': re.search(r'\d{3}V\d{3}', metar).group() if re.search(r'\d{3}V\d{3}', metar) else 'N/A',
         'QNH': convert_qnh(re.search(r'\b(A\d{4}|Q\d{4})\b', metar).group()) if re.search(r'\b(A\d{4}|Q\d{4})\b', metar) else 'N/A',
         'Trend': re.search(r'(TEMPO|BECMG|NOSIG)', metar).group() if re.search(r'(TEMPO|BECMG|NOSIG)', metar) else 'N/A',
@@ -26,18 +26,17 @@ def decode_metar(metar):
         'Warnings': []
     }
 
+    cloud_details = []
     if 'CAVOK' in metar:
-        data['Visibility'] = '9999'
-        data['Cloud Details'] = [['CAVOK', '']]
+        cloud_details.append(['CAVOK', ''])
     else:
-        cloud_details = []
         clouds = re.findall(r'(FEW|SCT|BKN|OVC)\d{3}', metar)
         for cloud in clouds:
             cloud_type = cloud[:3]
-            altitude = (cloud[3:]) * 100
+            altitude = int(cloud[3:]) * 100
             cloud_details.append([cloud_type, f"{altitude}ft"])
 
-        data['Cloud Details'] = cloud_details
+    data['Cloud Details'] = cloud_details
 
     temp_dew = re.search(r'\d{2}/\d{2}', metar)
     if temp_dew:
