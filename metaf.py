@@ -102,7 +102,6 @@ def decode_metar(metar):
 
 def decode_taf(taf):
     taf = re.sub(r'[\r\n]+', ' ', taf).strip()  # Remove \r and \n characters
-    color_codes_str = extract_color_codes(taf)
 
     data = {
         'ICAO': re.search(r'\b[A-Z]{4}\b', taf).group(),
@@ -111,50 +110,11 @@ def decode_taf(taf):
         'Validity': re.search(r'\d{4}/\d{4}', taf).group(),
         'Wind': re.search(r'\d{3}\d{2}(G\d{2})?KT', taf).group(),
         'Visibility': re.search(r'\b\d{4}\b', taf).group(),
-        'Clouds': extract_cloud_details(taf),
+        'Clouds': re.findall(r'(FEW|SCT|BKN|OVC)(\d{3})', taf),
         'Changes': re.findall(r'(TEMPO|BECMG|FM|TL|AT|PROB\d{2}) .*?(?= TEMPO|BECMG|FM|TL|AT|PROB\d{2}|$)', taf)
     }
 
-    data['Remarks'] = color_codes_str if color_codes_str else 'N/A'
-
     return data
-
-def format_metar(data):
-    time_utc = datetime.datetime.strptime(data['Time'], '%d%H%MZ')
-    time_local_start = time_utc + datetime.timedelta(hours=2)  # Assuming local time is UTC+2
-    if data['Trend'] != 'N/A':
-        time_local_end = time_local_start + datetime.timedelta(hours=2)
-    else:
-        time_local_end = time_local_start + datetime.timedelta(minutes=30)
-
-    formatted_data = {
-        "ICAO": data["ICAO"],
-        "Day": data["Day"],
-        "Start Time": time_local_start.strftime('%H%M'),
-        "End Time": time_local_end.strftime('%H%M'),
-        "Wind Direction": data["Wind"][:3],
-        "Wind Speed": data["Wind"][3:5],
-        "Wind Gust": data["Wind"][7:9] if 'G' in data["Wind"] else 'N/A',
-        "Variable": f"{data['Variable Wind'][:3]} - {data['Variable Wind'][4:]}" if data['Variable Wind'] != 'N/A' else "N/A",
-        "Visibility": data['Visibility'],
-        "Temperature": data['Temperature'],
-        "Dewpoint": data['Dewpoint'],
-        "Spread": data['Spread'],
-        "QNH": data['QNH'][1:] if data['QNH'] != 'N/A' else 'N/A',
-        "Trend Duration": data['Trend'] if data['Trend'] != 'N/A' else 'N/A',
-        "Trend Change": data['Trend Details'] if data['Trend Details'] != 'N/A' else 'N/A',
-        "Remarks": data['Remarks'],
-        "Warnings": data['Warnings']
-    }
-
-    return formatted_data
-
-def format_cloud_details(cloud_details):
-    cloud_rows = []
-    for i, detail in enumerate(cloud_details):
-        cloud_rows.append([f"Cloud {i+1} Type", detail[0]])
-        cloud_rows.append([f"Cloud {i+1} Altitude", detail[1]])
-    return cloud_rows
 
 def format_taf(data):
     time_utc = datetime.datetime.strptime(data['Start Time'], '%d%H%MZ')
@@ -176,11 +136,7 @@ def format_taf(data):
 
     return formatted_data
 
-st.title("METAR/TAF Decoder")
-
-metar = st.text_area("Enter METAR:")
-taf = st.text_area("Enter TAF:")
-hours_ahead = st.slider("Hours Ahead", 0, 9, 5)
+##########################################################################################################
 
 if st.button("Submit", key="submit_button"):
     if metar:
@@ -223,4 +179,3 @@ if st.button("Submit", key="submit_button"):
     # Implement additional analysis if needed
 else:
     st.warning("Please enter a METAR.")
-
