@@ -10,3 +10,4 @@ pytaf
 paramiko
 OWSLib
 beautifulsoup4
+requests
