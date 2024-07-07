@@ -33,12 +33,8 @@ def decode_metar(metar):
         clouds = re.findall(r'(FEW|SCT|BKN|OVC)\d{3}', metar)
         for cloud in clouds:
             cloud_type = cloud[:3]
-            altitude_str = cloud[3:]
-            try:
-                altitude = int(altitude_str) * 100
-                cloud_details.append([cloud_type, f"{altitude}"])
-            except ValueError:
-                cloud_details.append([cloud_type, "unknown"])
+            altitude = cloud[3:]
+            cloud_details.append([cloud_type, altitude])
 
     data['Cloud Details'] = cloud_details
     
