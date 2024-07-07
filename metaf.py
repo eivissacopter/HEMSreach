@@ -33,8 +33,11 @@ def decode_metar(metar):
         clouds = re.findall(r'(FEW|SCT|BKN|OVC)\d{3}', metar)
         for cloud in clouds:
             cloud_type = cloud[:3]
-            altitude = int(cloud[3:]) * 100
-            cloud_details.append([cloud_type, f"{altitude}ft"])
+            try:
+                altitude = int(cloud[3:]) * 100
+                cloud_details.append([cloud_type, f"{altitude}ft"])
+            except ValueError:
+                cloud_details.append([cloud_type, "unknown altitude"])
 
     data['Cloud Details'] = cloud_details
 
@@ -157,6 +160,8 @@ st.title("METAR/TAF Decoder")
 metar = st.text_area("Enter METAR:")
 taf = st.text_area("Enter TAF:")
 hours_ahead = st.slider("Hours Ahead", 0, 9, 5)
+
+###############################################################################################################
 
 if st.button("Submit"):
     if metar:
