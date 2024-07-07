@@ -13,6 +13,13 @@ def convert_qnh(qnh):
 def decode_metar(metar):
     metar = re.sub(r'[\r\n]+', ' ', metar).strip()  # Remove \r and \n characters
 
+    # Extract military color codes before removing them
+    color_codes = re.findall(r'\b(BLU|WHT|GRN|YLO|AMB|RED|BLACK)\b', metar)
+    color_codes_str = ' '.join(color_codes)
+    
+    # Remove military color codes like BLACKBLU
+    metar = re.sub(r'\b(BLU|WHT|GRN|YLO|AMB|RED|BLACK)\b', '', metar)
+
     data = {
         'ICAO': re.search(r'\b[A-Z]{4}\b', metar).group(),
         'Day': re.search(r'\d{2}(?=\d{4}Z)', metar).group(),
@@ -23,7 +30,7 @@ def decode_metar(metar):
         'QNH': convert_qnh(re.search(r'\b(A\d{4}|Q\d{4})\b', metar).group()) if re.search(r'\b(A\d{4}|Q\d{4})\b', metar) else 'N/A',
         'Trend': re.search(r'(TEMPO|BECMG|NOSIG)', metar).group() if re.search(r'(TEMPO|BECMG|NOSIG)', metar) else 'N/A',
         'Trend Details': re.search(r'(TEMPO|BECMG|NOSIG)\s+(.*)', metar).group(2) if re.search(r'(TEMPO|BECMG|NOSIG)\s+(.*)', metar) else 'N/A',
-        'Remarks': re.search(r'RMK (.*)', metar).group(1) if re.search(r'RMK (.*)', metar) else 'N/A',
+        'Remarks': re.search(r'RMK (.*)', metar).group(1) if re.search(r'RMK (.*)', metar) else color_codes_str if color_codes_str else 'N/A',
         'Warnings': []
     }
 
@@ -35,8 +42,7 @@ def decode_metar(metar):
         for cloud in clouds:
             cloud_type = cloud[0]
             altitude = cloud[1]
-            if cloud_type not in ['BLK', 'BLU']:
-                cloud_details.append([cloud_type, altitude])
+            cloud_details.append([cloud_type, altitude])
 
     data['Cloud Details'] = cloud_details
 
@@ -151,39 +157,3 @@ if st.button("Submit"):
         metar_data = decode_metar(metar)
         formatted_metar_data = format_metar(metar_data)
         cloud_rows = format_cloud_details(metar_data['Cloud Details'])
-
-        st.subheader("Decoded METAR")
-        metar_table = [
-            ["ICAO", formatted_metar_data["ICAO"]],
-            ["Day", formatted_metar_data["Day"]],
-            ["Start Time", formatted_metar_data["Start Time"]],
-            ["End Time", formatted_metar_data["End Time"]],
-            ["Wind Direction", formatted_metar_data["Wind Direction"]],
-            ["Wind Speed", formatted_metar_data["Wind Speed"]],
-            ["Wind Gust", formatted_metar_data["Wind Gust"]],
-            ["Variable", formatted_metar_data["Variable"]],
-            ["Visibility", formatted_metar_data["Visibility"]],
-        ] + cloud_rows + [
-            ["Temperature", formatted_metar_data["Temperature"]],
-            ["Dewpoint", formatted_metar_data["Dewpoint"]],
-            ["Spread", formatted_metar_data["Spread"]],
-            ["QNH", formatted_metar_data["QNH"]],
-            ["Trend Duration", formatted_metar_data["Trend Duration"]],
-            ["Trend Change", formatted_metar_data["Trend Change"]],
-            ["Remarks", formatted_metar_data["Remarks"]],
-            ["Warnings", formatted_metar_data["Warnings"]],
-        ]
-
-        st.table(metar_table)
-
-        if taf:
-            taf_data = decode_taf(taf)
-            formatted_taf_data = format_taf(taf_data)
-
-            st.subheader("Decoded TAF")
-            st.table(list(formatted_taf_data.items()))
-
-        st.subheader("Analysis")
-        # Implement additional analysis if needed
-    else:
-        st.warning("Please enter a METAR.")
