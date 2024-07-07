@@ -26,8 +26,6 @@ def add_wms_layer(m, layer_name, layer_title):
             fmt='image/png',
             transparent=True,
             version='1.3.0',
-            name=layer_title,
-            control=True,
             attribution="Weather data © 2024 Deutscher Wetterdienst"
         )
         tile_layer.add_to(m)
