@@ -19,10 +19,10 @@ def decode_metar(metar):
         'Time': re.search(r'\d{6}Z', metar).group(),
         'Wind': re.search(r'\d{3}\d{2}(G\d{2})?KT', metar).group(),
         'Visibility': '9999' if 'CAVOK' in metar else re.search(r'\b\d{4}\b', metar).group(),
-        'Variable Wind': re.search(r'\d{3}V\d{3}', metar).group() if re.search(r'\d{3}V\d{3}', metar) else '',
-        'QNH': convert_qnh(re.search(r'\b(A\d{4}|Q\d{4})\b', metar).group()) if re.search(r'\b(A\d{4}|Q\d{4})\b', metar) else 'Missing!',
-        'Trend': re.search(r'(TEMPO|BECMG|NOSIG)', metar).group() if re.search(r'(TEMPO|BECMG|NOSIG)', metar) else '',
-        'Trend Details': re.search(r'(TEMPO|BECMG|NOSIG)\s+(.*)', metar).group(2) if re.search(r'(TEMPO|BECMG|NOSIG)\s+(.*)', metar) else '',
+        'Variable Wind': re.search(r'\d{3}V\d{3}', metar).group() if re.search(r'\d{3}V\d{3}', metar) else 'N/A',
+        'QNH': convert_qnh(re.search(r'\b(A\d{4}|Q\d{4})\b', metar).group()) if re.search(r'\b(A\d{4}|Q\d{4})\b', metar) else 'N/A',
+        'Trend': re.search(r'(TEMPO|BECMG|NOSIG)', metar).group() if re.search(r'(TEMPO|BECMG|NOSIG)', metar) else 'N/A',
+        'Trend Details': re.search(r'(TEMPO|BECMG|NOSIG)\s+(.*)', metar).group(2) if re.search(r'(TEMPO|BECMG|NOSIG)\s+(.*)', metar) else 'N/A',
         'Warnings': []
     }
 
@@ -37,7 +37,7 @@ def decode_metar(metar):
             cloud_details.append([cloud_type, altitude])
 
     data['Cloud Details'] = cloud_details
-    
+
     temp_dew = re.search(r'\d{2}/\d{2}', metar)
     if temp_dew:
         temp_dew_split = temp_dew.group().split('/')
@@ -84,29 +84,14 @@ def decode_metar(metar):
         if code in metar:
             data['Warnings'].append(description)
     
-    data['Warnings'] = ', '.join(data['Warnings']) if data['Warnings'] else ''
-
-    return data
-
-def decode_taf(taf):
-    taf = re.sub(r'[\r\n]+', ' ', taf).strip()  # Remove \r and \n characters
-
-    data = {
-        'ICAO': re.search(r'\b[A-Z]{4}\b', taf).group(),
-        'Time': re.search(r'\d{6}Z', taf).group(),
-        'Validity': re.search(r'\d{4}/\d{4}', taf).group(),
-        'Wind': re.search(r'\d{3}\d{2}(G\d{2})?KT', taf).group(),
-        'Visibility': re.search(r'\b\d{4}\b', taf).group(),
-        'Clouds': re.findall(r'(FEW|SCT|BKN|OVC)\d{3}', taf),
-        'Changes': re.findall(r'(TEMPO|BECMG|FM|TL|AT|PROB\d{2}) .*?(?= TEMPO| BECMG| FM| TL| AT| PROB\d{2}|$)', taf)
-    }
+    data['Warnings'] = ', '.join(data['Warnings']) if data['Warnings'] else 'N/A'
 
     return data
 
 def format_metar(data):
     time_utc = datetime.datetime.strptime(data['Time'], '%d%H%MZ')
     time_local_start = time_utc + datetime.timedelta(hours=2)  # Assuming local time is UTC+2
-    if data['Trend'] != '':
+    if data['Trend'] != 'N/A':
         time_local_end = time_local_start + datetime.timedelta(hours=2)
     else:
         time_local_end = time_local_start + datetime.timedelta(minutes=30)
@@ -114,19 +99,19 @@ def format_metar(data):
     formatted_data = {
         "ICAO": data["ICAO"],
         "Day": data["Day"],
-        "Start Time": time_local_start.strftime('%H:%M'),
-        "End Time": time_local_end.strftime('%H:%M'),
+        "Start Time": time_local_start.strftime('%H%M'),
+        "End Time": time_local_end.strftime('%H%M'),
         "Wind Direction": data["Wind"][:3],
         "Wind Speed": data["Wind"][3:5],
-        "Wind Gust": data["Wind"][7:9] if 'G' in data["Wind"] else '',
-        "Variable": f"{data['Variable Wind'][:3]} - {data['Variable Wind'][4:]}" if data['Variable Wind'] != '' else "",
-        "Visibility": f"{data['Visibility']}",
-        "Temperature": f"{data['Temperature']}",
-        "Dewpoint": f"{data['Dewpoint']}",
-        "Spread": f"{data['Spread']}",
-        "QNH": f"{data['QNH'][1:]}" if data['QNH'] != 'Missing!' else 'Missing!',
-        "Trend Duration": data['Trend'].capitalize() if data['Trend'] != '' else '',
-        "Trend Change": data['Trend Details'] if data['Trend Details'] != '' else '',
+        "Wind Gust": data["Wind"][7:9] if 'G' in data["Wind"] else 'N/A',
+        "Variable": f"{data['Variable Wind'][:3]} - {data['Variable Wind'][4:]}" if data['Variable Wind'] != 'N/A' else "N/A",
+        "Visibility": data['Visibility'],
+        "Temperature": data['Temperature'],
+        "Dewpoint": data['Dewpoint'],
+        "Spread": data['Spread'],
+        "QNH": data['QNH'][1:] if data['QNH'] != 'N/A' else 'N/A',
+        "Trend Duration": data['Trend'] if data['Trend'] != 'N/A' else 'N/A',
+        "Trend Change": data['Trend Details'] if data['Trend Details'] != 'N/A' else 'N/A',
         "Warnings": data['Warnings']
     }
 
@@ -145,7 +130,7 @@ def format_taf(data):
         "Time": data["Time"],
         "Validity": data["Validity"],
         "Wind": data["Wind"],
-        "Visibility": f"{data['Visibility']}m",
+        "Visibility": data["Visibility"],
         "Clouds": ', '.join([cloud[:3].capitalize() for cloud in data['Clouds']]) if data['Clouds'] else "CAVOK",
         "Changes": ' | '.join(data['Changes']) if data['Changes'] else ''
     }
@@ -157,8 +142,6 @@ st.title("METAR/TAF Decoder")
 metar = st.text_area("Enter METAR:")
 taf = st.text_area("Enter TAF:")
 hours_ahead = st.slider("Hours Ahead", 0, 9, 5)
-
-###############################################################################################################
 
 if st.button("Submit"):
     if metar:
