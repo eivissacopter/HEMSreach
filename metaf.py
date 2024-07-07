@@ -26,7 +26,7 @@ def decode_metar(metar):
     }
 
     cloud_details = []
-    clouds = re.findall(r'(FEW|SCT|BKN|OVC|VV|SKC|NSC|CLR)\d{3}', metar)
+    clouds = re.findall(r'(FEW|SCT|BKN|OVC)\d{3}', metar)
     for cloud in clouds:
         cloud_type = cloud[:3]
         try:
@@ -126,13 +126,14 @@ if st.button("Submit"):
             ["Wind", formatted_metar_data["Wind"]],
             ["Variable", formatted_metar_data["Variable"]],
             ["Visibility", formatted_metar_data["Visibility"]],
+        ] + cloud_rows + [
             ["Temperature", formatted_metar_data["Temperature"]],
             ["Dewpoint", formatted_metar_data["Dewpoint"]],
             ["Spread", formatted_metar_data["Spread"]],
             ["QNH", formatted_metar_data["QNH"]],
             ["Trend Duration", formatted_metar_data["Trend Duration"]],
             ["Trend Change", formatted_metar_data["Trend Change"]],
-        ] + cloud_rows
+        ]
 
         st.table(metar_table)
 
