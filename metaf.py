@@ -136,9 +136,10 @@ def decode_taf(taf):
 
     data = {
         'ICAO': re.search(r'\b[A-Z]{4}\b', taf).group(),
-        'Day': re.search(r'\d{2}(?=\d{6}Z)', taf).group(),
-        'Start Time': re.search(r'\d{6}Z', taf).group(),
+        'Time': re.search(r'\d{6}Z', taf).group(),
         'Validity': re.search(r'\d{4}/\d{4}', taf).group(),
+        'Day': re.search(r'\d{2}(?=\d{4}/\d{4})', taf).group(),
+        'Start Time': re.search(r'\d{6}Z', taf).group(),
         'Wind': re.search(r'\d{3}\d{2}(G\d{2})?KT', taf).group(),
         'Visibility': re.search(r'\b\d{4}\b', taf).group(),
         'Clouds': re.findall(r'(FEW|SCT|BKN|OVC)(\d{3})', taf),
@@ -147,85 +148,7 @@ def decode_taf(taf):
 
     return data
 
-def format_taf(data):
-    time_utc = datetime.datetime.strptime(data['Start Time'], '%d%H%MZ')
-    time_local_start = time_utc + datetime.timedelta(hours=2)  # Assuming local time is UTC+2
-    validity_start, validity_end = data['Validity'].split('/')
-    validity_duration = int(validity_end[:2]) - int(validity_start[:2])
-    validity_end_time = time_local_start + datetime.timedelta(hours=validity_duration)
-
-    formatted_data = {
-        "ICAO": data["ICAO"],
-        "Day": data["Day"],
-        "Start Time": time_local_start.strftime('%H%M'),
-        "End Time": validity_end_time.strftime('%H%M'),
-        "Validity": data["Validity"],
-        "Wind": data["Wind"],
-        "Visibility": data["Visibility"],
-        "Clouds": ', '.join([f"{cloud[0]}{cloud[1]}" for cloud in data['Clouds']]) if data['Clouds'] else "CAVOK",
-        "Changes": ' | '.join(data['Changes']) if data['Changes'] else '',
-        "Remarks": data['Remarks']
-    }
-
-    return formatted_data
-
-##########################################################################################################
-
-if st.button("Submit", key="submit_button"):
-    if metar or taf:
-        if metar:
-            metar_data = decode_metar(metar)
-            formatted_metar_data = format_metar(metar_data)
-            cloud_rows = format_cloud_details(metar_data['Cloud Details'])
-
-            st.subheader("Decoded METAR")
-            metar_table = [
-                ["ICAO", formatted_metar_data["ICAO"]],
-                ["Day", formatted_metar_data["Day"]],
-                ["Start Time", formatted_metar_data["Start Time"]],
-                ["End Time", formatted_metar_data["End Time"]],
-                ["Wind Direction", formatted_metar_data["Wind Direction"]],
-                ["Wind Speed", formatted_metar_data["Wind Speed"]],
-                ["Wind Gust", formatted_metar_data["Wind Gust"]],
-                ["Variable", formatted_metar_data["Variable"]],
-                ["Visibility", formatted_metar_data["Visibility"]],
-            ] + cloud_rows + [
-                ["Temperature", formatted_metar_data["Temperature"]],
-                ["Dewpoint", formatted_metar_data["Dewpoint"]],
-                ["Spread", formatted_metar_data["Spread"]],
-                ["QNH", formatted_metar_data["QNH"]],
-                ["Trend Duration", formatted_metar_data["Trend Duration"]],
-                ["Trend Change", formatted_metar_data["Trend Change"]],
-                ["Remarks", formatted_metar_data["Remarks"]],
-                ["Warnings", formatted_metar_data["Warnings"]],
-            ]
-
-            st.table(metar_table)
-
-        if taf:
-            taf_data = decode_taf(taf)
-            formatted_taf_data = format_taf(taf_data)
-
-            st.subheader("Decoded TAF")
-            taf_table = [
-                ["ICAO", formatted_taf_data["ICAO"]],
-                ["Day", formatted_taf_data["Day"]],
-                ["Start Time", formatted_taf_data["Start Time"]],
-                ["End Time", formatted_taf_data["End Time"]],
-                ["Validity", formatted_taf_data["Validity"]],
-                ["Wind", formatted_taf_data["Wind"]],
-                ["Visibility", formatted_taf_data["Visibility"]],
-                ["Clouds", formatted_taf_data["Clouds"]],
-                ["Changes", formatted_taf_data["Changes"]],
-                ["Remarks", formatted_taf_data["Remarks"]]
-            ]
-
-            st.table(taf_table)
-
-        st.subheader("Analysis")
-        # Implement additional analysis if needed
-    else:
-        st.warning("Please enter a METAR or TAF.")
+#################################################################################################
 
 def format_taf(data):
     time_utc = datetime.datetime.strptime(data['Start Time'], '%d%H%MZ')
@@ -238,12 +161,10 @@ def format_taf(data):
         "ICAO": data["ICAO"],
         "Day": data["Day"],
         "Start Time": time_local_start.strftime('%H%M'),
-        "Validity Start": validity_start,
-        "Validity End": validity_end,
-        "Validity Duration": f"{validity_duration}h",
+        "Validity": f"{validity_duration}h",
         "Wind": data["Wind"],
         "Visibility": data["Visibility"],
-        "Clouds": ', '.join([cloud[0] + cloud[1] for cloud in data['Clouds']]) if data['Clouds'] else "CAVOK",
+        "Clouds": ', '.join([cloud[0] + cloud[1] for cloud in data['Clouds']]),
         "Changes": ' | '.join(data['Changes']) if data['Changes'] else ''
     }
 
@@ -253,7 +174,6 @@ st.title("METAR/TAF Decoder")
 
 metar = st.text_area("Enter METAR:")
 taf = st.text_area("Enter TAF:")
-hours_ahead = st.slider("Hours Ahead", 0, 9, 5)
 
 if st.button("Submit", key="submit_button"):
     if metar:
@@ -294,9 +214,7 @@ if st.button("Submit", key="submit_button"):
             ["ICAO", formatted_taf_data["ICAO"]],
             ["Day", formatted_taf_data["Day"]],
             ["Start Time", formatted_taf_data["Start Time"]],
-            ["Validity Start", formatted_taf_data["Validity Start"]],
-            ["Validity End", formatted_taf_data["Validity End"]],
-            ["Validity Duration", formatted_taf_data["Validity Duration"]],
+            ["Validity", formatted_taf_data["Validity"]],
             ["Wind", formatted_taf_data["Wind"]],
             ["Visibility", formatted_taf_data["Visibility"]],
             ["Clouds", formatted_taf_data["Clouds"]],
