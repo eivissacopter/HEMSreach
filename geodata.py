@@ -3,6 +3,9 @@ import folium
 from streamlit_folium import st_folium
 import json
 import os
+import requests
+from requests.auth import HTTPBasicAuth
+from xml.etree import ElementTree
 
 # Load secrets from secrets.toml
 server_url = st.secrets["geoserver"]["server"]
@@ -11,14 +14,33 @@ password = st.secrets["geoserver"]["password"]
 
 st.title("Weather Overlay Map")
 
-# Specific layer to be displayed
-layer_name = 'dwd:ICON_ADWICE_POLYGONE'
-layer_title = 'ICON ADWICE Polygone'
+# Fetch layers from GeoServer WMS
+def fetch_layers():
+    wms_url = f"{server_url}/geoserver/dwd/ows?service=WMS&version=1.3.0&request=GetCapabilities"
+    st.write(f"Requesting URL: {wms_url}")  # Debugging output to verify the URL
+    try:
+        response = requests.get(wms_url, auth=HTTPBasicAuth(username, password))
+        response.raise_for_status()  # Raise an error for bad status codes
+        tree = ElementTree.fromstring(response.content)
+        layers = []
+        for layer in tree.findall('.//{http://www.opengis.net/wms}Layer/{http://www.opengis.net/wms}Layer'):
+            title = layer.find('{http://www.opengis.net/wms}Title').text
+            name = layer.find('{http://www.opengis.net/wms}Name').text
+            layers.append((title, name))
+        return layers
+    except requests.exceptions.RequestException as e:
+        st.error(f"Failed to fetch layers from GeoServer: {e}")
+        return []
+    except ElementTree.ParseError as e:
+        st.error(f"Failed to parse XML response: {e}")
+        return []
+
+layers = fetch_layers()
 
 # Initialize Folium map
 m = folium.Map(location=[50, 10], zoom_start=6, control_scale=True)
 
-# Add WMS layer to map
+# Function to add WMS layer to map
 def add_wms_layer(m, layer_name, layer_title):
     try:
         wms_url = f"{server_url}/geoserver/dwd/ows"
@@ -34,8 +56,13 @@ def add_wms_layer(m, layer_name, layer_title):
     except Exception as e:
         st.error(f"Failed to add layer {layer_title}: {e}")
 
-# Add the specified layer to the map
-add_wms_layer(m, layer_name, layer_title)
+# Sidebar switches for WMS layers
+st.sidebar.title("Select Weather Overlays")
+selected_layers = []
+for title, name in layers:
+    if st.sidebar.checkbox(f"Enable {title}"):
+        add_wms_layer(m, name, title)
+        selected_layers.append(title)
 
 # Load GeoJSON file
 def add_geojson_layer(m, geojson_path):
