@@ -21,7 +21,7 @@ def add_wms_layer(m, layer_name, layer_title):
             url=wms_url,
             name=layer_title,
             layers=layer_name,
-            fmt='image/png',
+            format='image/png',
             transparent=True,
             version='1.3.0',
             attribution="Weather data © 2024 Deutscher Wetterdienst",
