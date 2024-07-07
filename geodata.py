@@ -52,7 +52,7 @@ if layers:
                 url=wms_url,
                 name=layer_title,
                 layers=layer_name,
-                format='image/png',
+                fmt='image/png',
                 transparent=True,
                 version='1.3.0',
                 attribution="Weather data © 2024 Deutscher Wetterdienst",
