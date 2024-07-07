@@ -87,7 +87,7 @@ def decode_metar(metar):
         if code in metar:
             data['Warnings'].append(description)
     
-    data['Warnings'] = ', '.join(data['Warnings']) if data['Warnings'] else 'No Warnings'
+    data['Warnings'] = ', '.join(data['Warnings']) if data['Warnings'] else ''
 
     return data
 
