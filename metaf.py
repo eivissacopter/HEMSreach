@@ -18,7 +18,7 @@ def decode_metar(metar):
         'Day': re.search(r'\d{2}(?=\d{4}Z)', metar).group(),
         'Time': re.search(r'\d{6}Z', metar).group(),
         'Wind': re.search(r'\d{3}\d{2}(G\d{2})?KT', metar).group(),
-        'Visibility': '9999' if 'CAVOK' in metar else re.search(r'\b\d{4}\b', metar).group(),
+        'Visibility': '9999' if 'CAVOK' in metar else (re.search(r'\b\d{4}\b', metar).group() if re.search(r'\b\d{4}\b', metar) else 'N/A'),
         'Variable Wind': re.search(r'\d{3}V\d{3}', metar).group() if re.search(r'\d{3}V\d{3}', metar) else 'N/A',
         'QNH': convert_qnh(re.search(r'\b(A\d{4}|Q\d{4})\b', metar).group()) if re.search(r'\b(A\d{4}|Q\d{4})\b', metar) else 'N/A',
         'Trend': re.search(r'(TEMPO|BECMG|NOSIG)', metar).group() if re.search(r'(TEMPO|BECMG|NOSIG)', metar) else 'N/A',
