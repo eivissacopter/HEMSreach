@@ -44,7 +44,7 @@ if uploaded_file:
         if not layer_info:
             st.error("No layers found in the GetCapabilities XML.")
 
-        # Initialize Folium map
+        # Initialize Folium map with a default location
         m = folium.Map(location=[50, 10], zoom_start=6, control_scale=True)
 
         # Function to add WMS layer to map
@@ -72,6 +72,10 @@ if uploaded_file:
                     st.write(f"Map bounds set to: {bounds}")
                 else:
                     st.warning(f"No bounding box available for layer: {layer_title}")
+                    # Set a default bounding box if none is provided
+                    default_bounds = [[-90, -180], [90, 180]]
+                    m.fit_bounds(default_bounds)
+                    st.write(f"Map bounds set to default: {default_bounds}")
             except Exception as e:
                 st.error(f"Failed to add layer {layer_title}: {e}")
 
