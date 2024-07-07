@@ -14,7 +14,7 @@ def decode_metar(metar):
     metar = re.sub(r'[\r\n]+', ' ', metar).strip()  # Remove \r and \n characters
 
     # Extract military color codes before parsing the rest
-    color_codes = re.findall(r'\b(BLACK|BLU|WHT|GRN|YLO|AMB|RED)\b', metar)
+    color_codes = re.findall(r'\b(BLACKBLU+|BLACK|BLK|BLU|WHT|GRN|YLO|AMB|RED)\b', metar)
     color_codes_str = ' '.join(color_codes)
     
     data = {
@@ -192,4 +192,4 @@ if st.button("Submit"):
         st.subheader("Analysis")
         # Implement additional analysis if needed
     else:
-        st.warning("Please enter a METAR.")
+        st.warning("Please enter
