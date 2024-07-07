@@ -68,12 +68,15 @@ if uploaded_file:
             try:
                 response = requests.get(url)
                 response.raise_for_status()
-                geojson_data = response.json()
-                folium.GeoJson(
-                    geojson_data,
-                    name="MRVA Overlay"
-                ).add_to(m)
-                st.success("MRVA Overlay added successfully")
+                if response.headers.get('Content-Type') == 'application/json':
+                    geojson_data = response.json()
+                    folium.GeoJson(
+                        geojson_data,
+                        name="MRVA Overlay"
+                    ).add_to(m)
+                    st.success("MRVA Overlay added successfully")
+                else:
+                    st.error(f"Unexpected content type: {response.headers.get('Content-Type')}")
             except requests.exceptions.RequestException as e:
                 st.error(f"Failed to fetch GeoJSON: {e}")
             except json.JSONDecodeError as e:
