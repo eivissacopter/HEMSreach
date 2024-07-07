@@ -21,8 +21,8 @@ def decode_metar(metar):
         'Visibility': re.search(r'\b\d{4}\b', metar).group(),
         'Variable Wind': re.search(r'\d{3}V\d{3}', metar).group() if re.search(r'\d{3}V\d{3}', metar) else 'N/A',
         'QNH': convert_qnh(re.search(r'\b(A\d{4}|Q\d{4})\b', metar).group()) if re.search(r'\b(A\d{4}|Q\d{4})\b', metar) else 'N/A',
-        'Trend': re.search(r'(TEMPO|BECMG|NOSIG)', metar).group() if re.search(r'(TEMPO|BECMG|NOSIG)', metar) else '',
-        'Trend Details': re.search(r'(TEMPO|BECMG|NOSIG)\s+(.*)', metar).group(2) if re.search(r'(TEMPO|BECMG|NOSIG)\s+(.*)', metar) else '',
+        'Trend': re.search(r'(TEMPO|BECMG|NOSIG)', metar).group() if re.search(r'(TEMPO|BECMG|NOSIG)', metar) else 'N/A',
+        'Trend Details': re.search(r'(TEMPO|BECMG|NOSIG)\s+(.*)', metar).group(2) if re.search(r'(TEMPO|BECMG|NOSIG)\s+(.*)', metar) else 'N/A',
         'Warnings': []
     }
 
@@ -34,11 +34,8 @@ def decode_metar(metar):
         clouds = re.findall(r'(FEW|SCT|BKN|OVC)\d{3}', metar)
         for cloud in clouds:
             cloud_type = cloud[:3]
-            try:
-                altitude = int(cloud[3:]) * 100
-                cloud_details.append([cloud_type, f"{altitude}ft"])
-            except ValueError:
-                cloud_details.append([cloud_type, "unknown altitude"])
+            altitude = int(cloud[3:]) * 100
+            cloud_details.append([cloud_type, f"{altitude}ft"])
 
         data['Cloud Details'] = cloud_details
 
@@ -129,8 +126,8 @@ def format_metar(data):
         "Dewpoint": f"{data['Dewpoint']}°C",
         "Spread": f"{data['Spread']}°C",
         "QNH": f"{data['QNH'][1:]}hPa" if data['QNH'] != 'N/A' else 'N/A',
-        "Trend Duration": data['Trend'].capitalize() if data['Trend'] else '',
-        "Trend Change": data['Trend Details'] if data['Trend Details'] else '',
+        "Trend Duration": data['Trend'].capitalize() if data['Trend'] != 'N/A' else 'N/A',
+        "Trend Change": data['Trend Details'] if data['Trend Details'] != 'N/A' else 'N/A',
         "Warnings": data['Warnings']
     }
 
