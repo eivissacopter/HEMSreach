@@ -27,8 +27,10 @@ def add_wms_layer(m, layer_name, layer_title):
             fmt='image/png',
             transparent=True,
             version='1.3.0',
-            attribution="Weather data © 2024 Deutscher Wetterdienst",
-            control=True
+            control=True,
+            show=True,
+            overlay=True,
+            attribution="Weather data © 2024 Deutscher Wetterdienst"
         ).add_to(m)
         st.success(f"Layer {layer_title} added successfully")
     except Exception as e:
