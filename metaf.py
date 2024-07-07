@@ -22,29 +22,25 @@ def decode_metar(metar):
         'Variable Wind': re.search(r'\d{3}V\d{3}', metar).group() if re.search(r'\d{3}V\d{3}', metar) else 'N/A',
         'QNH': convert_qnh(re.search(r'\b(A\d{4}|Q\d{4})\b', metar).group()) if re.search(r'\b(A\d{4}|Q\d{4})\b', metar) else 'N/A',
         'Trend': re.search(r'(TEMPO|BECMG|NOSIG)', metar).group() if re.search(r'(TEMPO|BECMG|NOSIG)', metar) else '',
-        'Trend Details': re.search(r'(TEMPO|BECMG|NOSIG)\s+(.*)', metar).group(2) if re.search(r'(TEMPO|BECMG|NOSIG)\s+(.*)', metar) else ''
+        'Trend Details': re.search(r'(TEMPO|BECMG|NOSIG)\s+(.*)', metar).group(2) if re.search(r'(TEMPO|BECMG|NOSIG)\s+(.*)', metar) else '',
+        'Warnings': []
     }
 
-    wind = re.search(r'\d{3}\d{2}(G\d{2})?KT', metar)
-    if wind:
-        data['Wind Direction'] = wind.group()[:3] + '°'
-        data['Wind Speed'] = wind.group()[3:5] + 'kt'
-        if 'G' in wind.group():
-            data['Wind Gust'] = wind.group().split('G')[1][:2] + 'kt'
-        else:
-            data['Wind Gust'] = 'N/A'
+    if 'CAVOK' in metar:
+        data['Visibility'] = '9999'
+        data['Cloud Details'] = [['CAVOK', '']]
+    else:
+        cloud_details = []
+        clouds = re.findall(r'(FEW|SCT|BKN|OVC)\d{3}', metar)
+        for cloud in clouds:
+            cloud_type = cloud[:3]
+            try:
+                altitude = int(cloud[3:]) * 100
+                cloud_details.append([cloud_type, f"{altitude}ft"])
+            except ValueError:
+                cloud_details.append([cloud_type, "unknown altitude"])
 
-    cloud_details = []
-    clouds = re.findall(r'(FEW|SCT|BKN|OVC)\d{3}', metar)
-    for cloud in clouds:
-        cloud_type = cloud[:3]
-        try:
-            altitude = int(cloud[3:]) * 100
-            cloud_details.append([cloud_type, f"{altitude}ft"])
-        except ValueError:
-            cloud_details.append([cloud_type, "unknown altitude"])
-
-    data['Cloud Details'] = cloud_details
+        data['Cloud Details'] = cloud_details
 
     temp_dew = re.search(r'\d{2}/\d{2}', metar)
     if temp_dew:
@@ -52,6 +48,47 @@ def decode_metar(metar):
         data['Temperature'] = temp_dew_split[0]
         data['Dewpoint'] = temp_dew_split[1]
         data['Spread'] = str(int(data['Temperature']) - int(data['Dewpoint']))
+
+    # Detect warnings
+    warnings_patterns = {
+        'MI': 'Shallow',
+        'BC': 'Patches',
+        'PR': 'Partial',
+        'DR': 'Drifting',
+        'BL': 'Blowing',
+        'SH': 'Showers',
+        'TS': 'Thunderstorm',
+        'FZ': 'Freezing',
+        'DZ': 'Drizzle',
+        'RA': 'Rain',
+        'SN': 'Snow',
+        'SG': 'Snow grains',
+        'IC': 'Ice crystals',
+        'PL': 'Ice pellets',
+        'GR': 'Hail',
+        'GS': 'Small hail / snow pellets',
+        'UP': 'Unknown',
+        'BR': 'Mist (visibility > 1000 m)',
+        'FG': 'Fog (visibility < 1000 m)',
+        'FU': 'Smoke',
+        'VA': 'Volcanic ash',
+        'DU': 'Widespread dust',
+        'SA': 'Sand',
+        'HZ': 'Haze',
+        'PY': 'Spray',
+        'PO': 'Well developed dust/sand whirls',
+        'SQ': 'Squall',
+        'FC': 'Funnel cloud',
+        '+FC': 'Tornado / water spout',
+        'SS': 'Sandstorm',
+        'DS': 'Dust storm'
+    }
+    
+    for code, description in warnings_patterns.items():
+        if code in metar:
+            data['Warnings'].append(description)
+    
+    data['Warnings'] = ', '.join(data['Warnings']) if data['Warnings'] else 'N/A'
 
     return data
 
@@ -83,9 +120,9 @@ def format_metar(data):
         "Day": data["Day"],
         "Start Time": time_local_start.strftime('%H:%M'),
         "End Time": time_local_end.strftime('%H:%M'),
-        "Wind Direction": data["Wind Direction"],
-        "Wind Speed": data["Wind Speed"],
-        "Wind Gust": data["Wind Gust"],
+        "Wind Direction": data["Wind"][:3] + '°',
+        "Wind Speed": data["Wind"][3:5] + 'kt',
+        "Wind Gust": data["Wind"][7:9] + 'kt' if 'G' in data["Wind"] else 'N/A',
         "Variable": f"{data['Variable Wind'][:3]}° - {data['Variable Wind'][4:]}" if data['Variable Wind'] != 'N/A' else "N/A",
         "Visibility": f"{data['Visibility']}m",
         "Temperature": f"{data['Temperature']}°C",
@@ -93,7 +130,8 @@ def format_metar(data):
         "Spread": f"{data['Spread']}°C",
         "QNH": f"{data['QNH'][1:]}hPa" if data['QNH'] != 'N/A' else 'N/A',
         "Trend Duration": data['Trend'].capitalize() if data['Trend'] else '',
-        "Trend Change": data['Trend Details'] if data['Trend Details'] else ''
+        "Trend Change": data['Trend Details'] if data['Trend Details'] else '',
+        "Warnings": data['Warnings']
     }
 
     return formatted_data
