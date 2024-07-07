@@ -26,27 +26,23 @@ def decode_metar(metar):
         'Trend Details': re.search(r'(TEMPO|BECMG|NOSIG)\s+(.*)', metar).group(2) if re.search(r'(TEMPO|BECMG|NOSIG)\s+(.*)', metar) else ''
     }
 
-    first_cloud_base = None
-    first_cloud_ceiling = None
+    cloud_bases = []
+    cloud_ceilings = []
 
     for cloud in data['Clouds']:
         try:
             altitude = int(cloud[3:]) * 100
-            if first_cloud_base is None and (cloud.startswith('FEW') or cloud.startswith('SCT')):
-                first_cloud_base = f"{cloud[:3].capitalize()} at {altitude}ft"
-            if first_cloud_ceiling is None and (cloud.startswith('BKN') or cloud.startswith('OVC')):
-                first_cloud_ceiling = f"{cloud[:3].capitalize()} at {altitude}ft"
-                break
+            cloud_type = cloud[:3]
+            cloud_description = f"{cloud_type.capitalize()} at {altitude}ft"
+            if cloud_type in ['FEW', 'SCT']:
+                cloud_bases.append(cloud_description)
+            if cloud_type in ['BKN', 'OVC']:
+                cloud_ceilings.append(cloud_description)
         except ValueError:
             continue
 
-    if first_cloud_base is None:
-        first_cloud_base = 'N/A'
-    if first_cloud_ceiling is None:
-        first_cloud_ceiling = 'N/A'
-
-    data['First Cloud Base'] = first_cloud_base
-    data['First Cloud Ceiling'] = first_cloud_ceiling
+    data['First Cloud Base'] = cloud_bases[0] if cloud_bases else 'N/A'
+    data['First Cloud Ceiling'] = cloud_ceilings[0] if cloud_ceilings else 'N/A'
 
     temp_dew = re.search(r'\d{2}/\d{2}', metar)
     if temp_dew:
