@@ -20,24 +20,19 @@ m = folium.Map(location=[50, 10], zoom_start=6, control_scale=True)
 def add_wms_layer(m, layer_name, layer_title):
     try:
         wms_url = f"{server_url}/geoserver/dwd/ows"
-        print(f"Arguments passed: {locals()}")  # Print all local variables (including arguments)
-        # ... rest of your code
+        folium.raster_layers.WmsTileLayer(
+            url=wms_url,
+            name=layer_title,
+            layers=layer_name,
+            fmt='image/png',
+            transparent=True,
+            version='1.3.0',
+            attribution="Weather data © 2024 Deutscher Wetterdienst",
+            control=True
+        ).add_to(m)
+        st.success(f"Layer {layer_title} added successfully")
     except Exception as e:
         st.error(f"Failed to add layer {layer_title}: {e}")
-    tile_layer = folium.raster_layers.WmsTileLayer(
-        url=wms_url,
-        name=layer_title,
-        layers=layer_name,
-        fmt='image/png',
-        transparent=True,
-        version='1.3.0',
-        attribution="Weather data © 2024 Deutscher Wetterdienst"  # Only specify attribution once
-    )
-    tile_layer.add_to(m)
-    st.success(f"Layer {layer_title} added successfully")
-  except Exception as e:
-    st.error(f"Failed to add layer {layer_title}: {e}")
-
 
 # Add the specified layer to the map
 add_wms_layer(m, layer_name, layer_title)
