@@ -152,13 +152,7 @@ hours_ahead = st.slider("Hours Ahead", 0, 9, 5)
 
 ##########################################################################################################
 
-if st.button("Submit"):
-    if metar:
-        metar_data = decode_metar(metar)
-        formatted_metar_data = format_metar(metar_data)
-        cloud_rows = format_cloud_details(metar_data['Cloud Details'])
-       
-if st.button("Submit"):
+if st.button("Submit", key="submit_button"):
     if metar:
         metar_data = decode_metar(metar)
         formatted_metar_data = format_metar(metar_data)
@@ -199,3 +193,4 @@ if st.button("Submit"):
         # Implement additional analysis if needed
     else:
         st.warning("Please enter a METAR.")
+
