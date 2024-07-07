@@ -52,41 +52,42 @@ def decode_metar(metar):
 
     # Detect warnings
     warnings_patterns = {
-        ' MI ': 'Shallow',
-        ' BC ': 'Patches',
-        ' PR ': 'Partial',
-        ' DR ': 'Drifting',
-        ' BL ': 'Blowing',
-        ' SH ': 'Showers',
-        ' TS ': 'Thunderstorm',
-        ' FZ ': 'Freezing',
-        ' DZ ': 'Drizzle',
-        ' RA ': 'Rain',
-        ' SN ': 'Snow',
-        ' SG ': 'Snow grains',
-        ' IC ': 'Ice crystals',
-        ' PL ': 'Ice pellets',
-        ' GR ': 'Hail',
-        ' GS ': 'Small hail / snow pellets',
-        ' UP ': 'Unknown',
-        ' BR ': 'Mist (visibility > 1000 m)',
-        ' FG ': 'Fog (visibility < 1000 m)',
-        ' FU ': 'Smoke',
-        ' VA ': 'Volcanic ash',
-        ' DU ': 'Widespread dust',
-        ' SA ': 'Sand',
-        ' HZ ': 'Haze',
-        ' PY ': 'Spray',
-        ' PO ': 'Well developed dust/sand whirls',
-        ' SQ ': 'Squall',
-        ' FC ': 'Funnel cloud',
-        ' +FC ': 'Tornado / water spout',
-        ' SS ': 'Sandstorm',
-        ' DS ': 'Dust storm'
+        'MI': 'Shallow',
+        'BC': 'Patches',
+        'PR': 'Partial',
+        'DR': 'Drifting',
+        'BL': 'Blowing',
+        'SH': 'Showers',
+        'TS': 'Thunderstorm',
+        'FZ': 'Freezing',
+        'DZ': 'Drizzle',
+        'RA': 'Rain',
+        'SN': 'Snow',
+        'SG': 'Snow grains',
+        'IC': 'Ice crystals',
+        'PL': 'Ice pellets',
+        'GR': 'Hail',
+        'GS': 'Small hail / snow pellets',
+        'UP': 'Unknown',
+        'BR': 'Mist (visibility > 1000 m)',
+        'FG': 'Fog (visibility < 1000 m)',
+        'FU': 'Smoke',
+        'VA': 'Volcanic ash',
+        'DU': 'Widespread dust',
+        'SA': 'Sand',
+        'HZ': 'Haze',
+        'PY': 'Spray',
+        'PO': 'Well developed dust/sand whirls',
+        'SQ': 'Squall',
+        'FC': 'Funnel cloud',
+        '+FC': 'Tornado / water spout',
+        'SS': 'Sandstorm',
+        'DS': 'Dust storm'
     }
     
     for code, description in warnings_patterns.items():
-        if re.search(r'\b' + code.strip() + r'\b', ' ' + metar + ' '):
+        pattern = r'\b' + re.escape(code) + r'\b'
+        if re.search(pattern, metar):
             data['Warnings'].append(description)
     
     data['Warnings'] = ', '.join(data['Warnings']) if data['Warnings'] else 'N/A'
