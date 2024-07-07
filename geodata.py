@@ -12,16 +12,17 @@ password = st.secrets["geoserver"]["password"]
 
 st.title("Weather Overlay Map")
 
-# Recursive function to extract layers and bounding boxes
-def extract_wmts_layers(contents):
+# Function to extract layers from WMTS GetCapabilities XML
+def extract_wmts_layers(capabilities):
     extracted_layers = []
-    if 'Layer' in contents:
-        layers = contents['Layer'] if isinstance(contents['Layer'], list) else [contents['Layer']]
-        for layer in layers:
-            title = layer.get('ows:Title')
-            name = layer.get('ows:Identifier')
-            if title and name:
-                extracted_layers.append((title, name))
+    layers = capabilities.get('Layer', [])
+    if not isinstance(layers, list):
+        layers = [layers]
+    for layer in layers:
+        title = layer.get('ows:Title')
+        name = layer.get('ows:Identifier')
+        if title and name:
+            extracted_layers.append((title, name))
     return extracted_layers
 
 # Upload WMTS GetCapabilities XML file
@@ -31,16 +32,17 @@ if uploaded_file_wmts:
     
     try:
         data_dict_wmts = xmltodict.parse(xml_content_wmts)
-        contents = data_dict_wmts.get('Capabilities', {}).get('Contents', None)
+        capabilities = data_dict_wmts.get('Capabilities')
         
-        if not contents:
-            st.error("Contents section missing in the WMTS GetCapabilities XML.")
+        if not capabilities:
+            st.error("Capabilities section missing in the WMTS GetCapabilities XML.")
             st.stop()
         
-        wmts_layer_info = extract_wmts_layers(contents)
+        wmts_layer_info = extract_wmts_layers(capabilities.get('Contents', {}))
 
         if not wmts_layer_info:
             st.error("No WMTS layers found in the GetCapabilities XML.")
+            st.stop()
 
         # Sidebar to select WMTS layers
         st.sidebar.title("Select Weather Overlays (WMTS)")
