@@ -18,8 +18,12 @@ m = folium.Map(location=[50, 10], zoom_start=6, control_scale=True)
 
 # Add WMS layer to map
 def add_wms_layer(m, layer_name, layer_title):
-  try:
-    wms_url = f"{server_url}/geoserver/dwd/ows"
+    try:
+        wms_url = f"{server_url}/geoserver/dwd/ows"
+        print(f"Arguments passed: {locals()}")  # Print all local variables (including arguments)
+        # ... rest of your code
+    except Exception as e:
+        st.error(f"Failed to add layer {layer_title}: {e}")
     tile_layer = folium.raster_layers.WmsTileLayer(
         url=wms_url,
         name=layer_title,
