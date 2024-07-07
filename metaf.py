@@ -33,11 +33,15 @@ def decode_metar(metar):
         clouds = re.findall(r'(FEW|SCT|BKN|OVC)\d{3}', metar)
         for cloud in clouds:
             cloud_type = cloud[:3]
-            altitude = int(cloud[3:]) * 100
-            cloud_details.append([cloud_type, f"{altitude}"])
+            altitude_str = cloud[3:]
+            try:
+                altitude = int(altitude_str) * 100
+                cloud_details.append([cloud_type, f"{altitude}"])
+            except ValueError:
+                cloud_details.append([cloud_type, "unknown"])
 
     data['Cloud Details'] = cloud_details
-
+    
     temp_dew = re.search(r'\d{2}/\d{2}', metar)
     if temp_dew:
         temp_dew_split = temp_dew.group().split('/')
