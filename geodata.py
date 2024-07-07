@@ -15,11 +15,13 @@ st.title("Weather Overlay Map")
 # Recursive function to extract layers and bounding boxes
 def extract_wmts_layers(contents):
     extracted_layers = []
-    for layer in contents.get('Layer', []):
-        title = layer.get('ows:Title')
-        name = layer.get('ows:Identifier')
-        if title and name:
-            extracted_layers.append((title, name))
+    if 'Layer' in contents:
+        layers = contents['Layer'] if isinstance(contents['Layer'], list) else [contents['Layer']]
+        for layer in layers:
+            title = layer.get('ows:Title')
+            name = layer.get('ows:Identifier')
+            if title and name:
+                extracted_layers.append((title, name))
     return extracted_layers
 
 # Upload WMTS GetCapabilities XML file
@@ -29,7 +31,12 @@ if uploaded_file_wmts:
     
     try:
         data_dict_wmts = xmltodict.parse(xml_content_wmts)
-        contents = data_dict_wmts['Capabilities']['Contents']
+        contents = data_dict_wmts.get('Capabilities', {}).get('Contents', None)
+        
+        if not contents:
+            st.error("Contents section missing in the WMTS GetCapabilities XML.")
+            st.stop()
+        
         wmts_layer_info = extract_wmts_layers(contents)
 
         if not wmts_layer_info:
