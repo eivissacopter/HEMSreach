@@ -10,27 +10,11 @@ def convert_qnh(qnh):
         return f"Q{hpa}"
     return qnh
 
-def decode_metar(metar):
-    metar = re.sub(r'[\r\n]+', ' ', metar).strip()  # Remove \r and \n characters
-
-    # Extract military color codes before parsing the rest
+def extract_color_codes(metar):
     color_codes = re.findall(r'\b(BLACKBLU+|BLACK|BLK|BLU|WHT|GRN|YLO|AMB|RED)\b', metar)
-    color_codes_str = ' '.join(color_codes)
-    
-    data = {
-        'ICAO': re.search(r'\b[A-Z]{4}\b', metar).group(),
-        'Day': re.search(r'\d{2}(?=\d{4}Z)', metar).group(),
-        'Time': re.search(r'\d{6}Z', metar).group(),
-        'Wind': re.search(r'\d{3}\d{2}(G\d{2})?KT', metar).group() if re.search(r'\d{3}\d{2}(G\d{2})?KT', metar) else 'N/A',
-        'Visibility': '9999' if 'CAVOK' in metar else (re.search(r'\b\d{4}\b', metar).group() if re.search(r'\b\d{4}\b', metar) else 'N/A'),
-        'Variable Wind': re.search(r'\d{3}V\d{3}', metar).group() if re.search(r'\d{3}V\d{3}', metar) else 'N/A',
-        'QNH': convert_qnh(re.search(r'\b(A\d{4}|Q\d{4})\b', metar).group()) if re.search(r'\b(A\d{4}|Q\d{4})\b', metar) else 'N/A',
-        'Trend': re.search(r'(TEMPO|BECMG|NOSIG)', metar).group() if re.search(r'(TEMPO|BECMG|NOSIG)', metar) else 'N/A',
-        'Trend Details': re.search(r'(TEMPO|BECMG|NOSIG)\s+(.*)', metar).group(2) if re.search(r'(TEMPO|BECMG|NOSIG)\s+(.*)', metar) else 'N/A',
-        'Remarks': re.search(r'RMK (.*)', metar).group(1) if re.search(r'RMK (.*)', metar) else color_codes_str if color_codes_str else 'N/A',
-        'Warnings': []
-    }
+    return ' '.join(color_codes)
 
+def extract_cloud_details(metar):
     cloud_details = []
     if 'CAVOK' in metar:
         cloud_details.append(['CAVOK', ''])
@@ -40,17 +24,19 @@ def decode_metar(metar):
             cloud_type = cloud[0]
             altitude = cloud[1]
             cloud_details.append([cloud_type, altitude])
+    return cloud_details
 
-    data['Cloud Details'] = cloud_details
-
+def extract_temp_dew(metar):
     temp_dew = re.search(r'\d{2}/\d{2}', metar)
     if temp_dew:
         temp_dew_split = temp_dew.group().split('/')
-        data['Temperature'] = temp_dew_split[0]
-        data['Dewpoint'] = temp_dew_split[1]
-        data['Spread'] = str(int(data['Temperature']) - int(data['Dewpoint']))
+        temperature = temp_dew_split[0]
+        dewpoint = temp_dew_split[1]
+        spread = str(int(temperature) - int(dewpoint))
+        return temperature, dewpoint, spread
+    return 'N/A', 'N/A', 'N/A'
 
-    # Detect warnings
+def detect_warnings(metar):
     warnings_patterns = {
         'MI': 'Shallow',
         'BC': 'Patches',
@@ -84,13 +70,52 @@ def decode_metar(metar):
         'SS': 'Sandstorm',
         'DS': 'Dust storm'
     }
-    
+    warnings = []
     for code, description in warnings_patterns.items():
         pattern = r'\b' + re.escape(code) + r'\b'
         if re.search(pattern, metar):
-            data['Warnings'].append(description)
-    
-    data['Warnings'] = ', '.join(data['Warnings']) if data['Warnings'] else 'N/A'
+            warnings.append(description)
+    return ', '.join(warnings) if warnings else 'N/A'
+
+def decode_metar(metar):
+    metar = re.sub(r'[\r\n]+', ' ', metar).strip()  # Remove \r and \n characters
+    color_codes_str = extract_color_codes(metar)
+
+    data = {
+        'ICAO': re.search(r'\b[A-Z]{4}\b', metar).group(),
+        'Day': re.search(r'\d{2}(?=\d{4}Z)', metar).group(),
+        'Time': re.search(r'\d{6}Z', metar).group(),
+        'Wind': re.search(r'\d{3}\d{2}(G\d{2})?KT', metar).group() if re.search(r'\d{3}\d{2}(G\d{2})?KT', metar) else 'N/A',
+        'Visibility': '9999' if 'CAVOK' in metar else (re.search(r'\b\d{4}\b', metar).group() if re.search(r'\b\d{4}\b', metar) else 'N/A'),
+        'Variable Wind': re.search(r'\d{3}V\d{3}', metar).group() if re.search(r'\d{3}V\d{3}', metar) else 'N/A',
+        'QNH': convert_qnh(re.search(r'\b(A\d{4}|Q\d{4})\b', metar).group()) if re.search(r'\b(A\d{4}|Q\d{4})\b', metar) else 'N/A',
+        'Trend': re.search(r'(TEMPO|BECMG|NOSIG)', metar).group() if re.search(r'(TEMPO|BECMG|NOSIG)', metar) else 'N/A',
+        'Trend Details': re.search(r'(TEMPO|BECMG|NOSIG)\s+(.*)', metar).group(2) if re.search(r'(TEMPO|BECMG|NOSIG)\s+(.*)', metar) else 'N/A',
+        'Remarks': re.search(r'RMK (.*)', metar).group(1) if re.search(r'RMK (.*)', metar) else color_codes_str if color_codes_str else 'N/A',
+        'Warnings': detect_warnings(metar)
+    }
+
+    data['Cloud Details'] = extract_cloud_details(metar)
+    data['Temperature'], data['Dewpoint'], data['Spread'] = extract_temp_dew(metar)
+
+    return data
+
+def decode_taf(taf):
+    taf = re.sub(r'[\r\n]+', ' ', taf).strip()  # Remove \r and \n characters
+    color_codes_str = extract_color_codes(taf)
+
+    data = {
+        'ICAO': re.search(r'\b[A-Z]{4}\b', taf).group(),
+        'Day': re.search(r'\d{2}(?=\d{6}Z)', taf).group(),
+        'Start Time': re.search(r'\d{6}Z', taf).group(),
+        'Validity': re.search(r'\d{4}/\d{4}', taf).group(),
+        'Wind': re.search(r'\d{3}\d{2}(G\d{2})?KT', taf).group(),
+        'Visibility': re.search(r'\b\d{4}\b', taf).group(),
+        'Clouds': extract_cloud_details(taf),
+        'Changes': re.findall(r'(TEMPO|BECMG|FM|TL|AT|PROB\d{2}) .*?(?= TEMPO|BECMG|FM|TL|AT|PROB\d{2}|$)', taf)
+    }
+
+    data['Remarks'] = color_codes_str if color_codes_str else 'N/A'
 
     return data
 
@@ -131,30 +156,22 @@ def format_cloud_details(cloud_details):
         cloud_rows.append([f"Cloud {i+1} Altitude", detail[1]])
     return cloud_rows
 
-def decode_taf(taf):
-    taf = re.sub(r'[\r\n]+', ' ', taf).strip()  # Remove \r and \n characters
-
-    data = {
-        'ICAO': re.search(r'\b[A-Z]{4}\b', taf).group(),
-        'Time': re.search(r'\d{6}Z', taf).group(),
-        'Validity': re.search(r'\d{4}/\d{4}', taf).group(),
-        'Wind': re.search(r'\d{3}\d{2}(G\d{2})?KT', taf).group(),
-        'Visibility': re.search(r'\b\d{4}\b', taf).group(),
-        'Clouds': re.findall(r'(FEW|SCT|BKN|OVC)(\d{3})', taf),
-        'Changes': re.findall(r'(TEMPO|BECMG|FM|TL|AT|PROB\d{2}) .*?(?= TEMPO|BECMG|FM|TL|AT|PROB\d{2}|$)', taf)
-    }
-
-    return data
-
 def format_taf(data):
+    time_utc = datetime.datetime.strptime(data['Start Time'], '%d%H%MZ')
+    time_local_start = time_utc + datetime.timedelta(hours=2)  # Assuming local time is UTC+2
+    validity_start, validity_end = data['Validity'].split('/')
+    validity_duration = int(validity_end[:2]) - int(validity_start[:2])
+
     formatted_data = {
         "ICAO": data["ICAO"],
-        "Time": data["Time"],
-        "Validity": data["Validity"],
+        "Day": data["Day"],
+        "Start Time": time_local_start.strftime('%H%M'),
+        "Validity": f"{validity_duration}h",
         "Wind": data["Wind"],
         "Visibility": data["Visibility"],
-        "Clouds": ', '.join([cloud[0] + cloud[1] for cloud in data['Clouds']]) if data['Clouds'] else "CAVOK",
-        "Changes": ' | '.join(data['Changes']) if data['Changes'] else ''
+        "Clouds": ', '.join([cloud[0] + cloud[1] for cloud in data['Clouds']]),
+        "Changes": ' | '.join(data['Changes']),
+        "Remarks": data['Remarks'],
     }
 
     return formatted_data
@@ -164,8 +181,6 @@ st.title("METAR/TAF Decoder")
 metar = st.text_area("Enter METAR:")
 taf = st.text_area("Enter TAF:")
 hours_ahead = st.slider("Hours Ahead", 0, 9, 5)
-
-##########################################################################################################
 
 if st.button("Submit", key="submit_button"):
     if metar:
@@ -197,16 +212,15 @@ if st.button("Submit", key="submit_button"):
 
         st.table(metar_table)
 
-        if taf:
-            taf_data = decode_taf(taf)
-            formatted_taf_data = format_taf(taf_data)
+    if taf:
+        taf_data = decode_taf(taf)
+        formatted_taf_data = format_taf(taf_data)
 
-            st.subheader("Decoded TAF")
-            st.table(list(formatted_taf_data.items()))
+        st.subheader("Decoded TAF")
+        st.table(list(formatted_taf_data.items()))
 
-        st.subheader("Analysis")
-        # Implement additional analysis if needed
-    else:
-        st.warning("Please enter a METAR.")
-
+    st.subheader("Analysis")
+    # Implement additional analysis if needed
+else:
+    st.warning("Please enter a METAR.")
 
