@@ -25,15 +25,15 @@ def decode_metar(metar):
         'Trend Details': re.search(r'(TEMPO|BECMG|NOSIG)\s+(.*)', metar).group(2) if re.search(r'(TEMPO|BECMG|NOSIG)\s+(.*)', metar) else ''
     }
 
-    clouds = re.findall(r'(FEW|SCT|BKN|OVC|VV|SKC|NSC|CLR)\d{3}', metar)
     cloud_details = []
+    clouds = re.findall(r'(FEW|SCT|BKN|OVC|VV|SKC|NSC|CLR)\d{3}', metar)
     for cloud in clouds:
+        cloud_type = cloud[:3]
         try:
-            cloud_type = cloud[:3]
             altitude = int(cloud[3:]) * 100
-            cloud_details.append(f"{cloud_type} at {altitude}ft")
+            cloud_details.append([cloud_type, f"{altitude}ft"])
         except ValueError:
-            cloud_details.append(f"{cloud_type} unknown altitude")
+            cloud_details.append([cloud_type, "unknown altitude"])
 
     data['Cloud Details'] = cloud_details
 
@@ -84,9 +84,14 @@ def format_metar(data):
         "Trend Change": data['Trend Details'] if data['Trend Details'] else ''
     }
 
-    cloud_rows = [[f"Cloud {i+1}", detail] for i, detail in enumerate(data['Cloud Details'])]
+    return formatted_data
 
-    return formatted_data, cloud_rows
+def format_cloud_details(cloud_details):
+    cloud_rows = []
+    for i, detail in enumerate(cloud_details):
+        cloud_rows.append([f"Cloud {i+1} Type", detail[0]])
+        cloud_rows.append([f"Cloud {i+1} Altitude", detail[1]])
+    return cloud_rows
 
 def format_taf(data):
     formatted_data = {
@@ -109,22 +114,27 @@ hours_ahead = st.slider("Hours Ahead", 0, 9, 5)
 
 if st.button("Submit"):
     if metar:
-        metar_data, cloud_rows = decode_metar(metar)
-        formatted_metar_data, cloud_rows = format_metar(metar_data)
+        metar_data = decode_metar(metar)
+        formatted_metar_data = format_metar(metar_data)
+        cloud_rows = format_cloud_details(metar_data['Cloud Details'])
 
         st.subheader("Decoded METAR")
-        st.table([["ICAO", formatted_metar_data["ICAO"]],
-                  ["Day", formatted_metar_data["Day"]],
-                  ["Time", formatted_metar_data["Time"]],
-                  ["Wind", formatted_metar_data["Wind"]],
-                  ["Variable", formatted_metar_data["Variable"]],
-                  ["Visibility", formatted_metar_data["Visibility"]],
-                  ["Temperature", formatted_metar_data["Temperature"]],
-                  ["Dewpoint", formatted_metar_data["Dewpoint"]],
-                  ["Spread", formatted_metar_data["Spread"]],
-                  ["QNH", formatted_metar_data["QNH"]],
-                  ["Trend Duration", formatted_metar_data["Trend Duration"]],
-                  ["Trend Change", formatted_metar_data["Trend Change"]]] + cloud_rows)
+        metar_table = [
+            ["ICAO", formatted_metar_data["ICAO"]],
+            ["Day", formatted_metar_data["Day"]],
+            ["Time", formatted_metar_data["Time"]],
+            ["Wind", formatted_metar_data["Wind"]],
+            ["Variable", formatted_metar_data["Variable"]],
+            ["Visibility", formatted_metar_data["Visibility"]],
+            ["Temperature", formatted_metar_data["Temperature"]],
+            ["Dewpoint", formatted_metar_data["Dewpoint"]],
+            ["Spread", formatted_metar_data["Spread"]],
+            ["QNH", formatted_metar_data["QNH"]],
+            ["Trend Duration", formatted_metar_data["Trend Duration"]],
+            ["Trend Change", formatted_metar_data["Trend Change"]],
+        ] + cloud_rows
+
+        st.table(metar_table)
 
         if taf:
             taf_data = decode_taf(taf)
