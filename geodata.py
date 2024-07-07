@@ -44,14 +44,19 @@ if uploaded_file:
         if not layer_info:
             st.error("No layers found in the GetCapabilities XML.")
 
-        # Sidebar to select layers
-        st.sidebar.title("Select Weather Overlays")
+        # Sidebar to select layers and set map controls
+        st.sidebar.title("Map Controls")
         selected_layer_title = st.sidebar.selectbox("Choose a layer to display", [title for title, name, bbox in layer_info])
-
-        # Initialize Folium map with a default location and zoom level
         default_location = [50, 10]
         default_zoom_start = 3
-        m = folium.Map(location=default_location, zoom_start=default_zoom_start, control_scale=True)
+
+        # Allow user to manually adjust the map view
+        lat = st.sidebar.number_input("Latitude", value=default_location[0])
+        lon = st.sidebar.number_input("Longitude", value=default_location[1])
+        zoom = st.sidebar.slider("Zoom Level", min_value=1, max_value=18, value=default_zoom_start)
+
+        # Initialize Folium map with user-defined location and zoom level
+        m = folium.Map(location=[lat, lon], zoom_start=zoom, control_scale=True)
 
         # Function to add WMS layer to map
         def add_wms_layer(m, layer_name, layer_title, bbox):
