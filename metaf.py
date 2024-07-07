@@ -106,7 +106,7 @@ def decode_taf(taf):
 def format_metar(data):
     time_utc = datetime.datetime.strptime(data['Time'], '%d%H%MZ')
     time_local_start = time_utc + datetime.timedelta(hours=2)  # Assuming local time is UTC+2
-    if data['Trend']:
+    if data['Trend'] != 'N/A':
         time_local_end = time_local_start + datetime.timedelta(hours=2)
     else:
         time_local_end = time_local_start + datetime.timedelta(minutes=30)
