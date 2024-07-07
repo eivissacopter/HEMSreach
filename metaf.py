@@ -131,6 +131,21 @@ def format_cloud_details(cloud_details):
         cloud_rows.append([f"Cloud {i+1} Altitude", detail[1]])
     return cloud_rows
 
+def decode_taf(taf):
+    taf = re.sub(r'[\r\n]+', ' ', taf).strip()  # Remove \r and \n characters
+
+    data = {
+        'ICAO': re.search(r'\b[A-Z]{4}\b', taf).group(),
+        'Time': re.search(r'\d{6}Z', taf).group(),
+        'Validity': re.search(r'\d{4}/\d{4}', taf).group(),
+        'Wind': re.search(r'\d{3}\d{2}(G\d{2})?KT', taf).group(),
+        'Visibility': re.search(r'\b\d{4}\b', taf).group(),
+        'Clouds': re.findall(r'(FEW|SCT|BKN|OVC)(\d{3})', taf),
+        'Changes': re.findall(r'(TEMPO|BECMG|FM|TL|AT|PROB\d{2}) .*?(?= TEMPO|BECMG|FM|TL|AT|PROB\d{2}|$)', taf)
+    }
+
+    return data
+
 def format_taf(data):
     formatted_data = {
         "ICAO": data["ICAO"],
@@ -193,4 +208,5 @@ if st.button("Submit", key="submit_button"):
         # Implement additional analysis if needed
     else:
         st.warning("Please enter a METAR.")
+
 
