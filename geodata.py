@@ -62,6 +62,19 @@ if uploaded_file:
                 wms_layer.add_to(m)
                 st.success(f"Layer {layer_title} added successfully")
                 st.write(f"Added WMS layer: {layer_name} ({layer_title})")
+
+                # Fit map to layer bounds
+                bbox_url = f"{wms_url}?service=WMS&version=1.3.0&request=GetCapabilities"
+                response = requests.get(bbox_url, auth=HTTPBasicAuth(username, password))
+                data_dict = xmltodict.parse(response.content)
+                layers = data_dict['WMS_Capabilities']['Capability']['Layer']['Layer']
+                for layer in layers:
+                    if 'Name' in layer and layer['Name'] == layer_name:
+                        bbox = layer['EX_GeographicBoundingBox']
+                        bounds = [[float(bbox['southBoundLatitude']), float(bbox['westBoundLongitude'])],
+                                  [float(bbox['northBoundLatitude']), float(bbox['eastBoundLongitude'])]]
+                        m.fit_bounds(bounds)
+                        break
             except Exception as e:
                 st.error(f"Failed to add layer {layer_title}: {e}")
 
