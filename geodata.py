@@ -18,7 +18,6 @@ def fetch_layers():
     try:
         response = requests.get(wms_url, auth=HTTPBasicAuth(username, password))
         response.raise_for_status()  # Raise an error for bad status codes
-        st.text(response.content)  # For debugging purposes
         tree = ElementTree.fromstring(response.content)
         layers = []
         for layer in tree.findall('.//{http://www.opengis.net/wms}Layer/{http://www.opengis.net/wms}Layer'):
