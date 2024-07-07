@@ -41,6 +41,9 @@ add_wms_layer(m, layer_name, layer_title)
 # Load GeoJSON file
 def add_geojson_layer(m, geojson_path):
     try:
+        if not os.path.exists(geojson_path):
+            st.error(f"GeoJSON file not found: {geojson_path}")
+            return
         with open(geojson_path) as f:
             geojson_data = json.load(f)
         folium.GeoJson(
@@ -48,6 +51,8 @@ def add_geojson_layer(m, geojson_path):
             name="MRVA Overlay"
         ).add_to(m)
         st.success("MRVA Overlay added successfully")
+    except json.JSONDecodeError as e:
+        st.error(f"Failed to load MRVA Overlay: {e}")
     except Exception as e:
         st.error(f"Failed to add MRVA Overlay: {e}")
 
@@ -56,6 +61,7 @@ enable_geojson = st.sidebar.checkbox("Enable MRVA Overlay")
 
 if enable_geojson:
     geojson_path = os.path.join(os.path.dirname(__file__), 'mrva.geojson')  # Replace with the actual path to your mrva.geojson file
+    st.write(f"GeoJSON path: {geojson_path}")  # Debugging output to verify the path
     add_geojson_layer(m, geojson_path)
 
 # Display the map
