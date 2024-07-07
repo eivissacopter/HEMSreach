@@ -32,14 +32,20 @@ def decode_metar(metar):
     ceiling_altitude = float('inf')
 
     for cloud in data['Clouds']:
-        altitude = int(cloud[3:]) * 100
-        cloud_type = cloud[:3]
-        if cloud_type in ['FEW', 'SCT'] and altitude < base_altitude:
-            cloud_base = cloud_type.capitalize()
-            base_altitude = altitude
-        if cloud_type in ['BKN', 'OVC'] and altitude < ceiling_altitude:
-            cloud_ceiling = cloud_type.capitalize()
-            ceiling_altitude = altitude
+        try:
+            altitude_str = cloud[3:]
+            if altitude_str.isdigit():  # Check if the altitude string is valid
+                altitude = int(altitude_str) * 100
+                cloud_type = cloud[:3]
+                if cloud_type in ['FEW', 'SCT'] and altitude < base_altitude:
+                    cloud_base = cloud_type.capitalize()
+                    base_altitude = altitude
+                if cloud_type in ['BKN', 'OVC'] and altitude < ceiling_altitude:
+                    cloud_ceiling = cloud_type.capitalize()
+                    ceiling_altitude = altitude
+        except ValueError as e:
+            st.error(f"Error parsing cloud information: {e}")
+            st.error(f"Cloud data: {cloud}")
 
     data['Cloud Base'] = cloud_base if cloud_base else 'N/A'
     data['Base Altitude'] = f"{base_altitude}ft" if base_altitude != float('inf') else 'N/A'
