@@ -45,7 +45,7 @@ if uploaded_file:
             st.error("No layers found in the GetCapabilities XML.")
 
         # Initialize Folium map with a default location
-        m = folium.Map(location=[50, 10], zoom_start=6, control_scale=True)
+        m = folium.Map(location=[50, 10], zoom_start=3, control_scale=True)
 
         # Function to add WMS layer to map
         def add_wms_layer(m, layer_name, layer_title, bbox):
@@ -58,7 +58,8 @@ if uploaded_file:
                     transparent=True,
                     version='1.3.0',
                     name=layer_title,
-                    control=True
+                    control=True,
+                    opacity=0.6  # Adjust opacity for better visibility
                 )
                 wms_layer.add_to(m)
                 st.success(f"Layer {layer_title} added successfully")
@@ -72,12 +73,9 @@ if uploaded_file:
                     st.write(f"Map bounds set to: {bounds}")
                 else:
                     st.warning(f"No bounding box available for layer: {layer_title}")
-                    # Set a default bounding box if none is provided
-                    default_bounds = [[-90, -180], [90, 180]]
-                    m.fit_bounds(default_bounds)
-                    st.write(f"Map bounds set to default: {default_bounds}")
             except Exception as e:
                 st.error(f"Failed to add layer {layer_title}: {e}")
+                st.write(e)
 
         # Sidebar to select layers
         st.sidebar.title("Select Weather Overlays")
@@ -94,5 +92,6 @@ if uploaded_file:
 
     except Exception as e:
         st.error(f"Failed to parse the GetCapabilities XML: {e}")
+        st.write(e)
 else:
     st.warning("Please upload a GetCapabilities XML file.")
