@@ -25,38 +25,17 @@ def decode_metar(metar):
         'Trend Details': re.search(r'(TEMPO|BECMG|NOSIG)\s+(.*)', metar).group(2) if re.search(r'(TEMPO|BECMG|NOSIG)\s+(.*)', metar) else ''
     }
 
-    cloud_base = None
-    base_altitude = float('inf')
-    cloud_ceiling = None
-    ceiling_altitude = float('inf')
-
-    # Find cloud base (FEW or SCT) with the lowest altitude
-    for cloud in re.findall(r'(FEW|SCT)\d{3}', metar):
+    clouds = re.findall(r'(FEW|SCT|BKN|OVC|VV|SKC|NSC|CLR)\d{3}', metar)
+    cloud_details = []
+    for cloud in clouds:
         try:
+            cloud_type = cloud[:3]
             altitude = int(cloud[3:]) * 100
-            if altitude < base_altitude:
-                cloud_base = cloud[:3].capitalize()
-                base_altitude = altitude
-        except ValueError as e:
-            st.error(f"Error parsing cloud base information: {e}")
-            st.error(f"Cloud data: {cloud}")
+            cloud_details.append(f"{cloud_type} at {altitude}ft")
+        except ValueError:
+            cloud_details.append(f"{cloud_type} unknown altitude")
 
-    # Find cloud ceiling (BKN or OVC) with the lowest altitude
-    for cloud in re.findall(r'(BKN|OVC)\d{3}', metar):
-        try:
-            altitude = int(cloud[3:]) * 100
-            if altitude < ceiling_altitude:
-                cloud_ceiling = cloud[:3].capitalize()
-                ceiling_altitude = altitude
-        except ValueError as e:
-            st.error(f"Error parsing cloud ceiling information: {e}")
-            st.error(f"Cloud data: {cloud}")
-
-    data['Cloud Base'] = cloud_base if cloud_base else 'N/A'
-    data['Base Altitude'] = f"{base_altitude}ft" if base_altitude != float('inf') else 'N/A'
-    data['Cloud Ceiling'] = cloud_ceiling if cloud_ceiling else 'N/A'
-    data['Ceiling Altitude'] = f"{ceiling_altitude}ft" if ceiling_altitude != float('inf') else 'N/A'
-
+    data['Cloud Details'] = ', '.join(cloud_details) if cloud_details else 'N/A'
 
     temp_dew = re.search(r'\d{2}/\d{2}', metar)
     if temp_dew:
@@ -97,10 +76,7 @@ def format_metar(data):
         "Wind": f"{data['Wind'][:3]}° / {data['Wind'][3:5]}kt",
         "Variable": f"{data['Variable Wind'][:3]}° - {data['Variable Wind'][4:]}°" if data['Variable Wind'] != 'N/A' else "N/A",
         "Visibility": f"{data['Visibility']}m",
-        "Cloud Base": data['Cloud Base'],
-        "Base Altitude": data['Base Altitude'],
-        "Cloud Ceiling": data['Cloud Ceiling'],
-        "Ceiling Altitude": data['Ceiling Altitude'],
+        "Cloud Details": data['Cloud Details'],
         "Temperature": f"{data['Temperature']}°C",
         "Dewpoint": f"{data['Dewpoint']}°C",
         "Spread": f"{data['Spread']}°C",
@@ -158,4 +134,12 @@ if st.button("Submit"):
 
         if taf:
             taf_data = decode_taf(taf)
-            formatted_taf_
+            formatted_taf_data = format_taf(taf_data)
+
+            st.subheader("Decoded TAF")
+            st.table(list(formatted_taf_data.items()))
+
+        st.subheader("Analysis")
+        # Implement additional analysis if needed
+    else:
+        st.warning("Please enter a METAR.")
