@@ -14,7 +14,9 @@ st.title("Weather Overlay Map")
 
 # Fetch layers from GeoServer
 def fetch_layers():
+    # Ensure the URL is correctly constructed
     wms_url = f"{server_url}/geoserver/dwd/ows?service=WMS&version=1.3.0&request=GetCapabilities"
+    st.write(f"Requesting URL: {wms_url}")  # Debugging output to verify the URL
     try:
         response = requests.get(wms_url, auth=HTTPBasicAuth(username, password))
         response.raise_for_status()  # Raise an error for bad status codes
