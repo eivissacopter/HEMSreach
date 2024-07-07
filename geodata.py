@@ -43,8 +43,11 @@ def add_geojson_layer(m, geojson_path):
         if not os.path.exists(geojson_path):
             st.error(f"GeoJSON file not found: {geojson_path}")
             return
+        st.write(f"GeoJSON file found: {geojson_path}")  # Debugging output
         with open(geojson_path) as f:
-            geojson_data = json.load(f)
+            geojson_content = f.read()
+            st.write(f"GeoJSON content: {geojson_content[:500]}...")  # Display first 500 chars
+            geojson_data = json.loads(geojson_content)
         folium.GeoJson(
             geojson_data,
             name="MRVA Overlay"
@@ -59,7 +62,7 @@ def add_geojson_layer(m, geojson_path):
 enable_geojson = st.sidebar.checkbox("Enable MRVA Overlay")
 
 if enable_geojson:
-    geojson_path = os.path.join(os.path.dirname(__file__), 'mrva.geojson')  # Ensure the path is correct
+    geojson_path = 'MRVA.geojson'  # Path to the provided MRVA.geojson file
     st.write(f"GeoJSON path: {geojson_path}")  # Debugging output to verify the path
     add_geojson_layer(m, geojson_path)
 
