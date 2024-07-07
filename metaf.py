@@ -186,6 +186,7 @@ if st.button("Submit"):
             ["QNH", formatted_metar_data["QNH"]],
             ["Trend Duration", formatted_metar_data["Trend Duration"]],
             ["Trend Change", formatted_metar_data["Trend Change"]],
+            ["Warnings", formatted_metar_data["Warnings"]],
         ]
 
         st.table(metar_table)
