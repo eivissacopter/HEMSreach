@@ -19,10 +19,10 @@ def decode_metar(metar):
         'Time': re.search(r'\d{6}Z', metar).group(),
         'Wind': re.search(r'\d{3}\d{2}(G\d{2})?KT', metar).group(),
         'Visibility': '9999' if 'CAVOK' in metar else re.search(r'\b\d{4}\b', metar).group(),
-        'Variable Wind': re.search(r'\d{3}V\d{3}', metar).group() if re.search(r'\d{3}V\d{3}', metar) else 'N/A',
-        'QNH': convert_qnh(re.search(r'\b(A\d{4}|Q\d{4})\b', metar).group()) if re.search(r'\b(A\d{4}|Q\d{4})\b', metar) else 'N/A',
-        'Trend': re.search(r'(TEMPO|BECMG|NOSIG)', metar).group() if re.search(r'(TEMPO|BECMG|NOSIG)', metar) else 'N/A',
-        'Trend Details': re.search(r'(TEMPO|BECMG|NOSIG)\s+(.*)', metar).group(2) if re.search(r'(TEMPO|BECMG|NOSIG)\s+(.*)', metar) else 'N/A',
+        'Variable Wind': re.search(r'\d{3}V\d{3}', metar).group() if re.search(r'\d{3}V\d{3}', metar) else '',
+        'QNH': convert_qnh(re.search(r'\b(A\d{4}|Q\d{4})\b', metar).group()) if re.search(r'\b(A\d{4}|Q\d{4})\b', metar) else 'Missing!',
+        'Trend': re.search(r'(TEMPO|BECMG|NOSIG)', metar).group() if re.search(r'(TEMPO|BECMG|NOSIG)', metar) else '',
+        'Trend Details': re.search(r'(TEMPO|BECMG|NOSIG)\s+(.*)', metar).group(2) if re.search(r'(TEMPO|BECMG|NOSIG)\s+(.*)', metar) else '',
         'Warnings': []
     }
 
@@ -87,7 +87,7 @@ def decode_metar(metar):
         if code in metar:
             data['Warnings'].append(description)
     
-    data['Warnings'] = ', '.join(data['Warnings']) if data['Warnings'] else 'N/A'
+    data['Warnings'] = ', '.join(data['Warnings']) if data['Warnings'] else 'No Warnings'
 
     return data
 
@@ -109,7 +109,7 @@ def decode_taf(taf):
 def format_metar(data):
     time_utc = datetime.datetime.strptime(data['Time'], '%d%H%MZ')
     time_local_start = time_utc + datetime.timedelta(hours=2)  # Assuming local time is UTC+2
-    if data['Trend'] != 'N/A':
+    if data['Trend'] != '':
         time_local_end = time_local_start + datetime.timedelta(hours=2)
     else:
         time_local_end = time_local_start + datetime.timedelta(minutes=30)
