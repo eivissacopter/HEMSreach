@@ -2,10 +2,7 @@ import streamlit as st
 import folium
 from streamlit_folium import st_folium
 import json
-import os
-import requests
-from requests.auth import HTTPBasicAuth
-from xml.etree import ElementTree
+import xmltodict
 
 # Load secrets from secrets.toml
 server_url = st.secrets["geoserver"]["server"]
@@ -14,33 +11,25 @@ password = st.secrets["geoserver"]["password"]
 
 st.title("Weather Overlay Map")
 
-# Fetch layers from GeoServer WMS
-def fetch_layers():
-    wms_url = f"{server_url}/geoserver/dwd/ows?service=WMS&version=1.3.0&request=GetCapabilities"
-    st.write(f"Requesting URL: {wms_url}")  # Debugging output to verify the URL
-    try:
-        response = requests.get(wms_url, auth=HTTPBasicAuth(username, password))
-        response.raise_for_status()  # Raise an error for bad status codes
-        tree = ElementTree.fromstring(response.content)
-        layers = []
-        for layer in tree.findall('.//{http://www.opengis.net/wms}Layer/{http://www.opengis.net/wms}Layer'):
-            title = layer.find('{http://www.opengis.net/wms}Title').text
-            name = layer.find('{http://www.opengis.net/wms}Name').text
-            layers.append((title, name))
-        return layers
-    except requests.exceptions.RequestException as e:
-        st.error(f"Failed to fetch layers from GeoServer: {e}")
-        return []
-    except ElementTree.ParseError as e:
-        st.error(f"Failed to parse XML response: {e}")
-        return []
+# Parse the getcapabilities XML file
+def parse_getcapabilities(xml_file):
+    with open(xml_file, 'r') as file:
+        xml_content = file.read()
+    data_dict = xmltodict.parse(xml_content)
+    layers = data_dict['WMS_Capabilities']['Capability']['Layer']['Layer']
+    layer_info = []
+    for layer in layers:
+        name = layer['Name']
+        title = layer['Title']
+        layer_info.append((title, name))
+    return layer_info
 
-layers = fetch_layers()
+layers = parse_getcapabilities('getcapabilities_1.3.0.xml')
 
 # Initialize Folium map
 m = folium.Map(location=[50, 10], zoom_start=6, control_scale=True)
 
-# Function to add WMS layer to map
+# Add WMS layer to map
 def add_wms_layer(m, layer_name, layer_title):
     try:
         wms_url = f"{server_url}/geoserver/dwd/ows"
@@ -56,25 +45,11 @@ def add_wms_layer(m, layer_name, layer_title):
     except Exception as e:
         st.error(f"Failed to add layer {layer_title}: {e}")
 
-# Sidebar switches for WMS layers
-st.sidebar.title("Select Weather Overlays")
-selected_layers = []
-for title, name in layers:
-    if st.sidebar.checkbox(f"Enable {title}"):
-        add_wms_layer(m, name, title)
-        selected_layers.append(title)
-
 # Load GeoJSON file
 def add_geojson_layer(m, geojson_path):
     try:
-        if not os.path.exists(geojson_path):
-            st.error(f"GeoJSON file not found: {geojson_path}")
-            return
-        st.write(f"GeoJSON file found: {geojson_path}")  # Debugging output
         with open(geojson_path) as f:
-            geojson_content = f.read()
-            st.write(f"GeoJSON content: {geojson_content[:500]}...")  # Display first 500 chars
-            geojson_data = json.loads(geojson_content)
+            geojson_data = json.load(f)
         folium.GeoJson(
             geojson_data,
             name="MRVA Overlay"
@@ -85,12 +60,20 @@ def add_geojson_layer(m, geojson_path):
     except Exception as e:
         st.error(f"Failed to add MRVA Overlay: {e}")
 
+# Sidebar to select layers
+st.sidebar.title("Select Weather Overlays")
+selected_layer = st.sidebar.selectbox("Choose a layer to display", [title for title, name in layers])
+
+# Add the selected layer to the map
+for title, name in layers:
+    if title == selected_layer:
+        add_wms_layer(m, name, title)
+
 # Sidebar switch to enable/disable GeoJSON overlay
 enable_geojson = st.sidebar.checkbox("Enable MRVA Overlay")
 
 if enable_geojson:
-    geojson_path = os.path.join(os.path.dirname(__file__), 'mrva.geojson')  # Ensure the path is correct
-    st.write(f"GeoJSON path: {geojson_path}")  # Debugging output to verify the path
+    geojson_path = 'mrva.geojson'  # Ensure the path is correct
     add_geojson_layer(m, geojson_path)
 
 # Display the map
