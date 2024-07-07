@@ -27,29 +27,24 @@ def decode_metar(metar):
     }
 
     cloud_base = None
-    base_altitude = None
+    base_altitude = float('inf')
     cloud_ceiling = None
-    ceiling_altitude = None
+    ceiling_altitude = float('inf')
 
     for cloud in data['Clouds']:
-        if len(cloud) > 3:  # Ensure the cloud string has altitude information
-            try:
-                altitude = int(cloud[3:]) * 100
-                cloud_type = cloud[:3]
-                if cloud_type in ['FEW', 'SCT'] and cloud_base is None:
-                    cloud_base = cloud_type.capitalize()
-                    base_altitude = f"{altitude}ft"
-                if cloud_type in ['BKN', 'OVC'] and cloud_ceiling is None:
-                    cloud_ceiling = cloud_type.capitalize()
-                    ceiling_altitude = f"{altitude}ft"
-            except ValueError as e:
-                st.error(f"Error parsing cloud information: {e}")
-                st.error(f"Cloud data: {cloud}")
+        altitude = int(cloud[3:]) * 100
+        cloud_type = cloud[:3]
+        if cloud_type in ['FEW', 'SCT'] and altitude < base_altitude:
+            cloud_base = cloud_type.capitalize()
+            base_altitude = altitude
+        if cloud_type in ['BKN', 'OVC'] and altitude < ceiling_altitude:
+            cloud_ceiling = cloud_type.capitalize()
+            ceiling_altitude = altitude
 
     data['Cloud Base'] = cloud_base if cloud_base else 'N/A'
-    data['Base Altitude'] = base_altitude if base_altitude else 'N/A'
+    data['Base Altitude'] = f"{base_altitude}ft" if base_altitude != float('inf') else 'N/A'
     data['Cloud Ceiling'] = cloud_ceiling if cloud_ceiling else 'N/A'
-    data['Ceiling Altitude'] = ceiling_altitude if ceiling_altitude else 'N/A'
+    data['Ceiling Altitude'] = f"{ceiling_altitude}ft" if ceiling_altitude != float('inf') else 'N/A'
 
     temp_dew = re.search(r'\d{2}/\d{2}', metar)
     if temp_dew:
@@ -151,12 +146,4 @@ if st.button("Submit"):
 
         if taf:
             taf_data = decode_taf(taf)
-            formatted_taf_data = format_taf(taf_data)
-
-            st.subheader("Decoded TAF")
-            st.table(list(formatted_taf_data.items()))
-
-        st.subheader("Analysis")
-        # Implement additional analysis if needed
-    else:
-        st.warning("Please enter a METAR.")
+            formatted_taf_
