@@ -15,8 +15,10 @@ st.title("Weather Overlay Map")
 # Fetch layers from GeoServer
 def fetch_layers():
     wms_url = f"{server_url}/geoserver/ows?service=wms&version=1.3.0&request=GetCapabilities"
-    response = requests.get(wms_url, auth=HTTPBasicAuth(username, password))
-    if response.status_code == 200:
+    try:
+        response = requests.get(wms_url, auth=HTTPBasicAuth(username, password))
+        response.raise_for_status()  # Raise an error for bad status codes
+        st.text(response.content)  # For debugging purposes
         tree = ElementTree.fromstring(response.content)
         layers = []
         for layer in tree.findall('.//{http://www.opengis.net/wms}Layer/{http://www.opengis.net/wms}Layer'):
@@ -24,8 +26,11 @@ def fetch_layers():
             name = layer.find('{http://www.opengis.net/wms}Name').text
             layers.append((title, name))
         return layers
-    else:
-        st.error("Failed to fetch layers from GeoServer")
+    except requests.exceptions.RequestException as e:
+        st.error(f"Failed to fetch layers from GeoServer: {e}")
+        return []
+    except ElementTree.ParseError as e:
+        st.error(f"Failed to parse XML response: {e}")
         return []
 
 layers = fetch_layers()
