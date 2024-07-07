@@ -138,11 +138,10 @@ def decode_taf(taf):
 
     data = {
         'ICAO': re.search(r'\b[A-Z]{4}\b', taf).group(),
-        'Day': re.search(r'\d{2}(?=\d{6}Z)', taf).group(),
-        'Start Time': re.search(r'\d{6}Z', taf).group(),
+        'Time': re.search(r'\d{6}Z', taf).group(),
         'Validity': re.search(r'\d{4}/\d{4}', taf).group(),
         'Wind': re.search(r'\d{3}\d{2}(G\d{2})?KT', taf).group(),
-        'Visibility': re.search(r'\b\d{4}\b', taf).group(),
+        'Visibility': re.search(r'\b\d{4}\b', taf).group() if re.search(r'\b\d{4}\b', taf) else 'N/A',
         'Clouds': re.findall(r'(FEW|SCT|BKN|OVC)(\d{3})', taf),
         'Changes': re.findall(r'(TEMPO|BECMG|FM|TL|AT|PROB\d{2}) .*?(?= TEMPO|BECMG|FM|TL|AT|PROB\d{2}|$)', taf)
     }
@@ -150,7 +149,7 @@ def decode_taf(taf):
     return data
 
 def format_taf(data):
-    time_utc = datetime.datetime.strptime(data['Start Time'], '%d%H%MZ')
+    time_utc = datetime.datetime.strptime(data['Time'], '%d%H%MZ')
     time_local_start = time_utc + datetime.timedelta(hours=2)  # Assuming local time is UTC+2
     validity_start, validity_end = data['Validity'].split('/')
     validity_duration = int(validity_end[:2]) - int(validity_start[:2])
@@ -158,16 +157,21 @@ def format_taf(data):
 
     formatted_data = {
         "ICAO": data["ICAO"],
-        "Day": data["Day"],
+        "Day": time_local_start.strftime('%d'),
         "Start Time": time_local_start.strftime('%H%M'),
-        "Validity": f"{validity_duration}h",
+        "End Time": validity_end_time.strftime('%H%M'),
         "Wind": data["Wind"],
         "Visibility": data["Visibility"],
-        "Clouds": ', '.join([cloud[0] + cloud[1] for cloud in data['Clouds']]),
+        "Clouds": ', '.join([cloud[0] + cloud[1] for cloud in data['Clouds']]) if data['Clouds'] else "CAVOK",
         "Changes": ' | '.join(data['Changes']) if data['Changes'] else ''
     }
 
     return formatted_data
+
+st.title("METAR/TAF Decoder")
+
+metar = st.text_area("Enter METAR:")
+taf = st.text_area("Enter TAF:")
 
 if st.button("Submit", key="submit_button"):
     if metar:
@@ -208,7 +212,7 @@ if st.button("Submit", key="submit_button"):
             ["ICAO", formatted_taf_data["ICAO"]],
             ["Day", formatted_taf_data["Day"]],
             ["Start Time", formatted_taf_data["Start Time"]],
-            ["Validity", formatted_taf_data["Validity"]],
+            ["End Time", formatted_taf_data["End Time"]],
             ["Wind", formatted_taf_data["Wind"]],
             ["Visibility", formatted_taf_data["Visibility"]],
             ["Clouds", formatted_taf_data["Clouds"]],
