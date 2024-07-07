@@ -75,11 +75,11 @@ def format_metar(data):
         "Time": f"{time_local_start.strftime('%H:%M')} - {time_local_end.strftime('%H:%M')} LT",
         "Wind": f"{data['Wind'][:3]}° / {data['Wind'][3:5]}kt",
         "Variable": f"{data['Variable Wind'][:3]}° - {data['Variable Wind'][4:]}°" if data['Variable Wind'] != 'N/A' else "N/A",
-        "Visibility": f"{data['Visibility']}m",
+        "Visibility": f"{data['Visibility']}",
         "Temperature": f"{data['Temperature']}°C",
         "Dewpoint": f"{data['Dewpoint']}°C",
         "Spread": f"{data['Spread']}°C",
-        "QNH": f"{data['QNH'][1:]}hPa" if data['QNH'] != 'N/A' else 'N/A',
+        "QNH": f"{data['QNH'][1:]}" if data['QNH'] != 'N/A' else 'N/A',
         "Trend Duration": data['Trend'].capitalize() if data['Trend'] else '',
         "Trend Change": data['Trend Details'] if data['Trend Details'] else ''
     }
