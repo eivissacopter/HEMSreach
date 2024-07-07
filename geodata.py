@@ -18,6 +18,7 @@ def fetch_layers():
     try:
         response = requests.get(wms_url, auth=HTTPBasicAuth(username, password))
         response.raise_for_status()  # Raise an error for bad status codes
+        st.text(response.content)  # For debugging purposes
         tree = ElementTree.fromstring(response.content)
         layers = []
         for layer in tree.findall('.//{http://www.opengis.net/wms}Layer/{http://www.opengis.net/wms}Layer'):
@@ -51,7 +52,7 @@ if layers:
                 url=wms_url,
                 name=layer_title,
                 layers=layer_name,
-                fmt='image/png',
+                format='image/png',
                 transparent=True,
                 version='1.3.0',
                 attribution="Weather data © 2024 Deutscher Wetterdienst",
