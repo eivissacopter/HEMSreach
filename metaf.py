@@ -153,7 +153,7 @@ def format_taf(data):
         "Validity": data["Validity"],
         "Wind": data["Wind"],
         "Visibility": data["Visibility"],
-        "Clouds": ', '.join([cloud[:3].capitalize() for cloud in data['Clouds']]) if data['Clouds'] else "CAVOK",
+        "Clouds": ', '.join([cloud[0] + cloud[1] for cloud in data['Clouds']]) if data['Clouds'] else "CAVOK",
         "Changes": ' | '.join(data['Changes']) if data['Changes'] else ''
     }
 
