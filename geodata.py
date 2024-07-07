@@ -51,7 +51,7 @@ if uploaded_file:
         def add_wms_layer(m, layer_name, layer_title):
             try:
                 wms_url = f"{server_url}/geoserver/dwd/ows"
-                folium.raster_layers.WmsTileLayer(
+                wms_layer = folium.raster_layers.WmsTileLayer(
                     url=wms_url,
                     layers=layer_name,
                     fmt='image/png',
@@ -59,8 +59,10 @@ if uploaded_file:
                     version='1.3.0',
                     name=layer_title,
                     control=True
-                ).add_to(m)
+                )
+                wms_layer.add_to(m)
                 st.success(f"Layer {layer_title} added successfully")
+                st.write(f"Added WMS layer: {layer_name} ({layer_title})")
             except Exception as e:
                 st.error(f"Failed to add layer {layer_title}: {e}")
 
@@ -85,6 +87,7 @@ if uploaded_file:
                         name="MRVA Overlay"
                     ).add_to(m)
                     st.success("MRVA Overlay added successfully")
+                    st.write(f"GeoJSON data: {geojson_data}")
                 else:
                     st.error(f"Unexpected content type: {response.headers.get('Content-Type')}")
             except requests.exceptions.RequestException as e:
@@ -101,7 +104,8 @@ if uploaded_file:
             geojson_url = 'https://filebin.net/opbm1223wsobw8uf/MRVA.geojson'  # Replace with the correct GeoJSON URL
             add_geojson_layer(m, geojson_url)
 
-        # Display the map
+        # Display the map with layer control
+        folium.LayerControl().add_to(m)
         st_folium(m, width=700, height=500)
 
     except Exception as e:
