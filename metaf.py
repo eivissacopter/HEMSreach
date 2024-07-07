@@ -17,12 +17,13 @@ def decode_metar(metar):
         'ICAO': re.search(r'\b[A-Z]{4}\b', metar).group(),
         'Day': re.search(r'\d{2}(?=\d{4}Z)', metar).group(),
         'Time': re.search(r'\d{6}Z', metar).group(),
-        'Wind': re.search(r'\d{3}\d{2}(G\d{2})?KT', metar).group(),
+        'Wind': re.search(r'\d{3}\d{2}(G\d{2})?KT', metar).group() if re.search(r'\d{3}\d{2}(G\d{2})?KT', metar) else 'N/A',
         'Visibility': '9999' if 'CAVOK' in metar else (re.search(r'\b\d{4}\b', metar).group() if re.search(r'\b\d{4}\b', metar) else 'N/A'),
         'Variable Wind': re.search(r'\d{3}V\d{3}', metar).group() if re.search(r'\d{3}V\d{3}', metar) else 'N/A',
         'QNH': convert_qnh(re.search(r'\b(A\d{4}|Q\d{4})\b', metar).group()) if re.search(r'\b(A\d{4}|Q\d{4})\b', metar) else 'N/A',
         'Trend': re.search(r'(TEMPO|BECMG|NOSIG)', metar).group() if re.search(r'(TEMPO|BECMG|NOSIG)', metar) else 'N/A',
         'Trend Details': re.search(r'(TEMPO|BECMG|NOSIG)\s+(.*)', metar).group(2) if re.search(r'(TEMPO|BECMG|NOSIG)\s+(.*)', metar) else 'N/A',
+        'Remarks': re.search(r'RMK (.*)', metar).group(1) if re.search(r'RMK (.*)', metar) else 'N/A',
         'Warnings': []
     }
 
@@ -34,7 +35,8 @@ def decode_metar(metar):
         for cloud in clouds:
             cloud_type = cloud[0]
             altitude = cloud[1]
-            cloud_details.append([cloud_type, altitude])
+            if cloud_type not in ['BLK', 'BLU']:
+                cloud_details.append([cloud_type, altitude])
 
     data['Cloud Details'] = cloud_details
 
@@ -112,6 +114,7 @@ def format_metar(data):
         "QNH": data['QNH'][1:] if data['QNH'] != 'N/A' else 'N/A',
         "Trend Duration": data['Trend'] if data['Trend'] != 'N/A' else 'N/A',
         "Trend Change": data['Trend Details'] if data['Trend Details'] != 'N/A' else 'N/A',
+        "Remarks": data['Remarks'],
         "Warnings": data['Warnings']
     }
 
@@ -167,6 +170,7 @@ if st.button("Submit"):
             ["QNH", formatted_metar_data["QNH"]],
             ["Trend Duration", formatted_metar_data["Trend Duration"]],
             ["Trend Change", formatted_metar_data["Trend Change"]],
+            ["Remarks", formatted_metar_data["Remarks"]],
             ["Warnings", formatted_metar_data["Warnings"]],
         ]
 
