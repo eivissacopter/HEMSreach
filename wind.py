@@ -95,16 +95,24 @@ def find_closest_airport_with_forecast(base_lat, base_lon, available_icao_codes)
     st.write("Finding closest airport with forecast...")
     closest_airport = None
     min_distance = float('inf')
+    
+    # Debugging: Print available ICAO codes
+    st.write(f"Available ICAO codes: {available_icao_codes}")
+
     for airport in airports:
-        if airport['icao'] in available_icao_codes:
+        st.write(f"Checking airport: {airport['name']} ({airport['icao']})")
+        if airport['icao'].lower() in available_icao_codes:
             airport_coords = (airport['lat'], airport['lon'])
             base_coords = (base_lat, base_lon)
             distance = geodesic(base_coords, airport_coords).kilometers
-            st.write(f"Checking airport {airport['name']} ({airport['icao']}): Distance {distance} km")
+            st.write(f"Distance to {airport['name']} ({airport['icao']}): {distance} km")
             if distance < min_distance:
                 min_distance = distance
                 closest_airport = airport
                 st.write(f"New closest airport: {airport['name']} ({airport['icao']}) at distance {min_distance} km")
+    
+    if closest_airport is None:
+        st.warning("No closest airport found with the available ICAO codes.")
     return closest_airport
 
 # Function to extract ICAO codes from the directory listing
