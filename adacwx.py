@@ -152,7 +152,6 @@ def fetch_metar_taf_data(icao, api_key):
 
     return metar_data, taf_data
 
-# Function to fetch directory listing
 def fetch_directory_listing(base_url):
     try:
         response = requests.get(base_url, auth=(data_server["user"], data_server["password"]))
@@ -401,12 +400,24 @@ for airport, distance, bearing, ground_speed_kt, time_to_airport_hours in reacha
             icon=folium.Icon(color="blue", icon="plane"),
         ).add_to(m)
 
-# Add GeoJSON layer if button is clicked
-if geojson_activate:
-    geojson_url = 'https://nginx.eivissacopter.com/MVRA/mvra.geojson'
-    gdf = gpd.read_file(geojson_url)
-    folium.GeoJson(data=gdf).add_to(m)
+@st.cache_data
+def fetch_restricted_areas_info(excel_url):
+    try:
+        response = requests.get(excel_url, auth=(data_server["user"], data_server["password"]))
+        response.raise_for_status()
+        df = pd.read_excel(response.content)
+        return df
+    except Exception as e:
+        st.error(f"Error fetching restricted areas information: {e}")
+        return None
 
+# Fetch restricted areas information if the button is clicked
+if geojson_activate:
+    restricted_areas_info = fetch_restricted_areas_info('https://nginx.eivissacopter.com/MVRA/edr.xlsx')
+    if restricted_areas_info is not None:
+        st.dataframe(restricted_areas_info)
+
+    
 # Add tiles layer if button is clicked
 if tiles_activate:
     folium.TileLayer(
