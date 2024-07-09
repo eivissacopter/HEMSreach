@@ -38,13 +38,13 @@ def fetch_file_content(url):
 # Function to find the latest available file by scanning the directory
 def find_latest_file(base_url, icao_code):
     st.write(f"Finding latest file for {icao_code}...")
-    directory_listing = fetch_directory_listing(base_url + f"/{icao_code}/")
+    directory_listing = fetch_directory_listing(base_url + f"/{icao_code.lower()}/")
     if directory_listing:
         soup = BeautifulSoup(directory_listing, 'html.parser')
-        files = [a['href'] for a in soup.find_all('a', href=True) if f"airport_forecast_{icao_code}_" in a['href']]
+        files = [a['href'] for a in soup.find_all('a', href=True) if f"airport_forecast_{icao_code.lower()}_" in a['href']]
         if files:
             latest_file = sorted(files, reverse=True)[0]
-            url = f"{base_url}/{icao_code}/{latest_file}"
+            url = f"{base_url}/{icao_code.lower()}/{latest_file}"
             st.write(f"Latest file URL: {url}")
             file_content = fetch_file_content(url)
             return file_content
@@ -95,11 +95,12 @@ def find_closest_airport_with_forecast(base_lat, base_lon, available_icao_codes)
     st.write("Finding closest airport with forecast...")
     sorted_airports = sorted(airports, key=lambda airport: geodesic((base_lat, base_lon), (airport['lat'], airport['lon'])).kilometers)
     for airport in sorted_airports:
+        st.write(f"Checking airport: {airport['name']} ({airport['icao']})")
         if airport['icao'].lower() in available_icao_codes:
             airport_coords = (airport['lat'], airport['lon'])
             base_coords = (base_lat, base_lon)
             distance = geodesic(base_coords, airport_coords).kilometers
-            st.write(f"Checking airport {airport['name']} ({airport['icao']}): Distance {distance} km")
+            st.write(f"Distance to {airport['name']} ({airport['icao']}): {distance} km")
             return airport
     st.warning("No closest airport found with the available ICAO codes.")
     return None
@@ -108,7 +109,7 @@ def find_closest_airport_with_forecast(base_lat, base_lon, available_icao_codes)
 def extract_icao_codes(directory_listing):
     st.write("Extracting ICAO codes from directory listing...")
     soup = BeautifulSoup(directory_listing, 'html.parser')
-    icao_codes = [a['href'].strip('/') for a in soup.find_all('a', href=True) if len(a['href'].strip('/')) == 4]
+    icao_codes = [a['href'].strip('/').lower() for a in soup.find_all('a', href=True) if len(a['href'].strip('/')) == 4]
     st.write(f"Extracted ICAO codes: {icao_codes}")
     return icao_codes
 
