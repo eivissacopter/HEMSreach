@@ -2,6 +2,8 @@ import requests
 import pandas as pd
 import streamlit as st
 from bs4 import BeautifulSoup
+from geopy.distance import geodesic
+from database import helicopter_bases, airports
 
 # Function to fetch directory listing
 def fetch_directory_listing(base_url):
@@ -79,30 +81,62 @@ def parse_forecast(df):
     # Add any specific parsing logic based on the PDF specification here.
     return df
 
+# Function to calculate the closest airport to a given helicopter base
+def find_closest_airport_with_forecast(base_lat, base_lon, available_icao_codes):
+    closest_airport = None
+    min_distance = float('inf')
+    for airport in airports:
+        if airport['icao'] in available_icao_codes:
+            airport_coords = (airport['lat'], airport['lon'])
+            base_coords = (base_lat, base_lon)
+            distance = geodesic(base_coords, airport_coords).kilometers
+            if distance < min_distance:
+                min_distance = distance
+                closest_airport = airport
+    return closest_airport
+
+# Function to extract ICAO codes from the directory listing
+def extract_icao_codes(directory_listing):
+    soup = BeautifulSoup(directory_listing, 'html.parser')
+    icao_codes = [a['href'].strip('/') for a in soup.find_all('a', href=True) if len(a['href'].strip('/')) == 4]
+    return icao_codes
+
 # Streamlit app
 st.title("Airport Weather Forecast")
 
-# Input field for ICAO code
-icao_code = st.text_input("Enter ICAO code:").lower()
+# Dropdown menu for helicopter bases
+base_names = [base['name'] for base in helicopter_bases]
+selected_base = st.selectbox("Select a Helicopter Base", base_names)
 
-if icao_code:
-    with st.spinner('Fetching latest forecast...'):
+if selected_base:
+    base = next(base for base in helicopter_bases if base['name'] == selected_base)
+    
+    with st.spinner('Fetching available ICAO codes...'):
         base_url = "https://data.dwd.de/aviation/ATM/AirportWxForecast"
-        file_content = find_latest_file(base_url, icao_code)
-        
-        if file_content:
-            st.success("Forecast data fetched successfully!")
+        directory_listing = fetch_directory_listing(base_url)
+        if directory_listing:
+            available_icao_codes = extract_icao_codes(directory_listing)
+            closest_airport = find_closest_airport_with_forecast(base['lat'], base['lon'], available_icao_codes)
             
-            # Decode the forecast data
-            try:
-                df = decode_forecast(file_content)
-                df = parse_forecast(df)  # Apply any specific parsing logic
+            if closest_airport:
+                st.write(f"Closest airport to {selected_base} with forecast data is {closest_airport['name']} ({closest_airport['icao']})")
                 
-                # Display the forecast data
-                st.dataframe(df)
-            except (UnicodeDecodeError, ValueError) as e:
-                st.error(f"Failed to decode the forecast data: {e}")
+                with st.spinner('Fetching latest forecast...'):
+                    file_content = find_latest_file(base_url, closest_airport['icao'])
+                    
+                    if file_content:
+                        st.success("Forecast data fetched successfully!")
+                        
+                        # Decode the forecast data
+                        try:
+                            df = decode_forecast(file_content)
+                            df = parse_forecast(df)  # Apply any specific parsing logic
+                            
+                            # Display the forecast data
+                            st.dataframe(df)
+                        except (UnicodeDecodeError, ValueError) as e:
+                            st.error(f"Failed to decode the forecast data: {e}")
+                    else:
+                        st.error(f"No forecast file found for airport: {closest_airport['name']} ({closest_airport['icao']})")
         else:
-            st.error(f"No forecast file found for ICAO code: {icao_code}")
-
-# Streamlit secrets management
+            st.error("Failed to fetch the directory listing.")
