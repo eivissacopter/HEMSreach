@@ -98,9 +98,6 @@ st.title("Airport Weather Forecast")
 base_names = [base['name'] for base in helicopter_bases]
 selected_base = st.selectbox("Select a Helicopter Base", base_names)
 
-# Slider for time window selection
-time_window = st.slider("Select time window (hours)", 3, 10, 5)
-
 if selected_base:
     base = next(base for base in helicopter_bases if base['name'] == selected_base)
     
@@ -112,72 +109,55 @@ if selected_base:
             if not available_icao_codes:
                 st.error("No ICAO codes found in the directory listing.")
             else:
-                tried_icao_codes = set()
-                while True:
-                    closest_airport = find_closest_airport_with_forecast(base['lat'], base['lon'], available_icao_codes - tried_icao_codes)
-                    if closest_airport:
-                        tried_icao_codes.add(closest_airport['icao'].lower())
-                        with st.spinner(f'Fetching latest forecast for {closest_airport["name"]} ({closest_airport["icao"]})...'):
-                            file_content = find_latest_file(base_url, closest_airport['icao'])
-                            if file_content:
-                                try:
-                                    df = decode_forecast(file_content, closest_airport['icao'])
-                                    df = parse_forecast(df)
+                closest_airport = find_closest_airport_with_forecast(base['lat'], base['lon'], available_icao_codes)
+                if closest_airport:
+                    with st.spinner(f'Fetching latest forecast for {closest_airport["name"]} ({closest_airport["icao"]})...'):
+                        file_content = find_latest_file(base_url, closest_airport['icao'])
+                        if file_content:
+                            try:
+                                df = decode_forecast(file_content, closest_airport['icao'])
+                                df = parse_forecast(df)
 
-                                    # Rename columns starting from EDDM00, EDDM01, EDDM02, etc.
-                                    df.columns = [f"{closest_airport['icao'].upper()}{i:02d}" for i in range(len(df.columns))]
+                                # Rename columns starting from EDDM00, EDDM01, EDDM02, etc.
+                                df.columns = [f"{closest_airport['icao'].upper()}{i:02d}" for i in range(len(df.columns))]
 
-                                    # Print the complete unfiltered table for debugging
-                                    st.write("Complete Unfiltered Dataframe:")
-                                    st.dataframe(df)
+                                # Print the complete unfiltered table for debugging
+                                st.write("Complete Unfiltered Dataframe:")
+                                st.dataframe(df)
 
-                                    # Display the index and columns of the dataframe
-                                    st.write("Dataframe Index:")
-                                    st.write(df.index.tolist())
-                                    st.write("Dataframe Columns:")
-                                    st.write(df.columns.tolist())
+                                # Display the index and columns of the dataframe
+                                st.write("Dataframe Index:")
+                                st.write(df.index.tolist())
+                                st.write("Dataframe Columns:")
+                                st.write(df.columns.tolist())
 
-                                    # Decode and convert the relevant rows
-                                    df_converted = pd.DataFrame()
+                                # Extract and convert the relevant rows
+                                df_converted = pd.DataFrame()
 
-                                    if f"{closest_airport['icao'].upper()}00" in df.columns:
-                                        df_converted['Local Time'] = (pd.to_numeric(df[f"{closest_airport['icao'].upper()}00"], errors='coerce') + 2) % 24
-                                    else:
-                                        st.error(f"Column {closest_airport['icao'].upper()}00 not found in dataframe.")
+                                if f"{closest_airport['icao'].upper()}00" in df.columns:
+                                    df_converted['UTC'] = pd.to_numeric(df[f"{closest_airport['icao'].upper()}00"], errors='coerce')
+                                else:
+                                    st.error(f"Column {closest_airport['icao'].upper()}00 not found in dataframe.")
 
-                                    if '5000FT' in df.index:
-                                        df_converted['5000FT'] = df.loc['5000FT'].apply(lambda x: x.split(' ')[0])
-                                    else:
-                                        st.error("'5000FT' row not found in dataframe.")
+                                if '5000FT' in df.index:
+                                    df_converted['5000FT'] = df.loc['5000FT'].apply(lambda x: x.split(' ')[0])
+                                else:
+                                    st.error("'5000FT' row not found in dataframe.")
 
-                                    if 'FZLVL' in df.index:
-                                        df_converted['FZLVL'] = df.loc['FZLVL']
-                                    else:
-                                        st.error("'FZLVL' row not found in dataframe.")
+                                if 'FZLVL' in df.index:
+                                    df_converted['FZLVL'] = df.loc['FZLVL']
+                                else:
+                                    st.error("'FZLVL' row not found in dataframe.")
 
-                                    # Print the decoded and converted table
-                                    st.write("Decoded and Converted Dataframe:")
-                                    st.dataframe(df_converted)
+                                # Print the decoded and converted table
+                                st.write("Decoded and Converted Dataframe:")
+                                st.dataframe(df_converted)
 
-                                    # Apply the time filter to the decoded and converted table
-                                    relevant_columns = [f"{closest_airport['icao'].upper()}{i:02d}" for i in range(time_window)]
-                                    filtered_df = df_converted[relevant_columns]
-
-                                    # Print the table after filtering for debugging
-                                    st.write("Filtered Dataframe:")
-                                    st.dataframe(filtered_df)
-
-                                    # Extract the lowest freezing level
-                                    lowest_freezing_level = filtered_df['FZLVL'].min()
-
-                                    st.write(f"Lowest freezing level in the next {time_window} hours: {lowest_freezing_level} meters")
-                                    break
-                                except (UnicodeDecodeError, ValueError, KeyError) as e:
-                                    st.error(f"Failed to decode or process the forecast data for {closest_airport['name']} ({closest_airport['icao']}): {e}")
-                            else:
-                                st.warning(f"No forecast file found for airport: {closest_airport['name']} ({closest_airport['icao']}). Trying next closest airport...")
-                    else:
-                        st.error("No closest airport found with available forecast data.")
-                        break
+                            except (UnicodeDecodeError, ValueError, KeyError) as e:
+                                st.error(f"Failed to decode or process the forecast data for {closest_airport['name']} ({closest_airport['icao']}): {e}")
+                        else:
+                            st.warning(f"No forecast file found for airport: {closest_airport['name']} ({closest_airport['icao']}).")
+                else:
+                    st.error("No closest airport found with available forecast data.")
         else:
             st.error("Failed to fetch the directory listing.")
