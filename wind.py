@@ -139,9 +139,6 @@ if selected_base:
                                     current_hour_local = (current_hour_utc + local_time_offset) % 24
                                     end_hour_local = (current_hour_local + time_window) % 24
 
-                                    # Get the relevant columns for the time window
-                                    relevant_columns = [f"{closest_airport['icao'].upper()}{i+2:02d}" for i in range(time_window)]
-
                                     # Filter based on local time
                                     df['Local Time'] = (df['UTC'] + local_time_offset) % 24
                                     if current_hour_local <= end_hour_local:
@@ -149,16 +146,19 @@ if selected_base:
                                     else:
                                         mask = (df['Local Time'] >= current_hour_local) | (df['Local Time'] <= end_hour_local)
 
-                                    filtered_df = df.loc[mask, relevant_columns]
+                                    filtered_df = df.loc[mask]
 
                                     # Print the table after filtering for debugging
                                     st.write("Filtered Dataframe:")
                                     st.dataframe(filtered_df)
 
+                                    # Extract the relevant columns for the time window
+                                    relevant_columns = [f"{closest_airport['icao'].upper()}{i+2:02d}" for i in range(time_window)]
+
                                     # Check if the filtered dataframe has enough rows
-                                    if len(filtered_df) > 24:
-                                        freezing_level_row = filtered_df.iloc[24]
-                                        lowest_freezing_level = freezing_level_row.min()
+                                    if 'FZLVL' in filtered_df.index:
+                                        freezing_level_row = filtered_df.loc['FZLVL']
+                                        lowest_freezing_level = freezing_level_row[relevant_columns].min()
 
                                         st.write(f"Lowest freezing level in the next {time_window} hours: {lowest_freezing_level} meters")
                                     else:
