@@ -104,7 +104,7 @@ if selected_base:
         base_url = "https://data.dwd.de/aviation/ATM/AirportWxForecast"
         directory_listing = fetch_directory_listing(base_url)
         if directory_listing:
-            available_icao_codes = extract_icao_codes(directory_listing)
+            available_icao_codes = set(extract_icao_codes(directory_listing))  # Convert to set
             if not available_icao_codes:
                 st.error("No ICAO codes found in the directory listing.")
             else:
