@@ -124,26 +124,36 @@ if selected_base:
                                     df = decode_forecast(file_content, closest_airport['icao'])
                                     df = parse_forecast(df)
 
-                                    # Convert the UTC column to local time
+                                    # Convert the 'UTC' column to numeric values
                                     df['UTC'] = pd.to_numeric(df[f"{closest_airport['icao'].upper()}01"], errors='coerce')
-                                    local_time_offset = 2  # Example for summer time offset
-                                    df['Local Time'] = (df['UTC'] + local_time_offset) % 24
 
-                                    # Filter the data based on the selected time window
-                                    current_hour = datetime.utcnow().hour
-                                    start_hour = current_hour
-                                    end_hour = (current_hour + time_window) % 24
+                                    # Assuming local time offset for summer is 2 hours
+                                    local_time_offset = 2
 
+                                    # Filter data within the selected time window
+                                    current_hour_utc = datetime.utcnow().hour
+                                    current_hour_local = (current_hour_utc + local_time_offset) % 24
+                                    end_hour_local = (current_hour_local + time_window) % 24
+
+                                    # Get the relevant columns for the time window
                                     relevant_columns = [f"{closest_airport['icao'].upper()}{i+2:02d}" for i in range(time_window)]
-                                    filtered_df = df[df['Local Time'].between(start_hour, end_hour, inclusive="both")]
+
+                                    # Filter based on local time
+                                    df['Local Time'] = (df['UTC'] + local_time_offset) % 24
+                                    if current_hour_local <= end_hour_local:
+                                        mask = (df['Local Time'] >= current_hour_local) & (df['Local Time'] <= end_hour_local)
+                                    else:
+                                        mask = (df['Local Time'] >= current_hour_local) | (df['Local Time'] <= end_hour_local)
+
+                                    filtered_df = df.loc[mask, relevant_columns]
 
                                     # Check if the filtered dataframe has enough rows
                                     if len(filtered_df) > 24:
                                         freezing_level_row = filtered_df.iloc[24]
-                                        lowest_freezing_level = freezing_level_row[relevant_columns].min()
+                                        lowest_freezing_level = freezing_level_row.min()
 
                                         st.write(f"Lowest freezing level in the next {time_window} hours: {lowest_freezing_level} meters")
-                                        st.dataframe(filtered_df[relevant_columns])
+                                        st.dataframe(filtered_df)
                                     else:
                                         st.warning("Insufficient data available for the selected time window.")
                                     break
