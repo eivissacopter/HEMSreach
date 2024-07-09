@@ -47,7 +47,7 @@ def find_latest_file(base_url, icao_code):
     return None
 
 # Function to decode the forecast data
-def decode_forecast(data):
+def decode_forecast(data, icao_code):
     for encoding in ['utf-8', 'latin1', 'iso-8859-1']:
         try:
             content = data.decode(encoding)
@@ -68,7 +68,7 @@ def decode_forecast(data):
     data_lines = lines[header_index:]
     rows = [line.split(';') for line in data_lines if len(line.split(';')) > 1]
     num_columns = len(rows[0])
-    column_names = [f"EDDF{i+1:02d}" for i in range(num_columns)]
+    column_names = [f"{icao_code.upper()}{i+1:02d}" for i in range(num_columns)]
     df = pd.DataFrame(rows, columns=column_names)
     return df
 
@@ -104,7 +104,7 @@ if selected_base:
         base_url = "https://data.dwd.de/aviation/ATM/AirportWxForecast"
         directory_listing = fetch_directory_listing(base_url)
         if directory_listing:
-            available_icao_codes = set(extract_icao_codes(directory_listing))  # Convert to set
+            available_icao_codes = set(extract_icao_codes(directory_listing))
             if not available_icao_codes:
                 st.error("No ICAO codes found in the directory listing.")
             else:
@@ -118,7 +118,7 @@ if selected_base:
                             if file_content:
                                 st.success(f"Forecast data fetched successfully for {closest_airport['name']} ({closest_airport['icao']})!")
                                 try:
-                                    df = decode_forecast(file_content)
+                                    df = decode_forecast(file_content, closest_airport['icao'])
                                     df = parse_forecast(df)
                                     st.dataframe(df)
                                     break
