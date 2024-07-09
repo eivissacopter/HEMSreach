@@ -393,9 +393,6 @@ for airport, distance, bearing, ground_speed_kt, time_to_airport_hours in reacha
 
 ###########################################################################################
 
-# Create map centered on selected location
-m = folium.Map(location=[selected_location['lat'], selected_location['lon']], zoom_start=7)
-
 # Define the map variable before adding markers to it
 m = folium.Map(location=[selected_location['lat'], selected_location['lon']], zoom_start=7)
 
