@@ -69,6 +69,13 @@ def decode_forecast(data):
         raise ValueError("Header not found in the file.")
 
     header = lines[header_index].split(';')
+    
+    # Make column names unique
+    cols = pd.Series(header)
+    for dup in cols[cols.duplicated()].unique():
+        cols[cols[cols == dup].index.values.tolist()] = [dup + '_' + str(i) if i != 0 else dup for i in range(sum(cols == dup))]
+    header = cols.tolist()
+    
     rows = [line.split(';') for line in lines[header_index + 1:] if len(line.split(';')) == len(header)]
     
     df = pd.DataFrame(rows, columns=header)
