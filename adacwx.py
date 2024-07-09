@@ -299,6 +299,19 @@ with st.sidebar:
         df_fuel = pd.DataFrame(fuel_data)
         st.table(df_fuel)
 
+    # Buttons to activate GeoJSON and Tiles
+    if st.button('Activate GeoJSON Layer'):
+        folium.GeoJson('https://nginx.eivissacopter.com/MVRA/mvra.geojson').add_to(m)
+
+    if st.button('Activate Tiles'):
+        folium.TileLayer(
+            tiles='https://nginx.eivissacopter.com/OFM/clip/{z}/{x}/{y}.png',
+            attr='OFM Clip',
+            name='OFM Clip',
+            overlay=True,
+            control=True
+        ).add_to(m)
+
 ###########################################################################################
 
 # Use the input values for performance calculations
