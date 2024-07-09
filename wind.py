@@ -176,7 +176,7 @@ if selected_base:
                                     st.dataframe(df_converted)
 
                             except (UnicodeDecodeError, ValueError, KeyError, IndexError) as e:
-                            st.warning(f"No forecast file found for airport: {closest_airport['name']} ({closest_airport['icao']}).")
+                                st.error(f"Failed to decode or process the forecast data for {closest_airport['name']} ({closest_airport['icao']}): {e}")
                         else:
                             st.warning(f"No forecast file found for airport: {closest_airport['name']} ({closest_airport['icao']}).")
                 else:
