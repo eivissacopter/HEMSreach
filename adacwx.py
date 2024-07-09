@@ -396,14 +396,52 @@ for airport, distance, bearing, ground_speed_kt, time_to_airport_hours in reacha
 # Create map centered on selected location
 m = folium.Map(location=[selected_location['lat'], selected_location['lon']], zoom_start=7)
 
-# Add reachable airports to map
-for airport_data in reachable_airports_data:
-    popup_text = airport_data["Airport"]
-    folium.Marker(
-        location=[airport_data['lat'], airport_data['lon']],
-        popup=popup_text,
-        icon=folium.Icon(color="blue", icon="plane"),
-    ).add_to(m)
+# Define the map variable before adding markers to it
+m = folium.Map(location=[selected_location['lat'], selected_location['lon']], zoom_start=7)
+
+# Add reachable airports to the map
+reachable_airports_data = []
+for airport, distance, bearing, ground_speed_kt, time_to_airport_hours in reachable_airports:
+    metar_data, taf_data = fetch_metar_taf_data(airport['icao'], AVWX_API_KEY)
+
+    if metar_data and taf_data:
+        metar_raw = metar_data if isinstance(metar_data, str) else metar_data.get('raw', '')
+        taf_raw = taf_data if isinstance(taf_data, str) else taf_data.get('raw', '')
+
+        # Calculate descent time using destination airport elevation
+        airport_elevation_ft = airport.get('elevation', 500)  # Default to 500ft if not available
+        descent_time_hours = (cruise_altitude_ft - airport_elevation_ft) / descent_rate_fpm / 60
+
+        # Calculate fuel burn for descent
+        descent_fuel_burn = descent_time_hours * descend_performance['fuel_burn_kgph']
+
+        # Recalculate remaining trip fuel after descent
+        remaining_trip_fuel_kg = trip_fuel_kg - (climb_fuel_burn + descent_fuel_burn)
+
+        # Calculate cruise time based on remaining fuel
+        cruise_time_hours = remaining_trip_fuel_kg / cruise_fuel_burn_rate
+
+        fuel_required = time_to_airport_hours * cruise_fuel_burn_rate
+
+        reachable_airports_data.append({
+            "Airport": f"{airport['name']} ({airport['icao']})",
+            "METAR": metar_raw,
+            "TAF": taf_raw,
+            "Distance (NM)": round(distance, 2),
+            "Time (hours)": round(time_to_airport_hours, 2),
+            "Track (°)": round(bearing, 2),
+            "Ground Speed (kt)": round(ground_speed_kt, 2),
+            "Fuel Required (kg)": round(fuel_required, 2),
+            "lat": airport['lat'],
+            "lon": airport['lon']
+        })
+        
+        popup_text = f"{airport['name']} ({airport['icao']})"
+        folium.Marker(
+            location=[airport['lat'], airport['lon']],
+            popup=popup_text,
+            icon=folium.Icon(color="blue", icon="plane"),
+        ).add_to(m)
 
 # Display map
 folium_static(m, width=1440, height=720)
