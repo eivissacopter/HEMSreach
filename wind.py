@@ -1,42 +1,46 @@
 import streamlit as st
 import pandas as pd
-from ftplib import FTP
+import requests
 from io import StringIO
+from datetime import datetime
 
-# Function to fetch the latest forecast file from the FTP server
+# Function to fetch the latest forecast file via HTTPS
 def fetch_latest_forecast(icao_code):
-    ftp_server = st.secrets["data_server"]["server"]
-    ftp_user = st.secrets["data_server"]["user"]
-    ftp_password = st.secrets["data_server"]["password"]
-
-    ftp = FTP(ftp_server)
-    ftp.login(user=ftp_user, passwd=ftp_password)
+    base_url = "https://data.dwd.de/aviation/ATM/AirportWxForecast/"
+    response = requests.get(base_url)
     
-    # Navigate to the directory containing forecast files
-    ftp.cwd('/aviation/ATM/AirportWxForecast/')
+    if response.status_code != 200:
+        return None, f"Failed to access the server: {response.status_code}"
     
-    # List all files in the directory
-    files = ftp.nlst()
+    # Parse the directory listing
+    files = response.text.split('\n')
     
     # Find the latest file for the specified ICAO code
     latest_file = None
-    for file in sorted(files, reverse=True):
+    latest_time = None
+    for file in files:
         if icao_code.lower() in file.lower():
-            latest_file = file
-            break
+            # Extract datetime from the filename
+            try:
+                dt_str = file.split('_')[-1].split('.')[0]
+                file_time = datetime.strptime(dt_str, '%Y%m%d%H%M')
+                if latest_time is None or file_time > latest_time:
+                    latest_time = file_time
+                    latest_file = file
+            except ValueError:
+                continue
     
     if not latest_file:
         return None, f"No forecast file found for ICAO code: {icao_code}"
     
-    # Retrieve the latest file
-    with StringIO() as sio:
-        ftp.retrlines(f'RETR {latest_file}', sio.write)
-        sio.seek(0)
-        data = sio.getvalue()
+    # Fetch the latest file
+    file_url = base_url + latest_file
+    file_response = requests.get(file_url)
     
-    ftp.quit()
+    if file_response.status_code != 200:
+        return None, f"Failed to fetch the forecast file: {file_response.status_code}"
     
-    return data, None
+    return file_response.text, None
 
 # Function to decode the forecast data
 def decode_forecast(data):
