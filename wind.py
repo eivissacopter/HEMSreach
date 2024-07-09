@@ -23,7 +23,7 @@ def fetch_directory_listing(base_url):
 def fetch_file_content(url):
     try:
         response = requests.get(url, auth=(st.secrets["data_server"]["user"], st.secrets["data_server"]["password"]))
-        if response.status_code == 200):
+        if response.status_code == 200:
             return response.content
         else:
             st.warning(f"Failed to fetch data from URL: {url} - Status code: {response.status_code}")
