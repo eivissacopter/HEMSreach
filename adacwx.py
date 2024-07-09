@@ -300,17 +300,8 @@ with st.sidebar:
         st.table(df_fuel)
 
     # Buttons to activate GeoJSON and Tiles
-    if st.button('Activate GeoJSON Layer'):
-        folium.GeoJson('https://nginx.eivissacopter.com/MVRA/mvra.geojson').add_to(m)
-
-    if st.button('Activate Tiles'):
-        folium.TileLayer(
-            tiles='https://nginx.eivissacopter.com/OFM/clip/{z}/{x}/{y}.png',
-            attr='OFM Clip',
-            name='OFM Clip',
-            overlay=True,
-            control=True
-        ).add_to(m)
+    geojson_activate = st.button('Activate GeoJSON Layer')
+    tiles_activate = st.button('Activate Tiles')
 
 ###########################################################################################
 
@@ -408,6 +399,20 @@ for airport, distance, bearing, ground_speed_kt, time_to_airport_hours in reacha
             popup=popup_text,
             icon=folium.Icon(color="blue", icon="plane"),
         ).add_to(m)
+
+# Add GeoJSON layer if button is clicked
+if geojson_activate:
+    folium.GeoJson('https://nginx.eivissacopter.com/MVRA/mvra.geojson').add_to(m)
+
+# Add tiles layer if button is clicked
+if tiles_activate:
+    folium.TileLayer(
+        tiles='https://nginx.eivissacopter.com/OFM/clip/{z}/{x}/{y}.png',
+        attr='OFM Clip',
+        name='OFM Clip',
+        overlay=True,
+        control=True
+    ).add_to(m)
 
 ###########################################################################################
 
