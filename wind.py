@@ -147,13 +147,16 @@ if selected_base:
 
                                     filtered_df = df.loc[mask, relevant_columns]
 
+                                    # Print the table for debugging
+                                    st.write("Filtered Dataframe:")
+                                    st.dataframe(filtered_df)
+
                                     # Check if the filtered dataframe has enough rows
                                     if len(filtered_df) > 24:
                                         freezing_level_row = filtered_df.iloc[24]
                                         lowest_freezing_level = freezing_level_row.min()
 
                                         st.write(f"Lowest freezing level in the next {time_window} hours: {lowest_freezing_level} meters")
-                                        st.dataframe(filtered_df)
                                     else:
                                         st.warning("Insufficient data available for the selected time window.")
                                     break
