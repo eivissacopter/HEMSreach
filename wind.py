@@ -137,26 +137,23 @@ if selected_base:
                                     df_converted = pd.DataFrame()
 
                                     if 'UTC' in df_relevant.iloc[:, 0].values:
-                                        df_converted.loc['UTC'] = pd.to_numeric(df_relevant.loc[df_relevant.iloc[:, 0] == 'UTC'].iloc[0, 1:], errors='coerce')
+                                        df_converted['UTC'] = pd.to_numeric(df_relevant.loc[df_relevant.iloc[:, 0] == 'UTC'].iloc[0, 1:], errors='coerce')
                                     else:
                                         st.error("'UTC' row not found in dataframe.")
 
                                     if '5000FT' in df_relevant.iloc[:, 0].values:
-                                        df_converted.loc['5000FT'] = df_relevant.loc[df_relevant.iloc[:, 0] == '5000FT'].iloc[0, 1:].apply(lambda x: x.split(' ')[0])
+                                        df_converted['5000FT'] = df_relevant.loc[df_relevant.iloc[:, 0] == '5000FT'].iloc[0, 1:].apply(lambda x: x.split(' ')[0])
                                     else:
                                         st.error("'5000FT' row not found in dataframe.")
 
                                     if 'FZLVL' in df_relevant.iloc[:, 0].values:
-                                        df_converted.loc['FZLVL'] = df_relevant.loc[df_relevant.iloc[:, 0] == 'FZLVL'].iloc[0, 1:]
+                                        df_converted['FZLVL'] = df_relevant.loc[df_relevant.iloc[:, 0] == 'FZLVL'].iloc[0, 1:]
                                     else:
                                         st.error("'FZLVL' row not found in dataframe.")
 
-                                    # Transpose the dataframe to keep the format horizontal
-                                    df_final = df_converted.T
-
                                     # Print the final table
                                     st.write("Final Decoded and Converted Dataframe:")
-                                    st.dataframe(df_final.T)
+                                    st.dataframe(df_converted)
 
                             except (UnicodeDecodeError, ValueError, KeyError) as e:
                                 st.error(f"Failed to decode or process the forecast data for {closest_airport['name']} ({closest_airport['icao']}): {e}")
