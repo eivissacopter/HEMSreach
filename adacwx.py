@@ -108,6 +108,9 @@ def calculate_ground_speed(cruise_speed_kt, wind_speed, wind_direction, flight_d
 
 ###########################################################################################
 
+# Correct URL for the GeoJSON layer
+geojson_layer_url = "https://nginx.eivissacopter.com/mrva/mvra.geojson"
+
 # Function to fetch GeoJSON file from the specific URL
 def fetch_geojson_layer(url):
     try:
@@ -123,9 +126,6 @@ def fetch_geojson_layer(url):
     except Exception as e:
         st.error(f"Error fetching GeoJSON layer from URL: {url} - Error: {e}")
         return None
-
-# URL for the GeoJSON layer
-geojson_layer_url = "https://nginx.eivissacopter.com/mrva/mrva.geojson"
 
 ###########################################################################################
 
