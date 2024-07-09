@@ -257,6 +257,11 @@ def extract_icao_codes(directory_listing):
 
 ###########################################################################################
 
+# Default wind values if forecast data is not found
+default_wind_direction = 0
+default_wind_speed = 0
+default_freezing_level = 10000
+
 with st.sidebar:
     base_names = [base['name'] for base in helicopter_bases]
     airport_names = [airport['name'] for airport in airports]
@@ -317,6 +322,9 @@ with st.sidebar:
                                 # Ensure relevant rows exist before processing
                                 if df_relevant.empty:
                                     st.error("Relevant rows (UTC, 5000FT, FZLVL) not found in dataframe.")
+                                    avg_wd_5000ft = default_wind_direction
+                                    avg_ws_5000ft = default_wind_speed
+                                    lowest_fzlv = default_freezing_level
                                 else:
                                     # Convert the relevant rows
                                     df_converted = pd.DataFrame()
@@ -353,12 +361,24 @@ with st.sidebar:
 
                             except (UnicodeDecodeError, ValueError, KeyError, IndexError) as e:
                                 st.error(f"Failed to decode or process the forecast data for {closest_airport['name']} ({closest_airport['icao']}): {e}")
+                                avg_wd_5000ft = default_wind_direction
+                                avg_ws_5000ft = default_wind_speed
+                                lowest_fzlv = default_freezing_level
                         else:
                             st.warning(f"No forecast file found for airport: {closest_airport['name']} ({closest_airport['icao']}).")
+                            avg_wd_5000ft = default_wind_direction
+                            avg_ws_5000ft = default_wind_speed
+                            lowest_fzlv = default_freezing_level
                 else:
                     st.error("No closest airport found with available forecast data.")
+                    avg_wd_5000ft = default_wind_direction
+                    avg_ws_5000ft = default_wind_speed
+                    lowest_fzlv = default_freezing_level
         else:
             st.error("Failed to fetch the directory listing.")
+            avg_wd_5000ft = default_wind_direction
+            avg_ws_5000ft = default_wind_speed
+            lowest_fzlv = default_freezing_level
 
     cruise_altitude_ft = st.slider(
         'Cruise Altitude',
