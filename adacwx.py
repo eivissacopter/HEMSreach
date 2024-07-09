@@ -349,8 +349,23 @@ reachable_airports = get_reachable_airports(
 
 ###########################################################################################
 
-# Create map centered on selected location
-m = folium.Map(location=[selected_location['lat'], selected_location['lon']], zoom_start=7)
+# Create map centered on selected location using custom EPSG3857 tiles
+m = folium.Map(
+    location=[selected_location['lat'], selected_location['lon']],
+    zoom_start=7,
+    tiles=None,  # Disable default tiles
+    crs='EPSG3857'  # Use EPSG3857 projection
+)
+
+# Add custom tile layer
+tile_url = "https://nginx.eivissacopter.com/ofma/clip/{z}/{x}/{y}.png"
+folium.TileLayer(
+    tiles=tile_url,
+    attr="Custom Tiles",
+    name="Custom EPSG3857 Tiles",
+    overlay=False,
+    control=True
+).add_to(m)
 
 # Add reachable airports to the map
 reachable_airports_data = []
@@ -382,7 +397,7 @@ for airport, distance, bearing, ground_speed_kt, time_to_airport_hours in reacha
             "TAF": taf_raw,
             "Distance (NM)": round(distance, 2),
             "Time (hours)": round(time_to_airport_hours, 2),
-            "Track (Ã‚Â°)": round(bearing, 2),
+            "Track (°)": round(bearing, 2),
             "Ground Speed (kt)": round(ground_speed_kt, 2),
             "Fuel Required (kg)": round(fuel_required, 2),
             "lat": airport['lat'],
