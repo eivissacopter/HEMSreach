@@ -69,7 +69,7 @@ def decode_forecast(data, icao_code):
     data_lines = lines[header_index:]
     rows = [line.split(';') for line in data_lines if len(line.split(';')) > 1]
     num_columns = len(rows[0])
-    column_names = [f"{icao_code.upper()}{i+1:02d}" for i in range(num_columns)]
+    column_names = [f"{icao_code.upper()}{i:02d}" for i in range(num_columns)]
     df = pd.DataFrame(rows, columns=column_names)
     return df
 
@@ -124,12 +124,15 @@ if selected_base:
                                     df = decode_forecast(file_content, closest_airport['icao'])
                                     df = parse_forecast(df)
 
+                                    # Rename columns by reducing the last numeral by one
+                                    df.columns = [f"{closest_airport['icao'].upper()}{int(col[-2:])-1:02d}" if col[-2:].isdigit() else col for col in df.columns]
+
                                     # Print the complete unfiltered table for debugging
                                     st.write("Complete Unfiltered Dataframe:")
                                     st.dataframe(df)
 
                                     # Convert the 'UTC' column to numeric values
-                                    df['UTC'] = pd.to_numeric(df[f"{closest_airport['icao'].upper()}01"], errors='coerce')
+                                    df['UTC'] = pd.to_numeric(df[f"{closest_airport['icao'].upper()}00"], errors='coerce')
 
                                     # Assuming local time offset for summer is 2 hours
                                     local_time_offset = 2
@@ -153,7 +156,7 @@ if selected_base:
                                     st.dataframe(filtered_df)
 
                                     # Extract the relevant columns for the time window
-                                    relevant_columns = [f"{closest_airport['icao'].upper()}{i+2:02d}" for i in range(time_window)]
+                                    relevant_columns = [f"{closest_airport['icao'].upper()}{i+1:02d}" for i in range(time_window)]
 
                                     # Check if the filtered dataframe has enough rows
                                     if 'FZLVL' in filtered_df.index:
