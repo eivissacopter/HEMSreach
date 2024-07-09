@@ -62,7 +62,16 @@ def decode_forecast(data):
     lines = content.split('\n')
     header = lines[0].split(';')
     rows = [line.split(';') for line in lines[1:] if line]
-    df = pd.DataFrame(rows, columns=header)
+    
+    # Debugging: Log the number of columns in the header and the first few rows
+    st.write(f"Header columns: {len(header)}")
+    for i, row in enumerate(rows[:5]):
+        st.write(f"Row {i} columns: {len(row)}")
+    
+    # Ensure all rows have the same number of columns as the header
+    valid_rows = [row for row in rows if len(row) == len(header)]
+    
+    df = pd.DataFrame(valid_rows, columns=header)
     return df
 
 # Streamlit app
@@ -84,7 +93,7 @@ if icao_code:
                 df = decode_forecast(file_content)
                 # Display the forecast data
                 st.dataframe(df)
-            except UnicodeDecodeError as e:
+            except (UnicodeDecodeError, ValueError) as e:
                 st.error(f"Failed to decode the forecast data: {e}")
         else:
             st.error(f"No forecast file found for ICAO code: {icao_code}")
