@@ -125,24 +125,25 @@ if selected_base:
                                     df = decode_forecast(file_content, closest_airport['icao'])
                                     df = parse_forecast(df)
 
-                                    # Extract the relevant columns based on the time window
-                                    now_utc = datetime.utcnow()
-                                    start_time = now_utc
-                                    end_time = now_utc + timedelta(hours=time_window)
+                                    # Convert the UTC time from row "UTC" to local time
+                                    df['UTC'] = pd.to_numeric(df[f"{closest_airport['icao'].upper()}01"], errors='coerce')
+                                    local_time_offset = 2  # Example for summer time offset
+                                    df['Local Time'] = (df['UTC'] + local_time_offset) % 24
 
-                                    utc_column = f"{closest_airport['icao'].upper()}01"
-                                    df[utc_column] = pd.to_datetime(df[utc_column], format='%Y-%m-%d %H:%M:%S', errors='coerce').dt.tz_localize('UTC')
+                                    # Filter the data based on the selected time window
+                                    current_hour = datetime.utcnow().hour
+                                    start_hour = current_hour
+                                    end_hour = (current_hour + time_window) % 24
 
-                                    mask = (df[utc_column] >= start_time) & (df[utc_column] <= end_time)
-                                    relevant_columns = df.loc[mask, [f"{closest_airport['icao'].upper()}{i+2:02d}" for i in range(time_window)]]
-                                    
+                                    relevant_columns = [f"{closest_airport['icao'].upper()}{i+2:02d}" for i in range(time_window)]
+                                    filtered_df = df[df['Local Time'].between(start_hour, end_hour, inclusive="both")]
+
                                     # Extract the lowest number from row 25 (Freezing Level)
-                                    freezing_level_row = relevant_columns.iloc[24]
-                                    lowest_freezing_level = freezing_level_row.min()
+                                    freezing_level_row = filtered_df.iloc[24]
+                                    lowest_freezing_level = freezing_level_row[relevant_columns].min()
 
                                     st.write(f"Lowest freezing level in the next {time_window} hours: {lowest_freezing_level} meters")
-
-                                    st.dataframe(relevant_columns)
+                                    st.dataframe(filtered_df[relevant_columns])
                                     break
                                 except (UnicodeDecodeError, ValueError) as e:
                                     st.error(f"Failed to decode the forecast data for {closest_airport['name']} ({closest_airport['icao']}): {e}")
