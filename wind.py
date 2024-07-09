@@ -133,9 +133,21 @@ if selected_base:
 
                                     # Decode and convert the relevant rows
                                     df_converted = pd.DataFrame()
-                                    df_converted['Local Time'] = (pd.to_numeric(df[f"{closest_airport['icao'].upper()}00"], errors='coerce') + 2) % 24
-                                    df_converted['5000FT'] = df.loc['5000FT'].apply(lambda x: x.split(' ')[0])
-                                    df_converted['FZLVL'] = df.loc['FZLVL']
+
+                                    if f"{closest_airport['icao'].upper()}00" in df.columns:
+                                        df_converted['Local Time'] = (pd.to_numeric(df[f"{closest_airport['icao'].upper()}00"], errors='coerce') + 2) % 24
+                                    else:
+                                        st.error(f"Column {closest_airport['icao'].upper()}00 not found in dataframe.")
+
+                                    if '5000FT' in df.index:
+                                        df_converted['5000FT'] = df.loc['5000FT'].apply(lambda x: x.split(' ')[0])
+                                    else:
+                                        st.error("'5000FT' row not found in dataframe.")
+
+                                    if 'FZLVL' in df.index:
+                                        df_converted['FZLVL'] = df.loc['FZLVL']
+                                    else:
+                                        st.error("'FZLVL' row not found in dataframe.")
 
                                     # Print the decoded and converted table
                                     st.write("Decoded and Converted Dataframe:")
@@ -154,8 +166,8 @@ if selected_base:
 
                                     st.write(f"Lowest freezing level in the next {time_window} hours: {lowest_freezing_level} meters")
                                     break
-                                except (UnicodeDecodeError, ValueError) as e:
-                                    st.error(f"Failed to decode the forecast data for {closest_airport['name']} ({closest_airport['icao']}): {e}")
+                                except (UnicodeDecodeError, ValueError, KeyError) as e:
+                                    st.error(f"Failed to decode or process the forecast data for {closest_airport['name']} ({closest_airport['icao']}): {e}")
                             else:
                                 st.warning(f"No forecast file found for airport: {closest_airport['name']} ({closest_airport['icao']}). Trying next closest airport...")
                     else:
