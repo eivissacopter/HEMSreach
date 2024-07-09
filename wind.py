@@ -1,8 +1,6 @@
 import requests
 import pandas as pd
 import streamlit as st
-from datetime import datetime
-from io import StringIO
 from bs4 import BeautifulSoup
 
 # Function to fetch directory listing
@@ -58,33 +56,19 @@ def decode_forecast(data):
     
     lines = content.split('\n')
     
-    # Find the line with the header
-    header_index = None
-    for i, line in enumerate(lines):
-        if line.startswith("DATE;"):
-            header_index = i
-            break
-
-    if header_index is None:
-        raise ValueError("Header not found in the file.")
-
-    header = lines[header_index].split(';')
+    # Use the first line as the data to create columns dynamically
+    first_row = lines[0].split(';')
+    num_columns = len(first_row)
+    column_names = [f"EDDF{i+1:02d}" for i in range(num_columns)]
     
-    # Make column names unique
-    cols = pd.Series(header)
-    for dup in cols[cols.duplicated()].unique():
-        cols[cols[cols == dup].index.values.tolist()] = [dup + '_' + str(i) if i != 0 else dup for i in range(sum(cols == dup))]
-    header = cols.tolist()
+    rows = [line.split(';') for line in lines if len(line.split(';')) == num_columns]
     
-    rows = [line.split(';') for line in lines[header_index + 1:] if len(line.split(';')) == len(header)]
-    
-    df = pd.DataFrame(rows, columns=header)
+    df = pd.DataFrame(rows, columns=column_names)
     return df
 
 # Function to parse the forecast data according to the specifications in the PDF
 def parse_forecast(df):
     # Add any specific parsing logic based on the PDF specification here.
-    # This is an example based on a general understanding of CSV data.
     return df
 
 # Streamlit app
