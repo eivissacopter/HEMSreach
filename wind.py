@@ -121,6 +121,10 @@ if selected_base:
                                 # Rename columns starting from EDDM00, EDDM01, EDDM02, etc.
                                 df.columns = [f"{closest_airport['icao'].upper()}{i:02d}" for i in range(len(df.columns))]
 
+                                # Print the complete unfiltered table for debugging
+                                st.write("Complete Unfiltered Dataframe:")
+                                st.dataframe(df)
+
                                 # Keep only the relevant rows
                                 relevant_rows = ['UTC', '5000FT', 'FZLVL']
                                 df_relevant = df[df.iloc[:, 0].isin(relevant_rows)]
@@ -133,17 +137,17 @@ if selected_base:
                                     df_converted = pd.DataFrame()
 
                                     if 'UTC' in df_relevant.iloc[:, 0].values:
-                                        df_converted.loc['UTC'] = pd.to_numeric(df_relevant.loc[df_relevant.iloc[:, 0] == 'UTC'].iloc[0, 1:], errors='coerce')
+                                        df_converted['UTC'] = pd.to_numeric(df_relevant.loc[df_relevant.iloc[:, 0] == 'UTC'].iloc[0, 1:], errors='coerce')
                                     else:
                                         st.error("'UTC' row not found in dataframe.")
 
                                     if '5000FT' in df_relevant.iloc[:, 0].values:
-                                        df_converted.loc['5000FT'] = df_relevant.loc[df_relevant.iloc[:, 0] == '5000FT'].iloc[0, 1:].apply(lambda x: x.split(' ')[0])
+                                        df_converted['5000FT'] = df_relevant.loc[df_relevant.iloc[:, 0] == '5000FT'].iloc[0, 1:].apply(lambda x: x.split(' ')[0])
                                     else:
                                         st.error("'5000FT' row not found in dataframe.")
 
                                     if 'FZLVL' in df_relevant.iloc[:, 0].values:
-                                        df_converted.loc['FZLVL'] = df_relevant.loc[df_relevant.iloc[:, 0] == 'FZLVL'].iloc[0, 1:]
+                                        df_converted['FZLVL'] = df_relevant.loc[df_relevant.iloc[:, 0] == 'FZLVL'].iloc[0, 1:]
                                     else:
                                         st.error("'FZLVL' row not found in dataframe.")
 
