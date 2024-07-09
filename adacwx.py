@@ -7,7 +7,6 @@ from datetime import datetime, timedelta
 from database import helicopter_bases, airports
 import folium
 from streamlit_folium import folium_static
-import geopandas as gpd
 import pytz
 import pytaf
 import os
@@ -17,7 +16,7 @@ from bs4 import BeautifulSoup
 ###########################################################################################
 
 # Set the page configuration for wide mode and dark theme
-st.set_page_config(page_title="Helicopter Mission Planner", layout="wide")
+st.set_page_config(layout="wide")
 
 # Custom CSS to make the map full-screen and as the background, and to engage dark mode
 st.markdown(
@@ -152,6 +151,7 @@ def fetch_metar_taf_data(icao, api_key):
 
     return metar_data, taf_data
 
+# Function to fetch directory listing
 def fetch_directory_listing(base_url):
     try:
         response = requests.get(base_url, auth=(data_server["user"], data_server["password"]))
@@ -168,7 +168,7 @@ def fetch_directory_listing(base_url):
 def fetch_file_content(url):
     try:
         response = requests.get(url, auth=(data_server["user"], data_server["password"]))
-        if response.status_code == 200):
+        if response.status_code == 200:
             return response.content
         else:
             st.warning(f"Failed to fetch data from URL: {url} - Status code: {response.status_code}")
@@ -299,10 +299,6 @@ with st.sidebar:
         df_fuel = pd.DataFrame(fuel_data)
         st.table(df_fuel)
 
-    # Buttons to activate GeoJSON and Tiles
-    geojson_activate = st.button('Activate GeoJSON Layer')
-    tiles_activate = st.button('Activate Tiles')
-
 ###########################################################################################
 
 # Use the input values for performance calculations
@@ -399,41 +395,6 @@ for airport, distance, bearing, ground_speed_kt, time_to_airport_hours in reacha
             popup=popup_text,
             icon=folium.Icon(color="blue", icon="plane"),
         ).add_to(m)
-
-
-
-# Add GeoJSON layer if button is clicked
-if geojson_activate:
-    geojson_url = 'https://nginx.eivissacopter.com/MVRA/mvra.geojson'
-    folium.GeoJson(geojson_url).add_to(m)
-
-    
-# Add tiles layer if button is clicked
-if tiles_activate:
-    folium.TileLayer(
-        tiles='https://nginx.eivissacopter.com/OFM/clip/{z}/{x}/{y}.png',
-        attr='OFM Clip',
-        name='OFM Clip',
-        overlay=True,
-        control=True
-    ).add_to(m)
-
-@st.cache_data
-def fetch_restricted_areas_info(excel_url):
-    try:
-        response = requests.get(excel_url, auth=(data_server["user"], data_server["password"]))
-        response.raise_for_status()
-        df = pd.read_excel(response.content)
-        return df
-    except Exception as e:
-        st.error(f"Error fetching restricted areas information: {e}")
-        return None
-
-# Fetch restricted areas information if the button is clicked
-if geojson_activate:
-    restricted_areas_info = fetch_restricted_areas_info('https://nginx.eivissacopter.com/MVRA/edr.xlsx')
-    if restricted_areas_info is not None:
-        st.dataframe(restricted_areas_info)
 
 ###########################################################################################
 
