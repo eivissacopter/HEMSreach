@@ -10,6 +10,7 @@ from streamlit_folium import folium_static
 import pytz
 import pytaf
 import os
+import geopandas as gpd
 import json
 from bs4 import BeautifulSoup
 
@@ -107,24 +108,24 @@ def calculate_ground_speed(cruise_speed_kt, wind_speed, wind_direction, flight_d
 
 ###########################################################################################
 
-# Function to fetch available layers from the directory
-def fetch_available_layers(base_url):
+# Function to fetch GeoJSON file from the directory
+def fetch_geojson_layer(base_url, layer_name):
     try:
-        response = requests.get(base_url, auth=(data_server["user"], data_server["password"]))
+        url = f"{base_url}{layer_name}"
+        response = requests.get(url)
         if response.status_code == 200:
-            soup = BeautifulSoup(response.text, 'html.parser')
-            layers = [a['href'] for a in soup.find_all('a', href=True) if a['href'].endswith('/')]
-            return layers
+            return response.json()
         else:
-            st.warning(f"Failed to fetch layers from URL: {base_url} - Status code: {response.status_code}")
-            return []
+            st.warning(f"Failed to fetch GeoJSON layer from URL: {url} - Status code: {response.status_code}")
+            return None
     except Exception as e:
-        st.error(f"Error fetching layers from URL: {base_url} - Error: {e}")
-        return []
+        st.error(f"Error fetching GeoJSON layer from URL: {url} - Error: {e}")
+        return None
 
-# Fetch available layers
+# URL for the layers directory
 layer_base_url = "https://nginx.eivissacopter.com/mrva/"
-available_layers = fetch_available_layers(layer_base_url)
+
+###########################################################################################
 
 # Function to fetch METAR and TAF data from AVWX
 def fetch_metar_taf_data_avwx(icao, api_key):
@@ -316,14 +317,10 @@ with st.sidebar:
         df_fuel = pd.DataFrame(fuel_data)
         st.table(df_fuel)
 
-# Add toggle switches for layers in the sidebar
-selected_layers = []
+# Sidebar for layer toggles
 with st.sidebar:
     st.markdown("### Select Layers")
-    for layer in available_layers:
-        layer_name = layer.strip('/')
-        if st.checkbox(layer_name):
-            selected_layers.append(layer_name)
+    geojson_selected = st.checkbox('MRVA Layer')
 
 ###########################################################################################
 
@@ -395,16 +392,15 @@ folium.TileLayer(
     control=True
 ).add_to(m)
 
-# Add selected layers to the map
-for layer in selected_layers:
-    layer_url = f"{layer_base_url}{layer}{{z}}/{{x}}/{{y}}.png"
-    folium.TileLayer(
-        tiles=layer_url,
-        attr=layer,
-        name=layer,
-        overlay=True,
-        control=True
-    ).add_to(m)
+# Add GeoJSON layer if selected
+if geojson_selected:
+    geojson_layer = fetch_geojson_layer(layer_base_url, 'mrva.geojson')
+    if geojson_layer:
+        folium.GeoJson(
+            geojson_layer,
+            name="MRVA Layer",
+            control=True
+        ).add_to(m)
 
 # Add reachable airports to the map
 reachable_airports_data = []
@@ -450,8 +446,12 @@ for airport, distance, bearing, ground_speed_kt, time_to_airport_hours in reacha
             icon=folium.Icon(color="blue", icon="plane"),
         ).add_to(m)
 
+# Add LayerControl to map
+folium.LayerControl().add_to(m)
+
 # Display map
 folium_static(m, width=1440, height=720)
+
 ###########################################################################################
 
 # Ensure the columns exist before trying to highlight
