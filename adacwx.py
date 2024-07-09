@@ -130,30 +130,33 @@ def fetch_metar_taf_data_avwx(icao, api_key):
 
     return metar_data, taf_data
 
-# Function to fetch METAR and TAF data from DWD server with AVWX fallback
-def fetch_metar_taf_data(icao, api_key):
-    metar_base_url = f"https://{data_server['server']}/aviation/OPMET/METAR/DE"
-    taf_base_url = f"https://{data_server['server']}/aviation/OPMET/TAF/DE"
+# Function to fetch METAR and TAF data directly from DWD server
+def fetch_metar_taf_data(icao_code):
+    metar_url = f"https://data.dwd.de/aviation/OPMET/METAR/DE/{icao_code.lower()}.TXT"
+    taf_url = f"https://data.dwd.de/aviation/OPMET/TAF/DE/{icao_code.lower()}.TXT"
 
-    metar_file_content = find_latest_file(metar_base_url, icao)
-    taf_file_content = find_latest_file(taf_base_url, icao)
-
-    metar_data = parse_metar_data(metar_file_content) if metar_file_content else None
-    taf_data = parse_taf_data(taf_file_content) if taf_file_content else None
-
-    if not metar_data or not taf_data:
-        avwx_metar, avwx_taf = fetch_metar_taf_data_avwx(icao, api_key)
-        if not metar_data and isinstance(avwx_metar, dict):
-            metar_data = avwx_metar.get('raw', 'No METAR data available')
-        if not taf_data and isinstance(avwx_taf, dict):
-            taf_data = avwx_taf.get('raw', 'No TAF data available')
+    metar_data = fetch_file_content(metar_url)
+    taf_data = fetch_file_content(taf_url)
 
     return metar_data, taf_data
+
+# Function to fetch file content via HTTPS
+def fetch_file_content(url):
+    try:
+        response = requests.get(url)
+        if response.status_code == 200:
+            return response.content.decode('utf-8')
+        else:
+            st.warning(f"Failed to fetch data from URL: {url} - Status code: {response.status_code}")
+            return None
+    except Exception as e:
+        st.error(f"Error fetching data from URL: {url} - Error: {e}")
+        return None
 
 # Function to fetch directory listing
 def fetch_directory_listing(base_url):
     try:
-        response = requests.get(base_url, auth=(st.secrets["data_server"]["user"], st.secrets["data_server"]["password"]))
+        response = requests.get(base_url)
         if response.status_code == 200:
             return response.text
         else:
@@ -162,56 +165,6 @@ def fetch_directory_listing(base_url):
     except Exception as e:
         st.error(f"Error fetching directory listing from URL: {base_url} - Error: {e}")
         return None
-
-# Function to fetch file content via HTTPS
-def fetch_file_content(url):
-    try:
-        response = requests.get(url, auth=(st.secrets["data_server"]["user"], st.secrets["data_server"]["password"]))
-        if response.status_code == 200:
-            return response.content
-        else:
-            st.warning(f"Failed to fetch data from URL: {url} - Status code: {response.status_code}")
-            return None
-    except Exception as e:
-        st.error(f"Error fetching data from URL: {url} - Error: {e}")
-        return None
-
-# Function to parse the METAR data content
-def parse_metar_data(file_content):
-    try:
-        content = file_content.decode('utf-8').strip()
-        metar_message = content.split('METAR')[1].split('=')[0].strip()
-        return metar_message
-    except Exception as e:
-        st.error(f"Error parsing METAR data: {e}")
-        return None
-
-# Function to parse the TAF data content
-def parse_taf_data(file_content):
-    try:
-        content = file_content.decode('utf-8').strip()
-        taf_message = content.split('TAF')[1].split('=')[0].strip()
-        return taf_message
-    except Exception as e:
-        st.error(f"Error parsing TAF data: {e}")
-        return None
-
-# Function to find the latest available file by scanning the directory
-def find_latest_file(base_url, icao_code):
-    directory_listing = fetch_directory_listing(base_url + f"/{icao_code.lower()}/")
-    if directory_listing:
-        soup = BeautifulSoup(directory_listing, 'html.parser')
-        files = [a['href'] for a in soup.find_all('a', href=True) if f"airport_forecast_{icao_code.lower()}_" in a['href']]
-        if files:
-            latest_file = sorted(files, reverse=True)[0]
-            url = f"{base_url}/{icao_code.lower()}/{latest_file}"
-            file_content = fetch_file_content(url)
-            return file_content
-        else:
-            st.warning(f"No forecast files found for {icao_code}.")
-    return None
-
-###########################################################################################
 
 # Function to decode the forecast data
 def decode_forecast(data, icao_code):
@@ -239,10 +192,6 @@ def decode_forecast(data, icao_code):
     df = pd.DataFrame(rows, columns=column_names)
     return df
 
-# Function to parse the forecast data according to the specifications in the PDF
-def parse_forecast(df):
-    return df
-
 # Function to calculate the closest airport to a given helicopter base
 def find_closest_airport_with_forecast(base_lat, base_lon, available_icao_codes):
     sorted_airports = sorted(airports, key=lambda airport: geodesic((base_lat, base_lon), (airport['lat'], airport['lon'])).kilometers)
@@ -256,8 +205,6 @@ def extract_icao_codes(directory_listing):
     soup = BeautifulSoup(directory_listing, 'html.parser')
     icao_codes = [a['href'].strip('/').lower() for a in soup.find_all('a', href=True) if len(a['href'].strip('/')) == 4]
     return icao_codes
-
-###########################################################################################
 
 # Default wind values if forecast data is not found
 default_wind_direction = 0
@@ -302,7 +249,7 @@ with st.sidebar:
                 closest_airport = find_closest_airport_with_forecast(selected_location['lat'], selected_location['lon'], available_icao_codes)
                 if closest_airport:
                     with st.spinner(f'Fetching latest forecast for {closest_airport["name"]} ({closest_airport["icao"]})...'):
-                        file_content = find_latest_file(base_url, closest_airport['icao'])
+                        file_content = fetch_file_content(f"{base_url}/{closest_airport['icao'].lower()}/")
                         if file_content:
                             try:
                                 df = decode_forecast(file_content, closest_airport['icao'])
@@ -435,7 +382,46 @@ with st.sidebar:
         df_fuel = pd.DataFrame(fuel_data)
         st.table(df_fuel)
 
-###########################################################################################
+# Function to calculate distance and bearing between two points using the Haversine formula
+def haversine(lon1, lat1, lon2, lat2):
+    R = 6371.0  # Earth radius in kilometers
+    lon1, lat1, lon2, lat2 = map(math.radians, [lon1, lat1, lon2, lat2])
+    dlon = lon2 - lon1
+    dlat = lat2 - lat1
+    a = math.sin(dlat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    distance = R * c * 0.539957  # Convert to nautical miles
+
+    # Bearing calculation
+    y = math.sin(dlon) * math.cos(lat2)
+    x = math.cos(lat1) * math.sin(lat2) - math.sin(lat1) * math.cos(lat2) * math.cos(dlon)
+    bearing = math.atan2(y, x)
+    bearing = math.degrees(bearing)
+    bearing = (bearing + 360) % 360  # Normalize to 0-360 degrees
+
+    return distance, bearing
+
+# Function to get reachable airports within a certain radius
+def get_reachable_airports(base_lat, base_lon, total_flight_time_hours, climb_time_hours, descent_time_hours, cruise_speed_kt, wind_speed, wind_direction):
+    reachable_airports = []
+    cruise_time_hours = total_flight_time_hours - climb_time_hours - descent_time_hours
+    for airport in airports:
+        distance, bearing = haversine(base_lon, base_lat, airport['lon'], airport['lat'])
+        ground_speed_kt = calculate_ground_speed(cruise_speed_kt, wind_speed, wind_direction, bearing)
+        if ground_speed_kt <= 0:
+            continue
+        time_to_airport_hours = distance / ground_speed_kt
+        if time_to_airport_hours <= cruise_time_hours:
+            reachable_airports.append((airport, distance, bearing, ground_speed_kt, time_to_airport_hours))
+    reachable_airports.sort(key=lambda x: x[1])
+    return reachable_airports
+
+# Function to calculate ground speed considering wind
+def calculate_ground_speed(cruise_speed_kt, wind_speed, wind_direction, flight_direction):
+    relative_wind_direction = math.radians(flight_direction - wind_direction)
+    wind_component = wind_speed * math.cos(relative_wind_direction)
+    ground_speed = cruise_speed_kt - wind_component  # Correct calculation to subtract wind impact for headwind
+    return ground_speed
 
 # Use the input values for performance calculations
 climb_performance = {
@@ -485,19 +471,17 @@ reachable_airports = get_reachable_airports(
     avg_ws_5000ft, avg_wd_5000ft
 )
 
-###########################################################################################
-
 # Create map centered on selected location
 m = folium.Map(location=[selected_location['lat'], selected_location['lon']], zoom_start=7)
 
 # Add reachable airports to the map
 reachable_airports_data = []
 for airport, distance, bearing, ground_speed_kt, time_to_airport_hours in reachable_airports:
-    metar_data, taf_data = fetch_metar_taf_data(airport['icao'], AVWX_API_KEY)
+    metar_data, taf_data = fetch_metar_taf_data(airport['icao'])
 
     if metar_data and taf_data:
-        metar_raw = metar_data if isinstance(metar_data, str) else metar_data.get('raw', '')
-        taf_raw = taf_data if isinstance(taf_data, str) else taf_data.get('raw', '')
+        metar_raw = metar_data if isinstance(metar_data, str) else metar_data
+        taf_raw = taf_data if isinstance(taf_data, str) else taf_data
 
         # Calculate descent time using destination airport elevation
         airport_elevation_ft = airport.get('elevation', 500)  # Default to 500ft if not available
@@ -536,8 +520,6 @@ for airport, distance, bearing, ground_speed_kt, time_to_airport_hours in reacha
 
 # Display map
 folium_static(m, width=1440, height=720)
-
-###########################################################################################
 
 # Ensure the columns exist before trying to highlight
 if reachable_airports_data:
