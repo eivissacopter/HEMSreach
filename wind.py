@@ -4,6 +4,7 @@ import streamlit as st
 from bs4 import BeautifulSoup
 from geopy.distance import geodesic
 from database import helicopter_bases, airports
+import os
 
 # Function to fetch file content via HTTPS
 def fetch_file_content(url):
@@ -56,7 +57,11 @@ def process_forecast_data(file_content, forecast_hour):
 
 # Main function to run the Streamlit app
 def main():
-    base_url = st.secrets["data_server"]["url"]
+    base_url = st.secrets.get("data_server", {}).get("server", os.getenv("DEFAULT_BASE_URL"))
+    if not base_url:
+        st.error("Base URL is not configured. Please check the secrets configuration.")
+        return
+    
     st.title("Airport Weather Forecast")
 
     selected_airport = st.selectbox("Select Airport", airports)
