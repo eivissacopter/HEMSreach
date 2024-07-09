@@ -69,7 +69,7 @@ def decode_forecast(data, icao_code):
     data_lines = lines[header_index:]
     rows = [line.split(';') for line in data_lines if len(line.split(';')) > 1]
     num_columns = len(rows[0])
-    column_names = [f"{icao_code.upper()}{i:02d}" for i in range(num_columns)]
+    column_names = [f"{icao_code.upper()}{i-1:02d}" for i in range(num_columns)]
     df = pd.DataFrame(rows, columns=column_names)
     return df
 
@@ -137,7 +137,7 @@ if selected_base:
                                     # Assuming local time offset for summer is 2 hours
                                     local_time_offset = 2
 
-                                    # Filter data within the selected time window
+                                    # Get the relevant columns for the time window
                                     current_hour_utc = datetime.utcnow().hour
                                     current_hour_local = (current_hour_utc + local_time_offset) % 24
                                     end_hour_local = (current_hour_local + time_window) % 24
@@ -156,7 +156,7 @@ if selected_base:
                                     st.dataframe(filtered_df)
 
                                     # Extract the relevant columns for the time window
-                                    relevant_columns = [f"{closest_airport['icao'].upper()}{i+1:02d}" for i in range(time_window)]
+                                    relevant_columns = [f"{closest_airport['icao'].upper()}{i:02d}" for i in range(1, time_window + 1)]
 
                                     # Check if the filtered dataframe has enough rows
                                     if 'FZLVL' in filtered_df.index:
