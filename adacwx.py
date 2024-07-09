@@ -153,7 +153,7 @@ def fetch_metar_taf_data(icao, api_key):
 # Function to fetch directory listing
 def fetch_directory_listing(base_url):
     try:
-        response = requests.get(base_url, auth=(data_server["user"], data_server["password"]))
+        response = requests.get(base_url, auth=(st.secrets["data_server"]["user"], st.secrets["data_server"]["password"]))
         if response.status_code == 200:
             return response.text
         else:
@@ -166,7 +166,7 @@ def fetch_directory_listing(base_url):
 # Function to fetch file content via HTTPS
 def fetch_file_content(url):
     try:
-        response = requests.get(url, auth=(data_server["user"], data_server["password"]))
+        response = requests.get(url, auth=(st.secrets["data_server"]["user"], st.secrets["data_server"]["password"]))
         if response.status_code == 200:
             return response.content
         else:
@@ -197,16 +197,18 @@ def parse_taf_data(file_content):
         return None
 
 # Function to find the latest available file by scanning the directory
-def find_latest_file(base_url, airport_code):
-    directory_listing = fetch_directory_listing(base_url)
+def find_latest_file(base_url, icao_code):
+    directory_listing = fetch_directory_listing(base_url + f"/{icao_code.lower()}/")
     if directory_listing:
         soup = BeautifulSoup(directory_listing, 'html.parser')
-        files = [a['href'] for a in soup.find_all('a', href=True) if f"_{airport_code}_" in a['href']]
+        files = [a['href'] for a in soup.find_all('a', href=True) if f"airport_forecast_{icao_code.lower()}_" in a['href']]
         if files:
             latest_file = sorted(files, reverse=True)[0]
-            url = f"{base_url}/{latest_file}"
+            url = f"{base_url}/{icao_code.lower()}/{latest_file}"
             file_content = fetch_file_content(url)
             return file_content
+        else:
+            st.warning(f"No forecast files found for {icao_code}.")
     return None
 
 ###########################################################################################
