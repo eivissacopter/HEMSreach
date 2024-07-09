@@ -161,15 +161,15 @@ if selected_base:
                                     # Calculate average WD@5000FT, average WS@5000FT, and lowest FZLVL based on slider value
                                     col_prefix = closest_airport['icao'].upper()
                                     col_range = [f"{col_prefix}{i:02d}" for i in range(1, selected_time + 1)]
-
+                                    
                                     avg_wd_5000ft = df_converted['WD@5000FT'][col_range].astype(float).mean()
                                     avg_ws_5000ft = df_converted['WS@5000FT'][col_range].astype(float).mean()
                                     lowest_fzlv = df_converted['FZLVL'][col_range].astype(float).min()
-
-                                    # Print the results
-                                    st.write(f"Wind Direction: {avg_wd_5000ft:.2f}")
-                                    st.write(f"Wind Speed: {avg_ws_5000ft:.2f}")
-                                    st.write(f"Freezing Level: {lowest_fzlv:.2f}")
+                                    
+                                    # Print the results without decimals
+                                    st.write(f"Wind Direction: {int(round(avg_wd_5000ft))}")
+                                    st.write(f"Wind Speed: {int(round(avg_ws_5000ft))}")
+                                    st.write(f"Freezing Level: {int(round(lowest_fzlv))}")
 
                             except (UnicodeDecodeError, ValueError, KeyError, IndexError) as e:
                                 st.error(f"Failed to decode or process the forecast data for {closest_airport['name']} ({closest_airport['icao']}): {e}")
