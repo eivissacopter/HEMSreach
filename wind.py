@@ -56,12 +56,20 @@ def decode_forecast(data):
     
     lines = content.split('\n')
     
-    # Use the first line as the data to create columns dynamically
-    first_row = lines[0].split(';')
-    num_columns = len(first_row)
-    column_names = [f"EDDF{i+1:02d}" for i in range(num_columns)]
+    # Skip initial lines that don't match the number of columns
+    for i, line in enumerate(lines):
+        if line.startswith("DATE;"):
+            header_index = i
+            break
+    else:
+        raise ValueError("Header not found in the file.")
     
-    rows = [line.split(';') for line in lines if len(line.split(';')) == num_columns]
+    data_lines = lines[header_index:]
+    rows = [line.split(';') for line in data_lines if len(line.split(';')) > 1]
+
+    # Create dynamic column headers
+    num_columns = len(rows[0])
+    column_names = [f"EDDF{i+1:02d}" for i in range(num_columns)]
     
     df = pd.DataFrame(rows, columns=column_names)
     return df
@@ -96,3 +104,5 @@ if icao_code:
                 st.error(f"Failed to decode the forecast data: {e}")
         else:
             st.error(f"No forecast file found for ICAO code: {icao_code}")
+
+# Streamlit secrets management
