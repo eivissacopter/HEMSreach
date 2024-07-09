@@ -400,6 +400,24 @@ for airport, distance, bearing, ground_speed_kt, time_to_airport_hours in reacha
             icon=folium.Icon(color="blue", icon="plane"),
         ).add_to(m)
 
+
+
+# Add GeoJSON layer if button is clicked
+if geojson_activate:
+    geojson_url = 'https://nginx.eivissacopter.com/MVRA/mvra.geojson'
+    folium.GeoJson(geojson_url).add_to(m)
+
+    
+# Add tiles layer if button is clicked
+if tiles_activate:
+    folium.TileLayer(
+        tiles='https://nginx.eivissacopter.com/OFM/clip/{z}/{x}/{y}.png',
+        attr='OFM Clip',
+        name='OFM Clip',
+        overlay=True,
+        control=True
+    ).add_to(m)
+
 @st.cache_data
 def fetch_restricted_areas_info(excel_url):
     try:
@@ -416,17 +434,6 @@ if geojson_activate:
     restricted_areas_info = fetch_restricted_areas_info('https://nginx.eivissacopter.com/MVRA/edr.xlsx')
     if restricted_areas_info is not None:
         st.dataframe(restricted_areas_info)
-
-    
-# Add tiles layer if button is clicked
-if tiles_activate:
-    folium.TileLayer(
-        tiles='https://nginx.eivissacopter.com/OFM/clip/{z}/{x}/{y}.png',
-        attr='OFM Clip',
-        name='OFM Clip',
-        overlay=True,
-        control=True
-    ).add_to(m)
 
 ###########################################################################################
 
