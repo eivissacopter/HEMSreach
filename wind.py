@@ -3,6 +3,8 @@ import pandas as pd
 import streamlit as st
 from bs4 import BeautifulSoup
 from geopy.distance import geodesic
+from datetime import datetime, timedelta
+from pytz import timezone
 from database import helicopter_bases, airports
 
 # Function to fetch directory listing
@@ -97,6 +99,9 @@ st.title("Airport Weather Forecast")
 base_names = [base['name'] for base in helicopter_bases]
 selected_base = st.selectbox("Select a Helicopter Base", base_names)
 
+# Slider for time window selection
+time_window = st.slider("Select time window (hours)", 0, 10, 5)
+
 if selected_base:
     base = next(base for base in helicopter_bases if base['name'] == selected_base)
     
@@ -119,7 +124,25 @@ if selected_base:
                                 try:
                                     df = decode_forecast(file_content, closest_airport['icao'])
                                     df = parse_forecast(df)
-                                    st.dataframe(df)
+
+                                    # Extract the relevant columns based on the time window
+                                    now_utc = datetime.utcnow()
+                                    start_time = now_utc
+                                    end_time = now_utc + timedelta(hours=time_window)
+
+                                    utc_column = f"{closest_airport['icao'].upper()}01"
+                                    df[utc_column] = pd.to_datetime(df[utc_column], format='%Y-%m-%d %H:%M:%S', errors='coerce').dt.tz_localize('UTC')
+
+                                    mask = (df[utc_column] >= start_time) & (df[utc_column] <= end_time)
+                                    relevant_columns = df.loc[mask, [f"{closest_airport['icao'].upper()}{i+2:02d}" for i in range(time_window)]]
+                                    
+                                    # Extract the lowest number from row 25 (Freezing Level)
+                                    freezing_level_row = relevant_columns.iloc[24]
+                                    lowest_freezing_level = freezing_level_row.min()
+
+                                    st.write(f"Lowest freezing level in the next {time_window} hours: {lowest_freezing_level} meters")
+
+                                    st.dataframe(relevant_columns)
                                     break
                                 except (UnicodeDecodeError, ValueError) as e:
                                     st.error(f"Failed to decode the forecast data for {closest_airport['name']} ({closest_airport['icao']}): {e}")
