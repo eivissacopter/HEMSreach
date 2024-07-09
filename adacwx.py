@@ -34,12 +34,6 @@ st.markdown(
 # Sidebar for inputs
 st.sidebar.header("Flight Parameters")
 
-# Load helicopter bases and airports
-with open('helicopter_bases.json', 'r') as file:
-    helicopter_bases = json.load(file)
-with open('airports.json', 'r') as file:
-    airports = json.load(file)
-
 # Selection of helicopter base
 base_selection = st.sidebar.selectbox("Select Helicopter Base", list(helicopter_bases.keys()))
 selected_base = helicopter_bases[base_selection]
