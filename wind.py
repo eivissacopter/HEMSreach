@@ -1,5 +1,7 @@
+import requests
 import pandas as pd
 import streamlit as st
+from bs4 import BeautifulSoup
 from geopy.distance import geodesic
 from datetime import datetime
 from database import helicopter_bases, airports
@@ -129,21 +131,29 @@ if selected_base:
                                 st.write("Dataframe Columns:")
                                 st.write(df.columns.tolist())
 
-                                # Extract and convert the relevant rows
+                                # Keep only the relevant rows
+                                relevant_rows = ['UTC', '5000FT', 'FZLVL']
+                                df_relevant = df[df.iloc[:, 0].isin(relevant_rows)]
+
+                                # Print the relevant rows
+                                st.write("Relevant Rows Dataframe:")
+                                st.dataframe(df_relevant)
+
+                                # Convert the relevant rows
                                 df_converted = pd.DataFrame()
 
                                 if f"{closest_airport['icao'].upper()}00" in df.columns:
-                                    df_converted['UTC'] = pd.to_numeric(df.loc[df[f"{closest_airport['icao'].upper()}00"] == 'UTC'].iloc[0, 1:], errors='coerce')
+                                    df_converted['UTC'] = pd.to_numeric(df_relevant.loc[df_relevant.iloc[:, 0] == 'UTC'].iloc[0, 1:], errors='coerce')
                                 else:
                                     st.error(f"Column {closest_airport['icao'].upper()}00 not found in dataframe.")
 
-                                if (df.iloc[:, 0] == '5000FT').any():
-                                    df_converted['5000FT'] = df.loc[df.iloc[:, 0] == '5000FT'].iloc[0, 1:].apply(lambda x: x.split(' ')[0])
+                                if '5000FT' in df_relevant.iloc[:, 0].values:
+                                    df_converted['5000FT'] = df_relevant.loc[df_relevant.iloc[:, 0] == '5000FT'].iloc[0, 1:].apply(lambda x: x.split(' ')[0])
                                 else:
                                     st.error("'5000FT' row not found in dataframe.")
 
-                                if (df.iloc[:, 0] == 'FZLVL').any():
-                                    df_converted['FZLVL'] = df.loc[df.iloc[:, 0] == 'FZLVL'].iloc[0, 1:]
+                                if 'FZLVL' in df_relevant.iloc[:, 0].values:
+                                    df_converted['FZLVL'] = df_relevant.loc[df_relevant.iloc[:, 0] == 'FZLVL'].iloc[0, 1:]
                                 else:
                                     st.error("'FZLVL' row not found in dataframe.")
 
