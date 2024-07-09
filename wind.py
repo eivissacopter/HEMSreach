@@ -49,7 +49,16 @@ def find_latest_file(base_url, icao_code):
 
 # Function to decode the forecast data
 def decode_forecast(data):
-    content = data.decode('utf-8')
+    # Try multiple encodings
+    for encoding in ['utf-8', 'latin1', 'iso-8859-1']:
+        try:
+            content = data.decode(encoding)
+            break
+        except UnicodeDecodeError:
+            continue
+    else:
+        raise UnicodeDecodeError("All decoding attempts failed.")
+    
     lines = content.split('\n')
     header = lines[0].split(';')
     rows = [line.split(';') for line in lines[1:] if line]
@@ -71,9 +80,11 @@ if icao_code:
             st.success("Forecast data fetched successfully!")
             
             # Decode the forecast data
-            df = decode_forecast(file_content)
-            
-            # Display the forecast data
-            st.dataframe(df)
+            try:
+                df = decode_forecast(file_content)
+                # Display the forecast data
+                st.dataframe(df)
+            except UnicodeDecodeError as e:
+                st.error(f"Failed to decode the forecast data: {e}")
         else:
             st.error(f"No forecast file found for ICAO code: {icao_code}")
