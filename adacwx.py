@@ -108,13 +108,15 @@ def calculate_ground_speed(cruise_speed_kt, wind_speed, wind_direction, flight_d
 
 ###########################################################################################
 
-# Function to fetch GeoJSON file from the directory
-def fetch_geojson_layer(base_url, layer_name):
+# Function to fetch GeoJSON file from the specific URL
+def fetch_geojson_layer(url):
     try:
-        url = f"{base_url}{layer_name}"
         response = requests.get(url)
         if response.status_code == 200:
             return response.json()
+        elif response.status_code == 404:
+            st.warning(f"GeoJSON layer not found at URL: {url}")
+            return None
         else:
             st.warning(f"Failed to fetch GeoJSON layer from URL: {url} - Status code: {response.status_code}")
             return None
@@ -122,8 +124,8 @@ def fetch_geojson_layer(base_url, layer_name):
         st.error(f"Error fetching GeoJSON layer from URL: {url} - Error: {e}")
         return None
 
-# URL for the layers directory
-layer_base_url = "https://nginx.eivissacopter.com/mrva/"
+# URL for the GeoJSON layer
+geojson_layer_url = "https://nginx.eivissacopter.com/mrva/mrva.geojson"
 
 ###########################################################################################
 
@@ -464,7 +466,7 @@ if reachable_airports_data:
         time_hours = int(airport_data["Time (hours)"])
         time_minutes = int((airport_data["Time (hours)"] - time_hours) * 60)
         time_hhmm = f"{time_hours:02d}:{time_minutes:02d}"
-        track_deg = f"{int(airport_data['Track (Ã‚Â°)']):03d}Ã‚Â°"
+        track_deg = f"{int(airport_data['Track (°)']):03d}°"
         ground_speed_kt = f"{int(airport_data['Ground Speed (kt)']):03d} kt"
         fuel_required_kg = f"{int(airport_data['Fuel Required (kg)'])} kg"
 
@@ -476,7 +478,7 @@ if reachable_airports_data:
             "Airport": airport_data["Airport"],
             "Distance (NM)": distance_nm,
             "Time (hours)": time_hhmm,
-            "Track (Ã‚Â°)": track_deg,
+            "Track (°)": track_deg,
             "Ground Speed (kt)": ground_speed_kt,
             "Fuel Required (kg)": fuel_required_kg,
             "METAR": metar_raw,
@@ -489,7 +491,7 @@ if reachable_airports_data:
     st.markdown("### METAR/TAF Data")
     st.markdown(df_decoded.to_html(escape=False), unsafe_allow_html=True)
 else:
-    df_decoded = pd.DataFrame(columns=["Airport", "Distance (NM)", "Time (hours)", "Track (Ã‚Â°)", "Ground Speed (kt)", "Fuel Required (kg)", "METAR", "TAF"])
+    df_decoded = pd.DataFrame(columns=["Airport", "Distance (NM)", "Time (hours)", "Track (°)", "Ground Speed (kt)", "Fuel Required (kg)", "METAR", "TAF"])
 
     # Display the table
     st.markdown("### METAR/TAF Data")
