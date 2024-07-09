@@ -131,9 +131,11 @@ if selected_base:
                                     st.write("Complete Unfiltered Dataframe:")
                                     st.dataframe(df)
 
-                                    # Display the index of the dataframe
+                                    # Display the index and columns of the dataframe
                                     st.write("Dataframe Index:")
                                     st.write(df.index.tolist())
+                                    st.write("Dataframe Columns:")
+                                    st.write(df.columns.tolist())
 
                                     # Decode and convert the relevant rows
                                     df_converted = pd.DataFrame()
