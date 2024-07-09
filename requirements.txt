@@ -13,3 +13,4 @@ beautifulsoup4
 requests
 xmltodict
 geopy
+shapely
