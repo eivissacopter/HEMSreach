@@ -19,7 +19,8 @@ def fetch_file_content(url):
 # Function to find the latest available file by scanning the directory
 def find_latest_file(base_url, icao_code):
     try:
-        response = requests.get(base_url + f"/{icao_code.lower()}/", auth=(st.secrets["data_server"]["user"], st.secrets["data_server"]["password"]))
+        url = f"{base_url}/{icao_code.lower()}/"
+        response = requests.get(url, auth=(st.secrets["data_server"]["user"], st.secrets["data_server"]["password"]))
         response.raise_for_status()
         soup = BeautifulSoup(response.text, 'html.parser')
         files = [a['href'] for a in soup.find_all('a', href=True) if f"airport_forecast_{icao_code.lower()}_" in a['href']]
@@ -61,6 +62,9 @@ def main():
     if not base_url:
         st.error("Base URL is not configured. Please check the secrets configuration.")
         return
+    
+    if not base_url.startswith("http"):
+        base_url = "https://" + base_url
     
     st.title("Airport Weather Forecast")
 
