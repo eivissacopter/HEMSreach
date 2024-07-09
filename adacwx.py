@@ -264,6 +264,7 @@ default_wind_direction = 0
 default_wind_speed = 0
 default_freezing_level = 10000
 
+# Streamlit sidebar configuration
 with st.sidebar:
     base_names = [base['name'] for base in helicopter_bases]
     airport_names = [airport['name'] for airport in airports]
