@@ -107,6 +107,25 @@ def calculate_ground_speed(cruise_speed_kt, wind_speed, wind_direction, flight_d
 
 ###########################################################################################
 
+# Function to fetch available layers from the directory
+def fetch_available_layers(base_url):
+    try:
+        response = requests.get(base_url, auth=(data_server["user"], data_server["password"]))
+        if response.status_code == 200:
+            soup = BeautifulSoup(response.text, 'html.parser')
+            layers = [a['href'] for a in soup.find_all('a', href=True) if a['href'].endswith('/')]
+            return layers
+        else:
+            st.warning(f"Failed to fetch layers from URL: {base_url} - Status code: {response.status_code}")
+            return []
+    except Exception as e:
+        st.error(f"Error fetching layers from URL: {base_url} - Error: {e}")
+        return []
+
+# Fetch available layers
+layer_base_url = "https://nginx.eivissacopter.com/mrva/"
+available_layers = fetch_available_layers(layer_base_url)
+
 # Function to fetch METAR and TAF data from AVWX
 def fetch_metar_taf_data_avwx(icao, api_key):
     headers = {"Authorization": f"Bearer {api_key}"}
@@ -297,6 +316,15 @@ with st.sidebar:
         df_fuel = pd.DataFrame(fuel_data)
         st.table(df_fuel)
 
+# Add toggle switches for layers in the sidebar
+selected_layers = []
+with st.sidebar:
+    st.markdown("### Select Layers")
+    for layer in available_layers:
+        layer_name = layer.strip('/')
+        if st.checkbox(layer_name):
+            selected_layers.append(layer_name)
+
 ###########################################################################################
 
 # Use the input values for performance calculations
@@ -367,6 +395,17 @@ folium.TileLayer(
     control=True
 ).add_to(m)
 
+# Add selected layers to the map
+for layer in selected_layers:
+    layer_url = f"{layer_base_url}{layer}{{z}}/{{x}}/{{y}}.png"
+    folium.TileLayer(
+        tiles=layer_url,
+        attr=layer,
+        name=layer,
+        overlay=True,
+        control=True
+    ).add_to(m)
+
 # Add reachable airports to the map
 reachable_airports_data = []
 for airport, distance, bearing, ground_speed_kt, time_to_airport_hours in reachable_airports:
@@ -413,7 +452,6 @@ for airport, distance, bearing, ground_speed_kt, time_to_airport_hours in reacha
 
 # Display map
 folium_static(m, width=1440, height=720)
-
 ###########################################################################################
 
 # Ensure the columns exist before trying to highlight
