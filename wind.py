@@ -1,7 +1,5 @@
-import requests
 import pandas as pd
 import streamlit as st
-from bs4 import BeautifulSoup
 from geopy.distance import geodesic
 from datetime import datetime
 from database import helicopter_bases, airports
@@ -135,17 +133,17 @@ if selected_base:
                                 df_converted = pd.DataFrame()
 
                                 if f"{closest_airport['icao'].upper()}00" in df.columns:
-                                    df_converted['UTC'] = pd.to_numeric(df[f"{closest_airport['icao'].upper()}00"], errors='coerce')
+                                    df_converted['UTC'] = pd.to_numeric(df.loc[df[f"{closest_airport['icao'].upper()}00"] == 'UTC'].iloc[0, 1:], errors='coerce')
                                 else:
                                     st.error(f"Column {closest_airport['icao'].upper()}00 not found in dataframe.")
 
-                                if '5000FT' in df.index:
-                                    df_converted['5000FT'] = df.loc['5000FT'].apply(lambda x: x.split(' ')[0])
+                                if (df.iloc[:, 0] == '5000FT').any():
+                                    df_converted['5000FT'] = df.loc[df.iloc[:, 0] == '5000FT'].iloc[0, 1:].apply(lambda x: x.split(' ')[0])
                                 else:
                                     st.error("'5000FT' row not found in dataframe.")
 
-                                if 'FZLVL' in df.index:
-                                    df_converted['FZLVL'] = df.loc['FZLVL']
+                                if (df.iloc[:, 0] == 'FZLVL').any():
+                                    df_converted['FZLVL'] = df.loc[df.iloc[:, 0] == 'FZLVL'].iloc[0, 1:]
                                 else:
                                     st.error("'FZLVL' row not found in dataframe.")
 
