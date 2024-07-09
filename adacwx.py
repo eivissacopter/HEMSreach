@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 from database import helicopter_bases, airports
 import folium
 from streamlit_folium import folium_static
+import geopandas as gpd
 import pytz
 import pytaf
 import os
@@ -16,7 +17,7 @@ from bs4 import BeautifulSoup
 ###########################################################################################
 
 # Set the page configuration for wide mode and dark theme
-st.set_page_config(page_title="IFR Rescue Radius", page_icon=":helicopter:", layout="wide")
+st.set_page_config(page_title="Helicopter Mission Planner", layout="wide")
 
 # Custom CSS to make the map full-screen and as the background, and to engage dark mode
 st.markdown(
@@ -168,7 +169,7 @@ def fetch_directory_listing(base_url):
 def fetch_file_content(url):
     try:
         response = requests.get(url, auth=(data_server["user"], data_server["password"]))
-        if response.status_code == 200:
+        if response.status_code == 200):
             return response.content
         else:
             st.warning(f"Failed to fetch data from URL: {url} - Status code: {response.status_code}")
@@ -402,7 +403,9 @@ for airport, distance, bearing, ground_speed_kt, time_to_airport_hours in reacha
 
 # Add GeoJSON layer if button is clicked
 if geojson_activate:
-    folium.GeoJson('https://nginx.eivissacopter.com/MVRA/mvra.geojson').add_to(m)
+    geojson_url = 'https://nginx.eivissacopter.com/MVRA/mvra.geojson'
+    gdf = gpd.read_file(geojson_url)
+    folium.GeoJson(data=gdf).add_to(m)
 
 # Add tiles layer if button is clicked
 if tiles_activate:
