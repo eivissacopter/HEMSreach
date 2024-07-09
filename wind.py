@@ -124,6 +124,10 @@ if selected_base:
                                     df = decode_forecast(file_content, closest_airport['icao'])
                                     df = parse_forecast(df)
 
+                                    # Print the complete unfiltered table for debugging
+                                    st.write("Complete Unfiltered Dataframe:")
+                                    st.dataframe(df)
+
                                     # Convert the 'UTC' column to numeric values
                                     df['UTC'] = pd.to_numeric(df[f"{closest_airport['icao'].upper()}01"], errors='coerce')
 
@@ -147,7 +151,7 @@ if selected_base:
 
                                     filtered_df = df.loc[mask, relevant_columns]
 
-                                    # Print the table for debugging
+                                    # Print the table after filtering for debugging
                                     st.write("Filtered Dataframe:")
                                     st.dataframe(filtered_df)
 
