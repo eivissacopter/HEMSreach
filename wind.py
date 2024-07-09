@@ -176,4 +176,4 @@ if selected_base:
                                     st.dataframe(df_converted)
 
                             except (UnicodeDecodeError, ValueError, KeyError, IndexError) as e:
-                                st.error(f"Failed to decode or process the forecast data for {closest_airport['name']} ({closest_airport['
+                                st.error(f"Failed to decode or process the forecast data for {closest_air
