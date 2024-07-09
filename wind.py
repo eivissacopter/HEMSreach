@@ -108,7 +108,7 @@ if selected_base:
     time_labels = [t.strftime("%H:%M") for t in time_options]
 
     # Time slider for selection
-    selected_time = st.slider("Select time window (hours)", min_value=0, max_value=6, value=1, format="%d:%H:%M")
+    selected_time = st.slider("Select time window (hours)", min_value=0, max_value=6, value=1, format="%H:%M")
 
     with st.spinner('Fetching available ICAO codes...'):
         base_url = "https://data.dwd.de/aviation/ATM/AirportWxForecast"
@@ -172,4 +172,8 @@ if selected_base:
                                     st.write(f"Lowest FZLVL: {lowest_fzlv:.2f}")
 
                                     # Print the final table
-                                    st
+                                    st.write("Final Decoded and Converted Dataframe:")
+                                    st.dataframe(df_converted)
+
+                            except (UnicodeDecodeError, ValueError, KeyError, IndexError) as e:
+                                st.error(f"Failed to decode or process the forecast data for {closest_airport['name']} ({closest_airport['
