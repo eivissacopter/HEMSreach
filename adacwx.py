@@ -16,7 +16,10 @@ from bs4 import BeautifulSoup
 ###########################################################################################
 
 # Set the page configuration for wide mode and dark theme
-st.set_page_config(layout="wide")
+st.set_page_config(page_title="IFR Rescue Radius", page_icon=":helicopter:", layout="wide")
+
+# Set page config as the first Streamlit command
+st.set_page_config(page_title="Tesla Battery Analysis", page_icon=":battery:", layout="wide")
 
 # Custom CSS to make the map full-screen and as the background, and to engage dark mode
 st.markdown(
