@@ -130,6 +130,10 @@ if selected_base:
                                     # Print the complete unfiltered table for debugging
                                     st.write("Complete Unfiltered Dataframe:")
                                     st.dataframe(df)
+                                    st.write("Dataframe Info:")
+                                    st.write(df.info())
+                                    st.write("Dataframe Head:")
+                                    st.write(df.head())
 
                                     # Decode and convert the relevant rows
                                     df_converted = pd.DataFrame()
