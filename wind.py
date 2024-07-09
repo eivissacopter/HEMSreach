@@ -7,11 +7,9 @@ from database import helicopter_bases, airports
 
 # Function to fetch directory listing
 def fetch_directory_listing(base_url):
-    st.write("Fetching directory listing...")
     try:
         response = requests.get(base_url, auth=(st.secrets["data_server"]["user"], st.secrets["data_server"]["password"]))
         if response.status_code == 200:
-            st.write("Directory listing fetched successfully.")
             return response.text
         else:
             st.warning(f"Failed to fetch directory listing from URL: {base_url} - Status code: {response.status_code}")
@@ -22,11 +20,9 @@ def fetch_directory_listing(base_url):
 
 # Function to fetch file content via HTTPS
 def fetch_file_content(url):
-    st.write(f"Fetching file content from {url}...")
     try:
         response = requests.get(url, auth=(st.secrets["data_server"]["user"], st.secrets["data_server"]["password"]))
         if response.status_code == 200:
-            st.write("File content fetched successfully.")
             return response.content
         else:
             st.warning(f"Failed to fetch data from URL: {url} - Status code: {response.status_code}")
@@ -37,7 +33,6 @@ def fetch_file_content(url):
 
 # Function to find the latest available file by scanning the directory
 def find_latest_file(base_url, icao_code):
-    st.write(f"Finding latest file for {icao_code}...")
     directory_listing = fetch_directory_listing(base_url + f"/{icao_code.lower()}/")
     if directory_listing:
         soup = BeautifulSoup(directory_listing, 'html.parser')
@@ -45,7 +40,6 @@ def find_latest_file(base_url, icao_code):
         if files:
             latest_file = sorted(files, reverse=True)[0]
             url = f"{base_url}/{icao_code.lower()}/{latest_file}"
-            st.write(f"Latest file URL: {url}")
             file_content = fetch_file_content(url)
             return file_content
         else:
@@ -54,7 +48,6 @@ def find_latest_file(base_url, icao_code):
 
 # Function to decode the forecast data
 def decode_forecast(data):
-    st.write("Decoding forecast data...")
     # Try multiple encodings
     for encoding in ['utf-8', 'latin1', 'iso-8859-1']:
         try:
@@ -92,25 +85,17 @@ def parse_forecast(df):
 
 # Function to calculate the closest airport to a given helicopter base
 def find_closest_airport_with_forecast(base_lat, base_lon, available_icao_codes):
-    st.write("Finding closest airport with forecast...")
     sorted_airports = sorted(airports, key=lambda airport: geodesic((base_lat, base_lon), (airport['lat'], airport['lon'])).kilometers)
     for airport in sorted_airports:
-        st.write(f"Checking airport: {airport['name']} ({airport['icao']})")
         if airport['icao'].lower() in available_icao_codes:
-            airport_coords = (airport['lat'], airport['lon'])
-            base_coords = (base_lat, base_lon)
-            distance = geodesic(base_coords, airport_coords).kilometers
-            st.write(f"Distance to {airport['name']} ({airport['icao']}): {distance} km")
             return airport
     st.warning("No closest airport found with the available ICAO codes.")
     return None
 
 # Function to extract ICAO codes from the directory listing
 def extract_icao_codes(directory_listing):
-    st.write("Extracting ICAO codes from directory listing...")
     soup = BeautifulSoup(directory_listing, 'html.parser')
     icao_codes = [a['href'].strip('/').lower() for a in soup.find_all('a', href=True) if len(a['href'].strip('/')) == 4]
-    st.write(f"Extracted ICAO codes: {icao_codes}")
     return icao_codes
 
 # Streamlit app
@@ -122,7 +107,6 @@ selected_base = st.selectbox("Select a Helicopter Base", base_names)
 
 if selected_base:
     base = next(base for base in helicopter_bases if base['name'] == selected_base)
-    st.write(f"Selected base: {base}")
     
     with st.spinner('Fetching available ICAO codes...'):
         base_url = "https://data.dwd.de/aviation/ATM/AirportWxForecast"
@@ -135,8 +119,6 @@ if selected_base:
                 closest_airport = find_closest_airport_with_forecast(base['lat'], base['lon'], available_icao_codes)
                 
                 if closest_airport:
-                    st.write(f"Closest airport to {selected_base} with forecast data is {closest_airport['name']} ({closest_airport['icao']})")
-                    
                     with st.spinner('Fetching latest forecast...'):
                         file_content = find_latest_file(base_url, closest_airport['icao'])
                         
