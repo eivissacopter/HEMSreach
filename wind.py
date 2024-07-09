@@ -93,27 +93,16 @@ def parse_forecast(df):
 # Function to calculate the closest airport to a given helicopter base
 def find_closest_airport_with_forecast(base_lat, base_lon, available_icao_codes):
     st.write("Finding closest airport with forecast...")
-    closest_airport = None
-    min_distance = float('inf')
-    
-    # Debugging: Print available ICAO codes
-    st.write(f"Available ICAO codes: {available_icao_codes}")
-
-    for airport in airports:
-        st.write(f"Checking airport: {airport['name']} ({airport['icao']})")
+    sorted_airports = sorted(airports, key=lambda airport: geodesic((base_lat, base_lon), (airport['lat'], airport['lon'])).kilometers)
+    for airport in sorted_airports:
         if airport['icao'].lower() in available_icao_codes:
             airport_coords = (airport['lat'], airport['lon'])
             base_coords = (base_lat, base_lon)
             distance = geodesic(base_coords, airport_coords).kilometers
-            st.write(f"Distance to {airport['name']} ({airport['icao']}): {distance} km")
-            if distance < min_distance:
-                min_distance = distance
-                closest_airport = airport
-                st.write(f"New closest airport: {airport['name']} ({airport['icao']}) at distance {min_distance} km")
-    
-    if closest_airport is None:
-        st.warning("No closest airport found with the available ICAO codes.")
-    return closest_airport
+            st.write(f"Checking airport {airport['name']} ({airport['icao']}): Distance {distance} km")
+            return airport
+    st.warning("No closest airport found with the available ICAO codes.")
+    return None
 
 # Function to extract ICAO codes from the directory listing
 def extract_icao_codes(directory_listing):
@@ -139,29 +128,35 @@ if selected_base:
         directory_listing = fetch_directory_listing(base_url)
         if directory_listing:
             available_icao_codes = extract_icao_codes(directory_listing)
-            closest_airport = find_closest_airport_with_forecast(base['lat'], base['lon'], available_icao_codes)
             
-            if closest_airport:
-                st.write(f"Closest airport to {selected_base} with forecast data is {closest_airport['name']} ({closest_airport['icao']})")
+            # Iterate through sorted list of closest airports
+            while True:
+                closest_airport = find_closest_airport_with_forecast(base['lat'], base['lon'], available_icao_codes)
                 
-                with st.spinner('Fetching latest forecast...'):
-                    file_content = find_latest_file(base_url, closest_airport['icao'])
+                if closest_airport:
+                    st.write(f"Closest airport to {selected_base} with forecast data is {closest_airport['name']} ({closest_airport['icao']})")
                     
-                    if file_content:
-                        st.success("Forecast data fetched successfully!")
+                    with st.spinner('Fetching latest forecast...'):
+                        file_content = find_latest_file(base_url, closest_airport['icao'])
                         
-                        # Decode the forecast data
-                        try:
-                            df = decode_forecast(file_content)
-                            df = parse_forecast(df)  # Apply any specific parsing logic
+                        if file_content:
+                            st.success("Forecast data fetched successfully!")
                             
-                            # Display the forecast data
-                            st.dataframe(df)
-                        except (UnicodeDecodeError, ValueError) as e:
-                            st.error(f"Failed to decode the forecast data: {e}")
-                    else:
-                        st.error(f"No forecast file found for airport: {closest_airport['name']} ({closest_airport['icao']})")
-            else:
-                st.error("No closest airport found.")
+                            # Decode the forecast data
+                            try:
+                                df = decode_forecast(file_content)
+                                df = parse_forecast(df)  # Apply any specific parsing logic
+                                
+                                # Display the forecast data
+                                st.dataframe(df)
+                                break
+                            except (UnicodeDecodeError, ValueError) as e:
+                                st.error(f"Failed to decode the forecast data: {e}")
+                        else:
+                            available_icao_codes.remove(closest_airport['icao'].lower())
+                            st.warning(f"No forecast file found for airport: {closest_airport['name']} ({closest_airport['icao']}). Trying next closest airport...")
+                else:
+                    st.error("No closest airport found with available forecast data.")
+                    break
         else:
             st.error("Failed to fetch the directory listing.")
