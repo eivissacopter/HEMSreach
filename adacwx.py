@@ -279,13 +279,6 @@ with st.sidebar:
 
     selected_base_elevation = selected_location['elevation_ft']
     
-    st.markdown("")
-    total_fuel_kg = st.slider(
-        'Total Fuel Upload',
-        min_value=400, max_value=723, value=500, step=50,
-        format="%d kg"
-    )
-
     # Calculate current time and time range for slider
     now = datetime.utcnow()
     local_now = now + timedelta(hours=2)  # Assuming local time is UTC+2
@@ -380,15 +373,22 @@ with st.sidebar:
             avg_ws_5000ft = default_wind_speed
             lowest_fzlv = default_freezing_level
 
+    # Display the wind data and freezing level above the cruise altitude slider
+    st.write(f"**Wind Direction: {int(round(avg_wd_5000ft))}°**")
+    st.write(f"**Wind Speed: {int(round(avg_ws_5000ft))} kt**")
+    st.write(f"**Freezing Level: {int(round(lowest_fzlv))} ft**")
+
     cruise_altitude_ft = st.slider(
         'Cruise Altitude',
         min_value=3000, max_value=10000, value=5000, step=1000,
         format="%d ft"
     )
 
-    # Alternate required checkbox and input
-    alternate_required = st.checkbox("Alternate Required")
-    alternate_fuel = st.number_input("Alternate Fuel (kg)", value=0, step=10) if alternate_required else 0
+    total_fuel_kg = st.slider(
+        'Total Fuel Upload',
+        min_value=400, max_value=723, value=500, step=50,
+        format="%d kg"
+    )
 
     # Expandable section for performance parameters
     with st.expander("Performance"):
@@ -418,19 +418,15 @@ with st.sidebar:
         trip_fuel_kg = total_fuel_kg - (system_test_and_air_taxi + holding_final_reserve + air_taxi_to_parking + contingency_fuel)
     
         # 15 minutes fuel calculation if alternate is not required
-        if not alternate_required:
-            fifteen_min_fuel = cruise_fuel_burn * 0.25
-            trip_fuel_kg -= fifteen_min_fuel
-            approach_fuel = 30
-        else:
-            fifteen_min_fuel = 0
-            approach_fuel = 60
+        fifteen_min_fuel = cruise_fuel_burn * 0.25
+        trip_fuel_kg -= fifteen_min_fuel
+        approach_fuel = 30
     
-        trip_fuel_kg -= (alternate_fuel + approach_fuel)
+        trip_fuel_kg -= approach_fuel
     
         fuel_data = {
-            "Fuel Policy": ["System Test / Air Taxi", "Trip Fuel", "Final Reserve", "15 Minutes Fuel" if not alternate_required else "Alternate Fuel", "Approach Fuel", "Air Taxi to Parking", "Contingency Fuel"],
-            "Fuel (kg)": [system_test_and_air_taxi, round(trip_fuel_kg), holding_final_reserve, round(fifteen_min_fuel) if not alternate_required else round(alternate_fuel), approach_fuel, air_taxi_to_parking, round(contingency_fuel)]
+            "Fuel Policy": ["System Test / Air Taxi", "Trip Fuel", "Final Reserve", "15 Minutes Fuel", "Approach Fuel", "Air Taxi to Parking", "Contingency Fuel"],
+            "Fuel (kg)": [system_test_and_air_taxi, round(trip_fuel_kg), holding_final_reserve, round(fifteen_min_fuel), approach_fuel, air_taxi_to_parking, round(contingency_fuel)]
         }
     
         df_fuel = pd.DataFrame(fuel_data)
