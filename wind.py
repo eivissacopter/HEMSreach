@@ -45,6 +45,7 @@ def find_latest_file(base_url, icao_code):
         if files:
             latest_file = sorted(files, reverse=True)[0]
             url = f"{base_url}/{icao_code}/{latest_file}"
+            st.write(f"Latest file URL: {url}")
             file_content = fetch_file_content(url)
             return file_content
         else:
@@ -152,5 +153,7 @@ if selected_base:
                             st.error(f"Failed to decode the forecast data: {e}")
                     else:
                         st.error(f"No forecast file found for airport: {closest_airport['name']} ({closest_airport['icao']})")
+            else:
+                st.error("No closest airport found.")
         else:
             st.error("Failed to fetch the directory listing.")
