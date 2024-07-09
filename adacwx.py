@@ -396,7 +396,7 @@ folium.TileLayer(
 
 # Add GeoJSON layer if selected
 if geojson_selected:
-    geojson_layer = fetch_geojson_layer(layer_base_url, 'mrva.geojson')
+    geojson_layer = fetch_geojson_layer(geojson_layer_url)
     if geojson_layer:
         folium.GeoJson(
             geojson_layer,
