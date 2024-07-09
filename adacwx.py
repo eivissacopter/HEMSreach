@@ -358,7 +358,7 @@ m = folium.Map(
 )
 
 # Add custom tile layer
-tile_url = "https://nginx.eivissacopter.com/ofma/clip/aero/512/latest/{z}/{x}/{y}.png"
+tile_url = "https://nginx.eivissacopter.com/ofma/clip/merged/512/latest/{z}/{x}/{y}.png"
 folium.TileLayer(
     tiles=tile_url,
     attr="Custom Tiles",
