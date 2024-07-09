@@ -101,6 +101,15 @@ selected_base = st.selectbox("Select a Helicopter Base", base_names)
 if selected_base:
     base = next(base for base in helicopter_bases if base['name'] == selected_base)
     
+    # Calculate current time and time range for slider
+    now = datetime.utcnow()
+    local_now = now + timedelta(hours=2)  # Assuming local time is UTC+2
+    time_options = [local_now + timedelta(hours=i) for i in range(7)]
+    time_labels = [t.strftime("%H:%M") for t in time_options]
+
+    # Time slider for selection
+    selected_time = st.slider("Select time window (hours)", min_value=0, max_value=6, value=1, format="%d:%H:%M")
+
     with st.spinner('Fetching available ICAO codes...'):
         base_url = "https://data.dwd.de/aviation/ATM/AirportWxForecast"
         directory_listing = fetch_directory_listing(base_url)
@@ -149,15 +158,18 @@ if selected_base:
                                     else:
                                         st.error("'FZLVL' row not found in dataframe.")
 
-                                    # Print the final table
-                                    st.write("Final Decoded and Converted Dataframe:")
-                                    st.dataframe(df_converted)
+                                    # Calculate average WD@5000FT, average WS@5000FT, and lowest FZLVL based on slider value
+                                    col_prefix = closest_airport['icao'].upper()
+                                    col_range = [f"{col_prefix}{i:02d}" for i in range(1, selected_time + 1)]
 
-                            except (UnicodeDecodeError, ValueError, KeyError, IndexError) as e:
-                                st.error(f"Failed to decode or process the forecast data for {closest_airport['name']} ({closest_airport['icao']}): {e}")
-                        else:
-                            st.warning(f"No forecast file found for airport: {closest_airport['name']} ({closest_airport['icao']}).")
-                else:
-                    st.error("No closest airport found with available forecast data.")
-        else:
-            st.error("Failed to fetch the directory listing.")
+                                    avg_wd_5000ft = df_converted['WD@5000FT'][col_range].astype(float).mean()
+                                    avg_ws_5000ft = df_converted['WS@5000FT'][col_range].astype(float).mean()
+                                    lowest_fzlv = df_converted['FZLVL'][col_range].astype(float).min()
+
+                                    # Print the results
+                                    st.write(f"Average WD@5000FT: {avg_wd_5000ft:.2f}")
+                                    st.write(f"Average WS@5000FT: {avg_ws_5000ft:.2f}")
+                                    st.write(f"Lowest FZLVL: {lowest_fzlv:.2f}")
+
+                                    # Print the final table
+                                    st
