@@ -167,9 +167,9 @@ if selected_base:
                                     lowest_fzlv = df_converted['FZLVL'][col_range].astype(float).min()
 
                                     # Print the results
-                                    st.write(f"Average WD@5000FT: {avg_wd_5000ft:.2f}")
-                                    st.write(f"Average WS@5000FT: {avg_ws_5000ft:.2f}")
-                                    st.write(f"Lowest FZLVL: {lowest_fzlv:.2f}")
+                                    st.write(f"Wind Direction: {avg_wd_5000ft:.2f}")
+                                    st.write(f"Wind Speed: {avg_ws_5000ft:.2f}")
+                                    st.write(f"Freezing Level: {lowest_fzlv:.2f}")
 
                             except (UnicodeDecodeError, ValueError, KeyError, IndexError) as e:
                                 st.error(f"Failed to decode or process the forecast data for {closest_airport['name']} ({closest_airport['icao']}): {e}")
