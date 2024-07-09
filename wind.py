@@ -3,7 +3,7 @@ import pandas as pd
 import streamlit as st
 from bs4 import BeautifulSoup
 from geopy.distance import geodesic
-from datetime import datetime
+from datetime import datetime, timedelta
 from database import helicopter_bases, airports
 
 # Function to fetch directory listing
@@ -121,10 +121,6 @@ if selected_base:
                                 # Rename columns starting from EDDM00, EDDM01, EDDM02, etc.
                                 df.columns = [f"{closest_airport['icao'].upper()}{i:02d}" for i in range(len(df.columns))]
 
-                                # Print the complete unfiltered table for debugging
-                                st.write("Complete Unfiltered Dataframe:")
-                                st.dataframe(df)
-
                                 # Keep only the relevant rows
                                 relevant_rows = ['UTC', '5000FT', 'FZLVL']
                                 df_relevant = df[df.iloc[:, 0].isin(relevant_rows)]
@@ -137,7 +133,7 @@ if selected_base:
                                     df_converted = pd.DataFrame()
 
                                     if 'UTC' in df_relevant.iloc[:, 0].values:
-                                        df_converted['UTC'] = pd.to_numeric(df_relevant.loc[df_relevant.iloc[:, 0] == 'UTC'].iloc[0, 1:], errors='coerce')
+                                        df_converted['UTC'] = pd.to_numeric(df_relevant.loc[df_relevant.iloc[:, 0] == 'UTC'].iloc[0, 1:], errors='coerce').apply(lambda x: f"{int(x):02d}:00")
                                     else:
                                         st.error("'UTC' row not found in dataframe.")
 
@@ -151,9 +147,12 @@ if selected_base:
                                     else:
                                         st.error("'FZLVL' row not found in dataframe.")
 
+                                    # Keep the format horizontal
+                                    df_final = df_converted.T
+
                                     # Print the final table
                                     st.write("Final Decoded and Converted Dataframe:")
-                                    st.dataframe(df_converted)
+                                    st.dataframe(df_final)
 
                             except (UnicodeDecodeError, ValueError, KeyError) as e:
                                 st.error(f"Failed to decode or process the forecast data for {closest_airport['name']} ({closest_airport['icao']}): {e}")
