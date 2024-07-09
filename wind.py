@@ -116,7 +116,6 @@ if selected_base:
                         with st.spinner(f'Fetching latest forecast for {closest_airport["name"]} ({closest_airport["icao"]})...'):
                             file_content = find_latest_file(base_url, closest_airport['icao'])
                             if file_content:
-                                st.success(f"Forecast data fetched successfully for {closest_airport['name']} ({closest_airport['icao']})!")
                                 try:
                                     df = decode_forecast(file_content, closest_airport['icao'])
                                     df = parse_forecast(df)
