@@ -4,7 +4,6 @@ import streamlit as st
 from bs4 import BeautifulSoup
 from geopy.distance import geodesic
 from datetime import datetime, timedelta
-from pytz import timezone
 from database import helicopter_bases, airports
 
 # Function to fetch directory listing
@@ -125,7 +124,7 @@ if selected_base:
                                     df = decode_forecast(file_content, closest_airport['icao'])
                                     df = parse_forecast(df)
 
-                                    # Convert the UTC time from row "UTC" to local time
+                                    # Convert the UTC column to local time
                                     df['UTC'] = pd.to_numeric(df[f"{closest_airport['icao'].upper()}01"], errors='coerce')
                                     local_time_offset = 2  # Example for summer time offset
                                     df['Local Time'] = (df['UTC'] + local_time_offset) % 24
@@ -138,12 +137,15 @@ if selected_base:
                                     relevant_columns = [f"{closest_airport['icao'].upper()}{i+2:02d}" for i in range(time_window)]
                                     filtered_df = df[df['Local Time'].between(start_hour, end_hour, inclusive="both")]
 
-                                    # Extract the lowest number from row 25 (Freezing Level)
-                                    freezing_level_row = filtered_df.iloc[24]
-                                    lowest_freezing_level = freezing_level_row[relevant_columns].min()
+                                    # Check if the filtered dataframe has enough rows
+                                    if len(filtered_df) > 24:
+                                        freezing_level_row = filtered_df.iloc[24]
+                                        lowest_freezing_level = freezing_level_row[relevant_columns].min()
 
-                                    st.write(f"Lowest freezing level in the next {time_window} hours: {lowest_freezing_level} meters")
-                                    st.dataframe(filtered_df[relevant_columns])
+                                        st.write(f"Lowest freezing level in the next {time_window} hours: {lowest_freezing_level} meters")
+                                        st.dataframe(filtered_df[relevant_columns])
+                                    else:
+                                        st.warning("Insufficient data available for the selected time window.")
                                     break
                                 except (UnicodeDecodeError, ValueError) as e:
                                     st.error(f"Failed to decode the forecast data for {closest_airport['name']} ({closest_airport['icao']}): {e}")
