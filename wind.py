@@ -108,7 +108,7 @@ if selected_base:
     time_labels = [t.strftime("%H:%M") for t in time_options]
 
     # Time slider for selection
-    selected_time = st.slider("Select time window (hours)", min_value=0, max_value=6, value=1, format="%H:%M")
+    selected_time = st.slider("Select time window (hours)", min_value=0, max_value=6, value=1)
 
     with st.spinner('Fetching available ICAO codes...'):
         base_url = "https://data.dwd.de/aviation/ATM/AirportWxForecast"
@@ -178,7 +178,8 @@ if selected_base:
                             except (UnicodeDecodeError, ValueError, KeyError, IndexError) as e:
                                 st.error(f"Failed to decode or process the forecast data for {closest_airport['name']} ({closest_airport['icao']}): {e}")
                         else:
-                                st.warning(f"No forecast file found for airport: {closest_airport['name']} ({closest_airport['icao']}).")
+                            st.warning(f
+                            st.warning(f"No forecast file found for airport: {closest_airport['name']} ({closest_airport['icao']}).")
                 else:
                     st.error("No closest airport found with available forecast data.")
         else:
