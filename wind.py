@@ -121,10 +121,6 @@ if selected_base:
                                 # Rename columns starting from EDDM00, EDDM01, EDDM02, etc.
                                 df.columns = [f"{closest_airport['icao'].upper()}{i:02d}" for i in range(len(df.columns))]
 
-                                # Print the complete unfiltered table for debugging
-                                st.write("Complete Unfiltered Dataframe:")
-                                st.dataframe(df)
-
                                 # Keep only the relevant rows
                                 relevant_rows = ['UTC', '5000FT', 'FZLVL']
                                 df_relevant = df[df.iloc[:, 0].isin(relevant_rows)]
