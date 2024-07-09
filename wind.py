@@ -138,8 +138,9 @@ if selected_base:
                                         st.error("'UTC' row not found in dataframe.")
 
                                     if '5000FT' in df_relevant.iloc[:, 0].values:
-                                        df_converted['WD@5000FT'] = df_relevant.loc[df_relevant.iloc[:, 0] == '5000FT'].iloc[0, 1:].apply(lambda x: x.split(' ')[0].split('/')[0])
-                                        df_converted['WS@5000FT'] = df_relevant.loc[df_relevant.iloc[:, 0] == '5000FT'].iloc[0, 1:].apply(lambda x: x.split(' ')[0].split('/')[1])
+                                        df_5000FT = df_relevant.loc[df_relevant.iloc[:, 0] == '5000FT'].iloc[0, 1:]
+                                        df_converted['WD@5000FT'] = df_5000FT.apply(lambda x: x.split(' ')[0].split('/')[0] if '/' in x else None)
+                                        df_converted['WS@5000FT'] = df_5000FT.apply(lambda x: x.split(' ')[0].split('/')[1] if '/' in x else None)
                                     else:
                                         st.error("'5000FT' row not found in dataframe.")
 
@@ -150,9 +151,9 @@ if selected_base:
 
                                     # Print the final table
                                     st.write("Final Decoded and Converted Dataframe:")
-                                    st.dataframe(df_converted.T)
+                                    st.dataframe(df_converted)
 
-                            except (UnicodeDecodeError, ValueError, KeyError) as e:
+                            except (UnicodeDecodeError, ValueError, KeyError, IndexError) as e:
                                 st.error(f"Failed to decode or process the forecast data for {closest_airport['name']} ({closest_airport['icao']}): {e}")
                         else:
                             st.warning(f"No forecast file found for airport: {closest_airport['name']} ({closest_airport['icao']}).")
