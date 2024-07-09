@@ -12,3 +12,4 @@ OWSLib
 beautifulsoup4
 requests
 xmltodict
+geodesic
