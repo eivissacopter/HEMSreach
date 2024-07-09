@@ -5,13 +5,10 @@ from datetime import datetime
 from io import StringIO
 from bs4 import BeautifulSoup
 
-# Load secrets from Streamlit configuration
-data_server = st.secrets["data_server"]
-
 # Function to fetch directory listing
 def fetch_directory_listing(base_url):
     try:
-        response = requests.get(base_url, auth=(data_server["user"], data_server["password"]))
+        response = requests.get(base_url, auth=(st.secrets["data_server"]["user"], st.secrets["data_server"]["password"]))
         if response.status_code == 200:
             return response.text
         else:
@@ -24,7 +21,7 @@ def fetch_directory_listing(base_url):
 # Function to fetch file content via HTTPS
 def fetch_file_content(url):
     try:
-        response = requests.get(url, auth=(data_server["user"], data_server["password"]))
+        response = requests.get(url, auth=(st.secrets["data_server"]["user"], st.secrets["data_server"]["password"]))
         if response.status_code == 200:
             return response.content
         else:
@@ -60,18 +57,27 @@ def decode_forecast(data):
         raise UnicodeDecodeError("All decoding attempts failed.")
     
     lines = content.split('\n')
-    header = lines[0].split(';')
-    rows = [line.split(';') for line in lines[1:] if line]
     
-    # Debugging: Log the number of columns in the header and the first few rows
-    st.write(f"Header columns: {len(header)}")
-    for i, row in enumerate(rows[:5]):
-        st.write(f"Row {i} columns: {len(row)}")
+    # Find the line with the header
+    header_index = None
+    for i, line in enumerate(lines):
+        if line.startswith("DATE;"):
+            header_index = i
+            break
+
+    if header_index is None:
+        raise ValueError("Header not found in the file.")
+
+    header = lines[header_index].split(';')
+    rows = [line.split(';') for line in lines[header_index + 1:] if len(line.split(';')) == len(header)]
     
-    # Ensure all rows have the same number of columns as the header
-    valid_rows = [row for row in rows if len(row) == len(header)]
-    
-    df = pd.DataFrame(valid_rows, columns=header)
+    df = pd.DataFrame(rows, columns=header)
+    return df
+
+# Function to parse the forecast data according to the specifications in the PDF
+def parse_forecast(df):
+    # Add any specific parsing logic based on the PDF specification here.
+    # This is an example based on a general understanding of CSV data.
     return df
 
 # Streamlit app
@@ -82,7 +88,7 @@ icao_code = st.text_input("Enter ICAO code:").lower()
 
 if icao_code:
     with st.spinner('Fetching latest forecast...'):
-        base_url = f"https://{data_server['server']}/aviation/ATM/AirportWxForecast"
+        base_url = "https://data.dwd.de/aviation/ATM/AirportWxForecast"
         file_content = find_latest_file(base_url, icao_code)
         
         if file_content:
@@ -91,6 +97,8 @@ if icao_code:
             # Decode the forecast data
             try:
                 df = decode_forecast(file_content)
+                df = parse_forecast(df)  # Apply any specific parsing logic
+                
                 # Display the forecast data
                 st.dataframe(df)
             except (UnicodeDecodeError, ValueError) as e:
