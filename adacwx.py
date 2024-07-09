@@ -84,7 +84,6 @@ def haversine(lon1, lat1, lon2, lat2):
 ###########################################################################################
 
 # Function to get reachable airports within a certain radius
-@st.cache_data
 def get_reachable_airports(base_lat, base_lon, total_flight_time_hours, climb_time_hours, descent_time_hours, cruise_speed_kt, wind_speed, wind_direction):
     reachable_airports = []
     cruise_time_hours = total_flight_time_hours - climb_time_hours - descent_time_hours
@@ -109,7 +108,6 @@ def calculate_ground_speed(cruise_speed_kt, wind_speed, wind_direction, flight_d
 ###########################################################################################
 
 # Function to fetch METAR and TAF data from AVWX
-@st.cache_data
 def fetch_metar_taf_data_avwx(icao, api_key):
     headers = {"Authorization": f"Bearer {api_key}"}
     metar_url = f"https://avwx.rest/api/metar/{icao}?options=summary"
@@ -351,10 +349,7 @@ reachable_airports = get_reachable_airports(
 
 ###########################################################################################
 
-# Create map centered on selected location
-m = folium.Map(location=[selected_location['lat'], selected_location['lon']], zoom_start=7)
-
-# Add reachable airports to map
+# Fetch weather data for reachable airports
 reachable_airports_data = []
 for airport, distance, bearing, ground_speed_kt, time_to_airport_hours in reachable_airports:
     metar_data, taf_data = fetch_metar_taf_data(airport['icao'], AVWX_API_KEY)
@@ -397,6 +392,18 @@ for airport, distance, bearing, ground_speed_kt, time_to_airport_hours in reacha
         ).add_to(m)
 
 ###########################################################################################
+
+# Create map centered on selected location
+m = folium.Map(location=[selected_location['lat'], selected_location['lon']], zoom_start=7)
+
+# Add reachable airports to map
+for airport_data in reachable_airports_data:
+    popup_text = airport_data["Airport"]
+    folium.Marker(
+        location=[airport_data['lat'], airport_data['lon']],
+        popup=popup_text,
+        icon=folium.Icon(color="blue", icon="plane"),
+    ).add_to(m)
 
 # Display map
 folium_static(m, width=1440, height=720)
