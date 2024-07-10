@@ -28,6 +28,32 @@ freezing_level = wind_data['freezing_level']
 # Calculate reachable airports
 reachable_airports = calculate_reachable_airports(selected_location, wind_direction, wind_speed, total_fuel_kg, cruise_altitude_ft)
 
+# Initialize map
+m = folium.Map(location=[selected_location['lat'], selected_location['lon']], zoom_start=10)
+
+# Add reachable airports to the map
+for airport in reachable_airports:
+    folium.Marker(
+        location=[airport['lat'], airport['lon']],
+        popup=airport['name'],
+    ).add_to(m)
+
+# Display the map
+folium_static(m)
+
+# Create a table of reachable airports
+st.write("## Reachable Airports")
+st.table(reachable_airports)
+
+# Check if a GeoJSON file is selected (assuming there's a file uploader for GeoJSON)
+geojson_selected = st.file_uploader("Choose a GeoJSON file", type="geojson")
+
+if geojson_selected:
+    # Load the GeoJSON file and add it to the map
+    geojson_data = geojson_selected.read().decode("utf-8")
+    folium.GeoJson(geojson_data).add_to(m)
+    folium_static(m)
+
 ###########################################################################################
 
 # Create map centered on selected location using custom EPSG3857 tiles
@@ -47,16 +73,6 @@ folium.TileLayer(
     overlay=False,
     control=True
 ).add_to(m)
-
-# Add GeoJSON layer if selected
-if geojson_selected:
-    geojson_layer = fetch_geojson_layer(geojson_layer_url)
-    if geojson_layer:
-        folium.GeoJson(
-            geojson_layer,
-            name="MRVA Layer",
-            control=True
-        ).add_to(m)
 
 # Add reachable airports to the map
 reachable_airports_data = []
