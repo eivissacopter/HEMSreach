@@ -9,7 +9,7 @@ from sidebar import create_sidebar
 from wtaloft import get_wind_at_altitude
 from e6b import get_reachable_airports
 from performance import H145D2_PERFORMANCE
-from database import helicopter_bases
+from database import helicopter_bases, airports
 
 # Set page configuration and custom CSS
 set_page_config()
@@ -19,7 +19,7 @@ apply_custom_css()
 st_autorefresh(interval=1800 * 1000, key="data_refresh")
 
 # Create sidebar and get user inputs
-selected_location, total_fuel_kg, cruise_altitude_ft = create_sidebar(helicopter_bases)
+selected_location, total_fuel_kg, cruise_altitude_ft = create_sidebar(helicopter_bases, airports)
 
 # Fetch wind data at altitude
 wind_data = get_wind_at_altitude(selected_location)
