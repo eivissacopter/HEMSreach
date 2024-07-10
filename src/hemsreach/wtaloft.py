@@ -84,7 +84,7 @@ def extract_icao_codes(directory_listing):
     icao_codes = [a['href'].strip('/').lower() for a in soup.find_all('a', href=True) if len(a['href'].strip('/')) == 4]
     return icao_codes
 
-def get_wind_at_altitude(location):
+def get_wind_at_altitude(location, selected_time):
     base_url = "https://data.dwd.de/aviation/ATM/AirportWxForecast"
     directory_listing = fetch_directory_listing(base_url)
     
@@ -120,10 +120,13 @@ def get_wind_at_altitude(location):
                         if 'FZLVL' in df_relevant.iloc[:, 0].values:
                             df_converted['FZLVL'] = df_relevant.loc[df_relevant.iloc[:, 0] == 'FZLVL'].iloc[0, 1:].dropna().apply(lambda x: int(float(x) * 100) if x.replace('.', '', 1).isdigit() else None)
 
-                        avg_wd_5000ft = df_converted['WD@5000FT'].dropna().astype(float).mean()
-                        avg_ws_5000ft = df_converted['WS@5000FT'].dropna().astype(float).mean()
-                        lowest_fzlv = df_converted['FZLVL'].dropna().astype(float).min()
+                        col_prefix = closest_airport['icao'].upper()
+                        col_range = [f"{col_prefix}{i:02d}" for i in range(1, selected_time + 1)]
                         
+                        avg_wd_5000ft = df_converted['WD@5000FT'][col_range].astype(float).mean()
+                        avg_ws_5000ft = df_converted['WS@5000FT'][col_range].astype(float).mean()
+                        lowest_fzlv = df_converted['FZLVL'][col_range].astype(float).min()
+
                         return {
                             'closest_airport': closest_airport,
                             'wind_direction': round(avg_wd_5000ft) if not pd.isna(avg_wd_5000ft) else None,
