@@ -7,7 +7,7 @@ from config import set_page_config, apply_custom_css
 from sidebar import create_sidebar
 from wtaloft import get_wind_at_altitude
 from e6b import calculate_reachable_airports
-from database import helicopter_bases, airports
+from database import helicopter_bases, airports  # Correct import path
 
 # Set page configuration and custom CSS
 set_page_config()
