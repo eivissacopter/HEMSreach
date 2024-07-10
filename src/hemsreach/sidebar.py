@@ -1,15 +1,15 @@
 import streamlit as st
 from wtaloft import get_wind_at_altitude
+from fuelpolicy import calculate_fuel_policy
+import pandas as pd
 
 def create_sidebar(helicopter_bases, airports):
     with st.sidebar:
         base_names = [base['name'] for base in helicopter_bases]
         airport_names = [airport['name'] for airport in airports]
 
-        # Toggle switch to choose between Bases and Airports
         base_or_airport = st.radio('Select Departure', ['Base', 'Airport'], horizontal=True)
 
-        # Input field for selecting base or airport
         if base_or_airport == 'Base':
             selected_base_name = st.selectbox('Select Home Base', base_names)
             selected_location = next(base for base in helicopter_bases if base['name'] == selected_base_name)
@@ -31,10 +31,11 @@ def create_sidebar(helicopter_bases, airports):
             format="%d kg"
         )
 
-        # Time slider for selecting forecast time window
+        alternate_required = st.checkbox("Alternate Required")
+        alternate_fuel = st.number_input("Alternate Fuel (kg)", value=0, step=10) if alternate_required else 0
+
         selected_time = st.slider("Select time window (hours)", min_value=0, max_value=6, value=1)
 
-        # Fetch wind data and closest airport
         wind_data = get_wind_at_altitude(selected_location, selected_time)
         if 'error' not in wind_data:
             closest_airport = wind_data['closest_airport']
@@ -42,6 +43,4 @@ def create_sidebar(helicopter_bases, airports):
             st.markdown(f"**ICAO Code:** {closest_airport['icao']}")
             st.markdown(f"**Wind Direction:** {wind_data['wind_direction']}°")
             st.markdown(f"**Wind Speed:** {wind_data['wind_speed']} knots")
-            st.markdown(f"**Freezing Level:** {wind_data['freezing_level']} ft")
-
-    return selected_location, total_fuel_kg, cruise_altitude_ft, selected_time
+            st.markdown(f"**Freezing Level:** {wind_data['free
