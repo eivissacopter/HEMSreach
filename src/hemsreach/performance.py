@@ -8,10 +8,10 @@ H145D2_PERFORMANCE = {
     },
     'cruise': {
         'speed_kt': 115,          # Cruising speed in knots
-        'fuel_burn_kgph': 240     # Fuel burn in kg per hour
+        'fuel_burn_kgph': 250     # Fuel burn in kg per hour
     },
     'descend': {
-        'speed_kt': 110,          # Descend speed in knots
+        'speed_kt': 120,          # Descend speed in knots
         'fuel_burn_kgph': 220,    # Fuel burn during descend in kg per hour
         'descend_rate_fpm': 500  # Descend rate in feet per minute
     }
