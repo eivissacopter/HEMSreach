@@ -3,11 +3,11 @@ from streamlit_autorefresh import st_autorefresh
 import folium
 from streamlit_folium import folium_static
 
-from config import set_page_config, apply_custom_css
-from sidebar import create_sidebar
-from wtaloft import get_wind_at_altitude
-from e6b import calculate_reachable_airports
-from database.database import helicopter_bases, airports  # Correct path to database
+from hemsreach.config import set_page_config, apply_custom_css
+from hemsreach.sidebar import create_sidebar
+from hemsreach.wtaloft import get_wind_at_altitude
+from hemsreach.e6b import calculate_reachable_airports
+from database.database import helicopter_bases, airports  # Correct import path
 
 # Set page configuration and custom CSS
 set_page_config()
