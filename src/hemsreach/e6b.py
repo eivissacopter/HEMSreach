@@ -47,3 +47,51 @@ def calculate_ground_speed(cruise_speed_kt, wind_speed, wind_direction, flight_d
     return ground_speed
 
 ###########################################################################################
+
+# Use the input values for performance calculations
+climb_performance = {
+    'speed_kt': climb_speed,
+    'fuel_burn_kgph': climb_fuel_burn,
+    'climb_rate_fpm': climb_rate
+}
+
+cruise_performance = {
+    'speed_kt': cruise_speed,
+    'fuel_burn_kgph': cruise_fuel_burn,
+    'performance_penalty': performance_penalty
+}
+
+descend_performance = {
+    'speed_kt': descend_speed,
+    'fuel_burn_kgph': descend_fuel_burn,
+    'descend_rate_fpm': descend_rate
+}
+
+# Calculate mission radius with climb, cruise, and descent performance
+climb_rate_fpm = climb_performance['climb_rate_fpm']
+descent_rate_fpm = descend_performance['descend_rate_fpm']
+
+# Calculate climb time using selected location elevation
+selected_location_elevation_ft = selected_location.get('elevation_ft', 500)  # Default to 500ft if not available
+climb_time_hours = (cruise_altitude_ft - selected_location_elevation_ft) / climb_rate_fpm / 60
+
+# Calculate fuel burn for climb and descent
+climb_fuel_burn = climb_time_hours * climb_performance['fuel_burn_kgph']
+
+# Use the input speed for cruise performance
+cruise_fuel_burn_rate = cruise_performance['fuel_burn_kgph']
+
+# Placeholder for remaining trip fuel, to be recalculated based on descent for each airport
+remaining_trip_fuel_kg = trip_fuel_kg - climb_fuel_burn
+
+# Calculate total flight time including climb, cruise, and descent
+descent_time_hours = 0  # Will be recalculated for each airport
+total_flight_time_hours = climb_time_hours + descent_time_hours + (remaining_trip_fuel_kg / cruise_fuel_burn_rate)
+
+# Get reachable airports
+reachable_airports = get_reachable_airports(
+    selected_location['lat'], selected_location['lon'],
+    total_flight_time_hours, climb_time_hours,
+    descent_time_hours, cruise_performance['speed_kt'],
+    wind_speed, wind_direction
+)
