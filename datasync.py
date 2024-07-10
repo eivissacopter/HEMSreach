@@ -8,7 +8,7 @@ secrets = st.secrets["server"]
 
 # Constants
 DWD_URL = "https://data.dwd.de"
-NGINX_URL = "https://nginx.eivissacopter.com/wx/"
+NGINX_URL = "http://nginx.eivissacopter.com:8080/wx/"  # Make sure to include the correct port
 
 # Function to fetch the latest file URL from a given directory
 def fetch_latest_file_url(directory_url):
@@ -30,7 +30,7 @@ def download_file(url, local_filename):
                 f.write(chunk)
     return local_filename
 
-# Function to upload file to Nginx server
+# Function to upload file to Nginx server using HTTP PUT
 def upload_file_to_nginx(file_path, file_name):
     with open(file_path, 'rb') as file:
         response = requests.put(NGINX_URL + file_name, data=file)
@@ -53,7 +53,7 @@ if st.button("Fetch and Upload Latest Files"):
             download_file(latest_file_url, local_filename)
             
             response = upload_file_to_nginx(local_filename, local_filename)
-            if response.status_code == 200:
+            if response.status_code in [200, 201, 204]:
                 st.write(f"Successfully uploaded {local_filename} to Nginx server.")
             else:
                 st.write(f"Failed to upload {local_filename}. Server responded with status code: {response.status_code}")
@@ -61,6 +61,15 @@ if st.button("Fetch and Upload Latest Files"):
             os.remove(local_filename)
         except Exception as e:
             st.write(f"Error processing directory {directory}: {e}")
+
+# Secrets.toml
+# ```
+# [server]
+# server = "data.dwd.de"
+# port = "2424"
+# username = "wv22"
+# password = "pGCabj;Iqv!wv7fbzjSVy"
+# ```
 
 # Function to test if Nginx server is configured correctly
 def test_nginx_server():
@@ -70,7 +79,7 @@ def test_nginx_server():
     
     response = upload_file_to_nginx(test_file_name, test_file_name)
     os.remove(test_file_name)
-    return response.status_code == 200
+    return response.status_code in [200, 201, 204]
 
 if st.button("Test Nginx Server Configuration"):
     if test_nginx_server():
