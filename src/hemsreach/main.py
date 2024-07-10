@@ -76,13 +76,13 @@ with st.sidebar:
 
     selected_base_elevation = selected_location['elevation_ft']
 
+
+    st.markdown("")
     total_fuel_kg = st.slider(
         'Total Fuel Upload',
         min_value=400, max_value=723, value=500, step=50,
         format="%d kg"
     )
-    
-    st.markdown("")
     cruise_altitude_ft = st.slider(
         'Cruise Altitude',
         min_value=3000, max_value=10000, value=5000, step=1000,
