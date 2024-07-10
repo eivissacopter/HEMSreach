@@ -21,19 +21,22 @@ def create_sidebar(helicopter_bases, airports):
         selected_base_elevation = selected_location['elevation_ft']
 
         st.markdown("")
-        total_fuel_kg = st.slider(
-            'Total Fuel Upload',
-            min_value=400, max_value=723, value=500, step=50,
-            format="%d kg"
-        )
         cruise_altitude_ft = st.slider(
             'Cruise Altitude',
             min_value=3000, max_value=10000, value=5000, step=1000,
             format="%d ft"
         )
+        total_fuel_kg = st.slider(
+            'Total Fuel Upload',
+            min_value=400, max_value=723, value=500, step=50,
+            format="%d kg"
+        )
+
+        # Time slider for selecting forecast time window
+        selected_time = st.slider("Select time window (hours)", min_value=0, max_value=6, value=1)
 
         # Fetch wind data and closest airport
-        wind_data = get_wind_at_altitude(selected_location)
+        wind_data = get_wind_at_altitude(selected_location, selected_time)
         if 'error' not in wind_data:
             closest_airport = wind_data['closest_airport']
             st.markdown(f"### Closest Airport for Wind Data: {closest_airport['name']} ({closest_airport['icao']})")
@@ -42,4 +45,4 @@ def create_sidebar(helicopter_bases, airports):
             st.markdown(f"**Wind Speed:** {wind_data['wind_speed']} knots")
             st.markdown(f"**Freezing Level:** {wind_data['freezing_level']} ft")
 
-    return selected_location, total_fuel_kg, cruise_altitude_ft
+    return selected_location, total_fuel_kg, cruise_altitude_ft, selected_time
