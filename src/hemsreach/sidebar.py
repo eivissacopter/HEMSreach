@@ -1,6 +1,5 @@
 import streamlit as st
-from wtaloft import get_wind_at_altitude, find_closest_airport_with_forecast, extract_icao_codes, fetch_directory_listing
-import pandas as pd
+from wtaloft import get_wind_at_altitude
 
 def create_sidebar(helicopter_bases, airports):
     with st.sidebar:
