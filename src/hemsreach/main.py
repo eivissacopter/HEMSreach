@@ -91,11 +91,11 @@ with st.sidebar:
 
 ###########################################################################################
 
-BASE / AIRPORT EXPORT to WINDALOFT
+# BASE / AIRPORT EXPORT to WINDALOFT
 
-WINDALOFT to E6B Calculate reachable
+# WINDALOFT to E6B Calculate reachable
 
-E6B EXPORT Reachable to 
+# E6B EXPORT Reachable to 
 
 
 
