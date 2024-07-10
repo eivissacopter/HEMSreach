@@ -31,8 +31,3 @@ def create_sidebar(helicopter_bases, airports):
         )
 
     return selected_location, total_fuel_kg, cruise_altitude_ft
-
-    # Sidebar for layer toggles
-    with st.sidebar:
-        st.markdown("### Select Layers")
-        geojson_selected = st.checkbox('MRVA Layer')
