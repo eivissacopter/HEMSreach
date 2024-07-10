@@ -1,4 +1,6 @@
 import streamlit as st
+from wtaloft import get_wind_at_altitude, find_closest_airport_with_forecast, extract_icao_codes, fetch_directory_listing
+import pandas as pd
 
 def create_sidebar(helicopter_bases, airports):
     with st.sidebar:
@@ -29,5 +31,20 @@ def create_sidebar(helicopter_bases, airports):
             min_value=3000, max_value=10000, value=5000, step=1000,
             format="%d ft"
         )
+
+        # Fetch wind data and closest airport
+        base_url = "https://data.dwd.de/aviation/ATM/AirportWxForecast"
+        directory_listing = fetch_directory_listing(base_url)
+        if directory_listing:
+            available_icao_codes = set(extract_icao_codes(directory_listing))
+            closest_airport = find_closest_airport_with_forecast(selected_location['lat'], selected_location['lon'], available_icao_codes)
+            if closest_airport:
+                wind_data = get_wind_at_altitude(selected_location)
+                if 'error' not in wind_data:
+                    st.markdown(f"### Closest Airport for Wind Data: {closest_airport['name']} ({closest_airport['icao']})")
+                    st.markdown(f"**ICAO Code:** {closest_airport['icao']}")
+                    st.markdown(f"**Wind Direction:** {wind_data['wind_direction']}°")
+                    st.markdown(f"**Wind Speed:** {wind_data['wind_speed']} knots")
+                    st.markdown(f"**Freezing Level:** {wind_data['freezing_level']} ft")
 
     return selected_location, total_fuel_kg, cruise_altitude_ft
