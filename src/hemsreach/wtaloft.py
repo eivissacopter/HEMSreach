@@ -89,4 +89,52 @@ def get_wind_at_altitude(location):
     directory_listing = fetch_directory_listing(base_url)
     
     if directory_listing:
-        available_icao_codes = set(extract_icao
+        available_icao_codes = set(extract_icao_codes(directory_listing))
+        closest_airport = find_closest_airport_with_forecast(location['lat'], location['lon'], available_icao_codes)
+        
+        if closest_airport:
+            file_content = find_latest_file(base_url, closest_airport['icao'])
+            
+            if file_content:
+                try:
+                    df = decode_forecast(file_content, closest_airport['icao'])
+                    df = parse_forecast(df)
+
+                    df.columns = [f"{closest_airport['icao'].upper()}{i:02d}" for i in range(len(df.columns))]
+                    relevant_rows = ['UTC', '5000FT', 'FZLVL']
+                    df_relevant = df[df.iloc[:, 0].isin(relevant_rows)]
+
+                    if df_relevant.empty:
+                        return {"error": "Relevant rows (UTC, 5000FT, FZLVL) not found in dataframe."}
+                    else:
+                        df_converted = pd.DataFrame()
+
+                        if 'UTC' in df_relevant.iloc[:, 0].values:
+                            df_converted['UTC'] = pd.to_numeric(df_relevant.loc[df_relevant.iloc[:, 0] == 'UTC'].iloc[0, 1:], errors='coerce').dropna().apply(lambda x: f"{int(x):02d}:00")
+
+                        if '5000FT' in df_relevant.iloc[:, 0].values:
+                            df_5000FT = df_relevant.loc[df_relevant.iloc[:, 0] == '5000FT'].iloc[0, 1:]
+                            df_converted['WD@5000FT'] = df_5000FT.apply(lambda x: x.split(' ')[0].split('/')[0] if '/' in x else None)
+                            df_converted['WS@5000FT'] = df_5000FT.apply(lambda x: x.split(' ')[0].split('/')[1] if '/' in x else None)
+
+                        if 'FZLVL' in df_relevant.iloc[:, 0].values:
+                            df_converted['FZLVL'] = df_relevant.loc[df_relevant.iloc[:, 0] == 'FZLVL'].iloc[0, 1:].dropna()
+
+                        avg_wd_5000ft = df_converted['WD@5000FT'].astype(float).mean()
+                        avg_ws_5000ft = df_converted['WS@5000FT'].astype(float).mean()
+                        lowest_fzlv = df_converted['FZLVL'].astype(float).min()
+                        
+                        return {
+                            'wind_direction': avg_wd_5000ft,
+                            'wind_speed': avg_ws_5000ft,
+                            'freezing_level': lowest_fzlv
+                        }
+
+                except (UnicodeDecodeError, ValueError, KeyError, IndexError) as e:
+                    return {"error": f"Failed to decode or process the forecast data for {closest_airport['name']} ({closest_airport['icao']}): {e}"}
+            else:
+                return {"error": f"No forecast file found for airport: {closest_airport['name']} ({closest_airport['icao']})."}
+        else:
+            return {"error": "No closest airport found with available forecast data."}
+    else:
+        return {"error": "Failed to fetch the directory listing."}
