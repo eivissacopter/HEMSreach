@@ -33,4 +33,13 @@ def create_sidebar(helicopter_bases, airports):
         )
 
         # Fetch wind data and closest airport
-       
+        wind_data = get_wind_at_altitude(selected_location)
+        if 'error' not in wind_data:
+            closest_airport = wind_data['closest_airport']
+            st.markdown(f"### Closest Airport for Wind Data: {closest_airport['name']} ({closest_airport['icao']})")
+            st.markdown(f"**ICAO Code:** {closest_airport['icao']}")
+            st.markdown(f"**Wind Direction:** {wind_data['wind_direction']}°")
+            st.markdown(f"**Wind Speed:** {wind_data['wind_speed']} knots")
+            st.markdown(f"**Freezing Level:** {wind_data['freezing_level']} ft")
+
+    return selected_location, total_fuel_kg, cruise_altitude_ft
