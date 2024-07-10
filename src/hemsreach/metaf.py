@@ -2,7 +2,121 @@ import streamlit as st
 import datetime
 import re
 
+###########################################################################################
+
 AVWX_API_KEY = '6za8qC9A_ccwpCc_lus3atiuA7f3c4mwQKMGzW1RVvY'
+
+data_server = st.secrets["data_server"]
+
+###########################################################################################
+
+# Function to fetch METAR and TAF data from AVWX
+def fetch_metar_taf_data_avwx(icao, api_key):
+    headers = {"Authorization": f"Bearer {api_key}"}
+    metar_url = f"https://avwx.rest/api/metar/{icao}?options=summary"
+    taf_url = f"https://avwx.rest/api/taf/{icao}?options=summary"
+
+    try:
+        response_metar = requests.get(metar_url, headers=headers)
+        response_metar.raise_for_status()
+        metar_data = response_metar.json()
+    except requests.exceptions.RequestException as e:
+        metar_data = f"Error fetching METAR data: {e}"
+
+    try:
+        response_taf = requests.get(taf_url, headers=headers)
+        response_taf.raise_for_status()
+        taf_data = response_taf.json()
+    except requests.exceptions.RequestException as e:
+        taf_data = f"Error fetching TAF data: {e}"
+
+    return metar_data, taf_data
+
+###########################################################################################
+
+# Function to fetch METAR and TAF data from DWD server with AVWX fallback
+def fetch_metar_taf_data(icao, api_key):
+    metar_base_url = f"https://{data_server['server']}/aviation/OPMET/METAR/DE"
+    taf_base_url = f"https://{data_server['server']}/aviation/OPMET/TAF/DE"
+
+    metar_file_content = find_latest_file(metar_base_url, icao)
+    taf_file_content = find_latest_file(taf_base_url, icao)
+
+    metar_data = parse_metar_data(metar_file_content) if metar_file_content else None
+    taf_data = parse_taf_data(taf_file_content) if taf_file_content else None
+
+    if not metar_data or not taf_data:
+        avwx_metar, avwx_taf = fetch_metar_taf_data_avwx(icao, api_key)
+        if not metar_data and isinstance(avwx_metar, dict):
+            metar_data = avwx_metar.get('raw', 'No METAR data available')
+        if not taf_data and isinstance(avwx_taf, dict):
+            taf_data = avwx_taf.get('raw', 'No TAF data available')
+
+    return metar_data, taf_data
+
+# Function to fetch directory listing
+def fetch_directory_listing(base_url):
+    try:
+        response = requests.get(base_url, auth=(data_server["user"], data_server["password"]))
+        if response.status_code == 200:
+            return response.text
+        else:
+            st.warning(f"Failed to fetch directory listing from URL: {base_url} - Status code: {response.status_code}")
+            return None
+    except Exception as e:
+        st.error(f"Error fetching directory listing from URL: {base_url} - Error: {e}")
+        return None
+
+# Function to fetch file content via HTTPS
+def fetch_file_content(url):
+    try:
+        response = requests.get(url, auth=(data_server["user"], data_server["password"]))
+        if response.status_code == 200:
+            return response.content
+        else:
+            st.warning(f"Failed to fetch data from URL: {url} - Status code: {response.status_code}")
+            return None
+    except Exception as e:
+        st.error(f"Error fetching data from URL: {url} - Error: {e}")
+        return None
+
+# Function to parse the METAR data content
+def parse_metar_data(file_content):
+    try:
+        content = file_content.decode('utf-8').strip()
+        metar_message = content.split('METAR')[1].split('=')[0].strip()
+        return metar_message
+    except Exception as e:
+        st.error(f"Error parsing METAR data: {e}")
+        return None
+
+# Function to parse the TAF data content
+def parse_taf_data(file_content):
+    try:
+        content = file_content.decode('utf-8').strip()
+        taf_message = content.split('TAF')[1].split('=')[0].strip()
+        return taf_message
+    except Exception as e:
+        st.error(f"Error parsing TAF data: {e}")
+        return None
+
+# Function to find the latest available file by scanning the directory
+def find_latest_file(base_url, airport_code):
+    directory_listing = fetch_directory_listing(base_url)
+    if directory_listing:
+        soup = BeautifulSoup(directory_listing, 'html.parser')
+        files = [a['href'] for a in soup.find_all('a', href=True) if f"_{airport_code}_" in a['href']]
+        if files:
+            latest_file = sorted(files, reverse=True)[0]
+            url = f"{base_url}/{latest_file}"
+            file_content = fetch_file_content(url)
+            return file_content
+    return None
+
+
+
+
+###########################################################################################
 
 def convert_qnh(qnh):
     """Convert QNH from inches of mercury (A) to hectopascals (Q)."""
