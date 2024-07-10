@@ -44,6 +44,8 @@ else:
     ).add_to(m)
 
     reachable_airports_data = []
+    airport_locations = []
+
     for airport, distance, bearing, ground_speed_kt, time_to_airport_hours in reachable_airports:
         metar_raw = "METAR data here"
         taf_raw = "TAF data here"
@@ -67,6 +69,14 @@ else:
             "lat": airport['lat'],
             "lon": airport['lon']
         })
+
+        airport_locations.append((airport['lat'], airport['lon']))
+
+    # Fit the map to the bounds of the reachable airports
+    if airport_locations:
+        bounds = [[min([loc[0] for loc in airport_locations]), min([loc[1] for loc in airport_locations])],
+                  [max([loc[0] for loc in airport_locations]), max([loc[1] for loc in airport_locations])]]
+        m.fit_bounds(bounds)
 
     folium.LayerControl().add_to(m)
 
