@@ -32,13 +32,13 @@ def create_sidebar(helicopter_bases, airports):
         )
 
         # Time slider for selecting forecast time window
-        selected_time = st.slider("Select time window (hours)", min_value=0, max_value=6, value=1)
+        selected_time = st.slider("Select time window (hours)", min_value=1, max_value=6, value=1)
 
         # Fetch wind data and closest airport
         wind_data = get_wind_at_altitude(selected_location, selected_time)
         if 'error' not in wind_data:
             closest_airport = wind_data['closest_airport']
-            st.markdown(f"### Closest Airport for Wind Data: {closest_airport['name']} ({closest_airport['icao']})")
+            st.markdown(f"### Closest Airport: {closest_airport['name']} ({closest_airport['icao']})")
             st.markdown(f"**ICAO Code:** {closest_airport['icao']}")
             st.markdown(f"**Wind Direction:** {wind_data['wind_direction']}°")
             st.markdown(f"**Wind Speed:** {wind_data['wind_speed']} knots")
