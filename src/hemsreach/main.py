@@ -1,9 +1,4 @@
 import streamlit as st
-from streamlit_autorefresh import st_autorefresh
-import folium
-from streamlit_folium import folium_static
-import pandas as pd
-
 from config import set_page_config, apply_custom_css
 from sidebar import create_sidebar
 from wtaloft import get_wind_at_altitude
@@ -19,10 +14,10 @@ apply_custom_css()
 st_autorefresh(interval=1800 * 1000, key="data_refresh")
 
 # Create sidebar and get user inputs
-selected_location, total_fuel_kg, cruise_altitude_ft = create_sidebar(helicopter_bases, airports)
+selected_location, total_fuel_kg, cruise_altitude_ft, selected_time = create_sidebar(helicopter_bases, airports)
 
 # Fetch wind data at altitude
-wind_data = get_wind_at_altitude(selected_location)
+wind_data = get_wind_at_altitude(selected_location, selected_time)
 if 'error' in wind_data:
     st.error(f"Error fetching wind data: {wind_data['error']}")
 else:
