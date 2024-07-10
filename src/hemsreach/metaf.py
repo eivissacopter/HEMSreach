@@ -2,6 +2,8 @@ import streamlit as st
 import datetime
 import re
 
+AVWX_API_KEY = '6za8qC9A_ccwpCc_lus3atiuA7f3c4mwQKMGzW1RVvY'
+
 def convert_qnh(qnh):
     """Convert QNH from inches of mercury (A) to hectopascals (Q)."""
     if qnh.startswith('A'):
