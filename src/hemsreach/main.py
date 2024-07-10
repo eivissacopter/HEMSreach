@@ -1,10 +1,14 @@
 import streamlit as st
+from streamlit_autorefresh import st_autorefresh
 from config import set_page_config, apply_custom_css
 from sidebar import create_sidebar
 from wtaloft import get_wind_at_altitude
 from e6b import get_reachable_airports
 from performance import H145D2_PERFORMANCE
 from database import helicopter_bases, airports
+import folium
+from streamlit_folium import folium_static
+import pandas as pd
 
 # Set page configuration and custom CSS
 set_page_config()
