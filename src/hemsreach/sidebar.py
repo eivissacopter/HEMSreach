@@ -43,4 +43,13 @@ def create_sidebar(helicopter_bases, airports):
             st.markdown(f"**ICAO Code:** {closest_airport['icao']}")
             st.markdown(f"**Wind Direction:** {wind_data['wind_direction']}°")
             st.markdown(f"**Wind Speed:** {wind_data['wind_speed']} knots")
-            st.markdown(f"**Freezing Level:** {wind_data['free
+            st.markdown(f"**Freezing Level:** {wind_data['freezing_level']} ft")
+
+        cruise_fuel_burn = 250  # Adjust this value as needed
+
+        with st.expander("Fuel Policy"):
+            fuel_data, trip_fuel_kg = calculate_fuel_policy(total_fuel_kg, cruise_fuel_burn, alternate_required, alternate_fuel)
+            df_fuel = pd.DataFrame(fuel_data)
+            st.table(df_fuel)
+
+    return selected_location, total_fuel_kg, cruise_altitude_ft, selected_time, trip_fuel_kg
