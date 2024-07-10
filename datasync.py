@@ -62,15 +62,6 @@ if st.button("Fetch and Upload Latest Files"):
         except Exception as e:
             st.write(f"Error processing directory {directory}: {e}")
 
-# Secrets.toml
-# ```
-# [server]
-# server = "data.dwd.de"
-# port = "2424"
-# username = "wv22"
-# password = "pGCabj;Iqv!wv7fbzjSVy"
-# ```
-
 # Function to test if Nginx server is configured correctly
 def test_nginx_server():
     test_file_name = "test_file.txt"
