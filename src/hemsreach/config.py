@@ -1,7 +1,7 @@
 import streamlit as st
 
 def set_page_config():
-    st.set_page_config(page_title="IFR Rescue Radius", page_icon=":helicopter:", layout="wide")
+    st.set_page_config(page_title="HEMSreach", page_icon=":helicopter:", layout="wide")
 
 def apply_custom_css():
     st.markdown(
