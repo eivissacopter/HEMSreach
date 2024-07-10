@@ -13,6 +13,7 @@ import os
 import geopandas as gpd
 import json
 from bs4 import BeautifulSoup
+import xml.etree.ElementTree as ET
 
 ###########################################################################################
 
@@ -126,50 +127,6 @@ def fetch_geojson_layer(url):
     except Exception as e:
         st.error(f"Error fetching GeoJSON layer from URL: {url} - Error: {e}")
         return None
-
-# Function to fetch the latest XML file from a given URL
-def fetch_latest_xml_file(base_url):
-    directory_listing = fetch_directory_listing(base_url)
-    if directory_listing:
-        soup = BeautifulSoup(directory_listing, 'html.parser')
-        files = [a['href'] for a in soup.find_all('a', href=True) if a['href'].endswith('.xml')]
-        if files:
-            latest_file = sorted(files, reverse=True)[0]
-            url = f"{base_url}/{latest_file}"
-            file_content = fetch_file_content(url)
-            return file_content
-    return None
-
-# Function to parse the XML data content (example for Lightning data)
-def parse_lightning_data(file_content):
-    try:
-        content = file_content.decode('utf-8')
-        # Parse the XML content here as needed
-        return content
-    except Exception as e:
-        st.error(f"Error parsing XML data: {e}")
-        return None
-
-# Function to parse the XML data content (example for Konrad 3D data)
-def parse_konrad3d_data(file_content):
-    try:
-        content = file_content.decode('utf-8')
-        # Parse the XML content here as needed
-        return content
-    except Exception as e:
-        st.error(f"Error parsing XML data: {e}")
-        return None
-
-# Function to parse the XML data content (example for NCM-A data)
-def parse_ncma_data(file_content):
-    try:
-        content = file_content.decode('utf-8')
-        # Parse the XML content here as needed
-        return content
-    except Exception as e:
-        st.error(f"Error parsing XML data: {e}")
-        return None
-
 
 ###########################################################################################
 
@@ -367,9 +324,6 @@ with st.sidebar:
 with st.sidebar:
     st.markdown("### Select Layers")
     geojson_selected = st.checkbox('MRVA Layer')
-    lightning_selected = st.checkbox('Lightning Data Layer')
-    konrad3d_selected = st.checkbox('Konrad 3D Layer')
-    ncma_selected = st.checkbox('NCM-A Layer')
 
 ###########################################################################################
 
@@ -450,46 +404,6 @@ if geojson_selected:
             name="MRVA Layer",
             control=True
         ).add_to(m)
-
-# Add Lightning Data layer if selected
-if lightning_selected:
-    lightning_base_url = "https://data.dwd.de/aviation/Lightning_data/"
-    lightning_xml_content = fetch_latest_xml_file(lightning_base_url)
-    if lightning_xml_content:
-        lightning_data = parse_lightning_data(lightning_xml_content)
-        # Add the lightning data to the map (example, customize as needed)
-        folium.GeoJson(
-            lightning_data,
-            name="Lightning Data Layer",
-            control=True
-        ).add_to(m)
-
-# Add Konrad 3D layer if selected
-if konrad3d_selected:
-    konrad3d_base_url = "https://data.dwd.de/radar/konrad3d/"
-    konrad3d_xml_content = fetch_latest_xml_file(konrad3d_base_url)
-    if konrad3d_xml_content:
-        konrad3d_data = parse_konrad3d_data(konrad3d_xml_content)
-        # Add the Konrad 3D data to the map (example, customize as needed)
-        folium.GeoJson(
-            konrad3d_data,
-            name="Konrad 3D Layer",
-            control=True
-        ).add_to(m)
-
-# Add NCM-A layer if selected
-if ncma_selected:
-    ncma_base_url = "https://data.dwd.de/aviation/Special_application/NCM-A/"
-    ncma_xml_content = fetch_latest_xml_file(ncma_base_url)
-    if ncma_xml_content:
-        ncma_data = parse_ncma_data(ncma_xml_content)
-        # Add the NCM-A data to the map (example, customize as needed)
-        folium.GeoJson(
-            ncma_data,
-            name="NCM-A Layer",
-            control=True
-        ).add_to(m)
-
 
 # Add reachable airports to the map
 reachable_airports_data = []
