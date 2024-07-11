@@ -2,7 +2,6 @@ import requests
 from bs4 import BeautifulSoup
 import xml.etree.ElementTree as ET
 import folium
-import os
 import geojson
 import streamlit as st
 
@@ -26,7 +25,7 @@ def get_latest_xml_url(base_url, auth):
         return None
     
     latest_file = max(xml_files, key=lambda x: x.split('/')[-1])
-    return os.path.join(base_url, latest_file)
+    return base_url + latest_file
 
 def fetch_latest_xml(xml_url, auth):
     try:
@@ -61,7 +60,10 @@ def xml_to_geojson(xml_data):
     return feature_collection
 
 def add_geojson_to_map(m, geojson_data):
-    folium.GeoJson(geojson_data, name="XML Layer").add_to(m)
+    if geojson_data and geojson_data['features']:
+        folium.GeoJson(geojson_data, name="XML Layer").add_to(m)
+    else:
+        st.warning("No valid GeoJSON data to add to the map.")
     return m
 
 def add_layers_to_map(m, show_xml_layer, show_terrain_layer, auth):
