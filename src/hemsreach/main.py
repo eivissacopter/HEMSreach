@@ -1,6 +1,6 @@
 import streamlit as st
 from streamlit_autorefresh import st_autorefresh
-from config import set_page_config, apply_custom_css
+from config import set_page_config, apply_custom_css, set_header
 from sidebar import create_sidebar
 from wtaloft import get_wind_at_altitude
 from e6b import get_reachable_airports
