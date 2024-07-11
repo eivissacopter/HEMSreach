@@ -57,7 +57,9 @@ def xml_to_geojson(xml_data):
         features.append(feature)
 
     feature_collection = geojson.FeatureCollection(features)
+    print(geojson.dumps(feature_collection, indent=2))  # Debugging print statement
     return feature_collection
+
 
 def add_geojson_to_map(m, geojson_data):
     if geojson_data and geojson_data['features']:
