@@ -19,11 +19,19 @@ auth = (data_server["user"], data_server["password"])
 set_page_config()
 apply_custom_css()
 
+# Add header
+st.title(":helicopter: HEMSreach :helicopter:")
+
 # Auto-refresh every 30 minutes (1800 seconds)
 st_autorefresh(interval=1800 * 1000, key="data_refresh")
 
 # Create sidebar and get user inputs
 selected_location, total_fuel_kg, cruise_altitude_ft, selected_time, trip_fuel_kg, show_xml_layer, show_terrain_layer = create_sidebar(helicopter_bases, airports)
+
+# Set default base to "Christoph 77"
+default_base = next(base for base in helicopter_bases if base['name'] == 'Christoph 77')
+if not selected_location:
+    selected_location = default_base
 
 # Fetch wind data at altitude
 wind_data = get_wind_at_altitude(selected_location, selected_time)
