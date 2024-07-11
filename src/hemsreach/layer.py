@@ -51,9 +51,9 @@ def xml_to_geojson(xml_data):
         pos_list = polygon.find('.//gml:posList', ns).text.strip().split()
         coords = [(float(pos_list[i]), float(pos_list[i+1])) for i in range(0, len(pos_list), 2)]
         
-        # Determine the status from the parent elements or attributes
-        # Adjust the following line to match your actual XML structure
-        status = polygon.get('status', 'default')
+        # Determine the status from the parent elements or attributes (example implementation)
+        status_element = polygon.find('.//dwd:status', ns)
+        status = status_element.text if status_element is not None else "default"
 
         feature = geojson.Feature(
             geometry=geojson.Polygon([coords]),
