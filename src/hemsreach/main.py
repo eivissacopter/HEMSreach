@@ -9,6 +9,7 @@ from database import helicopter_bases, airports
 import folium
 from streamlit_folium import folium_static
 import pandas as pd
+from layer import get_latest_xml_url, fetch_latest_xml, extract_polygons_from_xml, add_polygons_to_map
 
 # Set page configuration and custom CSS
 set_page_config()
@@ -52,6 +53,12 @@ else:
         overlay=False,
         control=True
     ).add_to(m)
+
+    # Fetch and add polygons from the latest XML
+    xml_url = get_latest_xml_url("https://data.dwd.de/aviation/Special_application/NCM-A/")
+    xml_data = fetch_latest_xml(xml_url)
+    polygons = extract_polygons_from_xml(xml_data)
+    add_polygons_to_map(m, polygons)
 
     reachable_airports_data = []
     airport_locations = []
