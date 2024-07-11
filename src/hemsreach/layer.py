@@ -72,9 +72,6 @@ def xml_to_geojson(xml_data, layer_type):
 
     feature_collection = geojson.FeatureCollection(features)
     
-    st.write(f"GeoJSON Data for {layer_type}:")
-    st.json(feature_collection)
-    
     return feature_collection
 
 def style_function(feature):
@@ -104,9 +101,13 @@ def add_geojson_to_map(m, geojson_data):
             
             if geom['type'] == 'Point' and props.get('status') == 'lightning':
                 lat, lon = geom['coordinates'][1], geom['coordinates'][0]
-                folium.Marker(
+                folium.CircleMarker(
                     location=[lat, lon],
-                    icon=folium.Icon(icon='bolt', prefix='fa', color='white')  # Changing icon to lightning
+                    radius=5,
+                    color='orange',
+                    fill=True,
+                    fill_color='orange',
+                    fill_opacity=0.7
                 ).add_to(m)
             else:
                 folium.GeoJson(
