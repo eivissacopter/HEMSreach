@@ -26,7 +26,7 @@ set_header()
 st_autorefresh(interval=1800 * 1000, key="data_refresh")
 
 # Create sidebar and get user inputs
-selected_location, total_fuel_kg, cruise_altitude_ft, selected_time, trip_fuel_kg, show_xml_layer, show_terrain_layer = create_sidebar(helicopter_bases, airports)
+selected_location, total_fuel_kg, cruise_altitude_ft, selected_time, show_xml_layer, show_terrain_layer = create_sidebar(helicopter_bases, airports)
 
 # Add toggle switches for new layers
 show_lightning_layer = st.sidebar.checkbox("Show Lightning Layer")
@@ -43,7 +43,7 @@ if 'error' in wind_data:
 else:
     # Calculate reachable airports
     reachable_airports = get_reachable_airports(
-        selected_location, wind_data, trip_fuel_kg, cruise_altitude_ft, H145D2_PERFORMANCE
+        selected_location, wind_data, total_fuel_kg, cruise_altitude_ft, H145D2_PERFORMANCE
     )
 
     # Initialize map centered on the selected location
