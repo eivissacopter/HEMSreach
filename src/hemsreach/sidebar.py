@@ -26,7 +26,7 @@ def create_sidebar(helicopter_bases, airports):
             format="%d kg"
         )
 
-        selected_time = st.slider("Select time window (hours)", min_value=0, max_value=6, value=1)
+        selected_time = st.slider("Select time window (hours)", min_value=1, max_value=6, value=1)
 
         show_terrain_layer = st.checkbox("Terrain")
         show_nowcastmix_layer = st.checkbox("NowCastMix")
