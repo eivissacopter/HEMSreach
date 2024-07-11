@@ -100,11 +100,21 @@ def style_function(feature):
 
 def add_geojson_to_map(m, geojson_data):
     if geojson_data and geojson_data['features']:
-        folium.GeoJson(
-            geojson_data,
-            name="XML Layer",
-            style_function=style_function
-        ).add_to(m)
+        for feature in geojson_data['features']:
+            geom = feature['geometry']
+            props = feature['properties']
+            
+            if geom['type'] == 'Point' and props.get('status') == 'lightning':
+                lat, lon = geom['coordinates'][1], geom['coordinates'][0]
+                folium.Marker(
+                    location=[lat, lon],
+                    icon=folium.Icon(icon='flash', prefix='fa', color='white')
+                ).add_to(m)
+            else:
+                folium.GeoJson(
+                    feature,
+                    style_function=style_function
+                ).add_to(m)
     else:
         st.warning("No valid GeoJSON data to add to the map.")
     return m
