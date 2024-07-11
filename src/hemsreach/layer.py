@@ -40,9 +40,8 @@ def fetch_latest_xml(xml_url, auth):
 
 def xml_to_geojson(xml_data, layer_type):
     ns = {
-        'dwd': 'http://www.dwd.de/wv2/exchange-message/1.0',
+        'dwd': 'http://www.flugwetter.de/blitzdaten',
         'gml': 'http://www.opengis.net/gml/3.2',
-        'blitz': 'http://www.flugwetter.de/blitzdaten'
     }
     
     root = ET.fromstring(xml_data)
