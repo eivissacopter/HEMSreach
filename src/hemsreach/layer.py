@@ -40,18 +40,17 @@ def fetch_latest_xml(xml_url, auth):
 
 def xml_to_geojson(xml_data, layer_type):
     ns = {
-        'dwd': 'http://www.dwd.de/wv2/exchange-message/1.0',
+        'dwd': 'http://www.flugwetter.de/blitzdaten',
         'gml': 'http://www.opengis.net/gml/3.2',
-        'blitz': 'http://www.flugwetter.de/blitzdaten'
     }
     
     root = ET.fromstring(xml_data)
     features = []
 
-    if layer_type == 'NowCastMix':
+    if layer_type == 'Show XML Layer':
         for polygon in root.findall('.//gml:Polygon', ns):
             pos_list = polygon.find('.//gml:posList', ns).text.strip().split()
-            coords = [(float(pos_list[i+1]), float(pos_list[i])) for i in range(0, len(pos_list), 2)]
+            coords = [(float(pos_list[i]), float(pos_list[i+1])) for i in range(0, len(pos_list), 2)]
             
             status_element = polygon.find('.//dwd:status', ns)
             status = status_element.text if status_element is not None else "default"
@@ -73,42 +72,53 @@ def xml_to_geojson(xml_data, layer_type):
 
     feature_collection = geojson.FeatureCollection(features)
     
-    st.write(f"GeoJSON Data for {layer_type}:")
-    st.json(feature_collection)
-    
     return feature_collection
 
 def style_function(feature):
     status = feature['properties']['status']
     color = {
-        "default": "#0000FF",  # Blue as default
-        "Konvektionsstatus 1 (leicht)": "#FFFF00",        # Yellow for status 1
-        "Konvektionsstatus 2 (moderat/mittel)": "#FFA500",        # Orange for status 2
-        "Konvektionsstatus 3 (stark)": "#FF0000",        # Red for status 3
-        "Konvektionsstatus 4 (extrem)": "#800080",        # Purple for status 4
+        "default": "#00000000",  # Transparent for default
+        "1": "#FFFF00",        # Yellow for status 1
+        "2": "#FFA500",        # Orange for status 2
+        "3": "#FF0000",        # Red for status 3
+        "4": "#800080",        # Purple for status 4
         "reflectivity": "#0000FF",  # Blue for reflectivity
-        "lightning": "#FFA500"  # Orange for lightning
-    }.get(status, "#0000FF")  # Default to blue if not specified
+        "lightning": "#FFFFFF"  # White for lightning
+    }.get(status, "#00000000")  # Default to transparent if not specified
     
     return {
         "fillColor": color,
         "color": color,
         "weight": 1,
-        "fillOpacity": 0.5
+        "fillOpacity": 0.5 if color != "#00000000" else 0
     }
 
 def add_geojson_to_map(m, geojson_data):
     if geojson_data and geojson_data['features']:
-        folium.GeoJson(
-            geojson_data,
-            name="XML Layer",
-            style_function=style_function
-        ).add_to(m)
+        for feature in geojson_data['features']:
+            geom = feature['geometry']
+            props = feature['properties']
+            
+            if geom['type'] == 'Point' and props.get('status') == 'lightning':
+                lat, lon = geom['coordinates'][1], geom['coordinates'][0]
+                folium.CircleMarker(
+                    location=[lat, lon],
+                    radius=5,
+                    color='orange',
+                    fill=True,
+                    fill_color='orange',
+                    fill_opacity=0.7
+                ).add_to(m)
+            else:
+                folium.GeoJson(
+                    feature,
+                    style_function=style_function
+                ).add_to(m)
     else:
         st.warning("No valid GeoJSON data to add to the map.")
     return m
 
-def add_layers_to_map(m, show_nowcastmix_layer, show_lightning_layer, show_terrain_layer, auth):
+def add_layers_to_map(m, show_xml_layer, show_lightning_layer, show_terrain_layer, auth):
     if show_terrain_layer:
         tile_url = "https://nginx.eivissacopter.com/ofma/original/merged/512/latest/{z}/{x}/{y}.png"
         folium.TileLayer(
@@ -119,13 +129,13 @@ def add_layers_to_map(m, show_nowcastmix_layer, show_lightning_layer, show_terra
             control=True
         ).add_to(m)
     
-    if show_nowcastmix_layer:
+    if show_xml_layer:
         base_url = "https://data.dwd.de/aviation/Special_application/NCM-A/"
         xml_url = get_latest_xml_url(base_url, auth)
         if xml_url:
             xml_data = fetch_latest_xml(xml_url, auth)
             if xml_data:
-                geojson_data = xml_to_geojson(xml_data, 'NowCastMix')
+                geojson_data = xml_to_geojson(xml_data, 'Show XML Layer')
                 add_geojson_to_map(m, geojson_data)
 
     if show_lightning_layer:
