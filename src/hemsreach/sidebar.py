@@ -32,6 +32,6 @@ def create_sidebar(helicopter_bases, airports):
 
         show_terrain_layer = st.checkbox("Terrain")
         show_xml_layer = st.checkbox("NowCastMix")
-
+        show_lightning_layer = st.sidebar.checkbox("Lightning")
 
     return selected_location, total_fuel_kg, cruise_altitude_ft, selected_time, show_xml_layer, show_terrain_layer
