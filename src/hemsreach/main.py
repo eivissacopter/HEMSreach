@@ -9,7 +9,7 @@ from database import helicopter_bases, airports
 import folium
 from streamlit_folium import folium_static
 import pandas as pd
-from layer import get_latest_xml_url, fetch_latest_xml, extract_polygons_from_xml, add_polygons_to_map
+from layer import add_layers_to_map
 
 # Set page configuration and custom CSS
 set_page_config()
@@ -19,7 +19,7 @@ apply_custom_css()
 st_autorefresh(interval=1800 * 1000, key="data_refresh")
 
 # Create sidebar and get user inputs
-selected_location, total_fuel_kg, cruise_altitude_ft, selected_time, trip_fuel_kg = create_sidebar(helicopter_bases, airports)
+selected_location, total_fuel_kg, cruise_altitude_ft, selected_time, trip_fuel_kg, show_xml_layer, show_terrain_layer = create_sidebar(helicopter_bases, airports)
 
 # Fetch wind data at altitude
 wind_data = get_wind_at_altitude(selected_location, selected_time)
@@ -44,21 +44,8 @@ else:
         control=True
     ).add_to(m)
     
-    # Add custom tile layer
-    tile_url = "https://nginx.eivissacopter.com/ofma/original/merged/512/latest/{z}/{x}/{y}.png"
-    folium.TileLayer(
-        tiles=tile_url,
-        attr="Custom Tiles",
-        name="Openflightmaps Terrain",
-        overlay=False,
-        control=True
-    ).add_to(m)
-
-    # Fetch and add polygons from the latest XML
-    xml_url = get_latest_xml_url("https://data.dwd.de/aviation/Special_application/NCM-A/")
-    xml_data = fetch_latest_xml(xml_url)
-    polygons = extract_polygons_from_xml(xml_data)
-    add_polygons_to_map(m, polygons)
+    # Add optional layers
+    add_layers_to_map(m, show_xml_layer, show_terrain_layer)
 
     reachable_airports_data = []
     airport_locations = []
