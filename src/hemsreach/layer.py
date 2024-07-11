@@ -38,33 +38,44 @@ def fetch_latest_xml(xml_url, auth):
         st.error(f"An error occurred: {err}")
     return None
 
-def xml_to_geojson(xml_data):
+def xml_to_geojson(xml_data, layer_type):
     ns = {
         'dwd': 'http://www.dwd.de/wv2/exchange-message/1.0',
-        'gml': 'http://www.opengis.net/gml/3.2'
+        'gml': 'http://www.opengis.net/gml/3.2',
+        'blitz': 'http://www.flugwetter.de/blitzdaten'
     }
     
     root = ET.fromstring(xml_data)
     features = []
 
-    for polygon in root.findall('.//gml:Polygon', ns):
-        pos_list = polygon.find('.//gml:posList', ns).text.strip().split()
-        coords = [(float(pos_list[i+1]), float(pos_list[i])) for i in range(0, len(pos_list), 2)]
-        
-        # Determine the status from the parent elements or attributes (example implementation)
-        # You need to adjust this according to your actual XML structure
-        status_element = polygon.find('.//gml:description', ns)
-        status = status_element.text if status_element is not None else "default"
+    if layer_type == 'NowCastMix':
+        for polygon in root.findall('.//gml:Polygon', ns):
+            pos_list = polygon.find('.//gml:posList', ns).text.strip().split()
+            coords = [(float(pos_list[i+1]), float(pos_list[i])) for i in range(0, len(pos_list), 2)]
+            
+            status_element = polygon.find('.//dwd:status', ns)
+            status = status_element.text if status_element is not None else "default"
 
-        feature = geojson.Feature(
-            geometry=geojson.Polygon([coords]),
-            properties={"status": status}
-        )
-        features.append(feature)
+            feature = geojson.Feature(
+                geometry=geojson.Polygon([coords]),
+                properties={"status": status}
+            )
+            features.append(feature)
+    elif layer_type == 'Lightning':
+        for lightning in root.findall('.//dwd:lightning', ns):
+            lat = float(lightning.find('.//dwd:lat', ns).text)
+            lon = float(lightning.find('.//dwd:lon', ns).text)
+            feature = geojson.Feature(
+                geometry=geojson.Point((lon, lat)),
+                properties={"status": "lightning"}
+            )
+            features.append(feature)
 
     feature_collection = geojson.FeatureCollection(features)
-    st.write("GeoJSON Data:")
+    
+    st.write(f"GeoJSON Data for {layer_type}:")
     st.json(feature_collection)
+    
     return feature_collection
 
 def style_function(feature):
@@ -75,7 +86,8 @@ def style_function(feature):
         "Konvektionsstatus 2 (moderat/mittel)": "#FFA500",        # Orange for status 2
         "Konvektionsstatus 3 (stark)": "#FF0000",        # Red for status 3
         "Konvektionsstatus 4 (extrem)": "#800080",        # Purple for status 4
-        "reflectivity": "#0000FF"  # Blue for reflectivity
+        "reflectivity": "#0000FF",  # Blue for reflectivity
+        "lightning": "#FFA500"  # Orange for lightning
     }.get(status, "#0000FF")  # Default to blue if not specified
     
     return {
@@ -89,7 +101,7 @@ def add_geojson_to_map(m, geojson_data):
     if geojson_data and geojson_data['features']:
         folium.GeoJson(
             geojson_data,
-            name="NowCastMix",
+            name="XML Layer",
             style_function=style_function
         ).add_to(m)
     else:
@@ -113,7 +125,7 @@ def add_layers_to_map(m, show_nowcastmix_layer, show_lightning_layer, show_terra
         if xml_url:
             xml_data = fetch_latest_xml(xml_url, auth)
             if xml_data:
-                geojson_data = xml_to_geojson(xml_data)
+                geojson_data = xml_to_geojson(xml_data, 'NowCastMix')
                 add_geojson_to_map(m, geojson_data)
 
     if show_lightning_layer:
@@ -122,7 +134,7 @@ def add_layers_to_map(m, show_nowcastmix_layer, show_lightning_layer, show_terra
         if xml_url:
             xml_data = fetch_latest_xml(xml_url, auth)
             if xml_data:
-                geojson_data = xml_to_geojson(xml_data)
+                geojson_data = xml_to_geojson(xml_data, 'Lightning')
                 add_geojson_to_map(m, geojson_data)
 
     return m
