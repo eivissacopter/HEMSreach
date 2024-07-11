@@ -10,6 +10,7 @@ import folium
 from streamlit_folium import folium_static
 import pandas as pd
 from layer import add_layers_to_map
+from fuelpolicy import calculate_fuel_policy
 
 # Fetch authentication credentials from secrets
 data_server = st.secrets["data_server"]
@@ -26,7 +27,10 @@ set_header()
 st_autorefresh(interval=1800 * 1000, key="data_refresh")
 
 # Create sidebar and get user inputs
-selected_location, total_fuel_kg, cruise_altitude_ft, selected_time, show_nowcastmix_layer, show_lightning_layer, show_terrain_layer = create_sidebar(helicopter_bases, airports)
+selected_location, total_fuel_kg, cruise_altitude_ft, selected_time, show_xml_layer, show_terrain_layer = create_sidebar(helicopter_bases, airports)
+
+# Add toggle switches for new layers
+show_lightning_layer = st.sidebar.checkbox("Show Lightning Layer")
 
 # Set default base to "Christoph 77"
 default_base = next((base for base in helicopter_bases if base['name'] == 'Christoph 77'), None)
@@ -38,9 +42,15 @@ wind_data = get_wind_at_altitude(selected_location, selected_time)
 if 'error' in wind_data:
     st.error(f"Error fetching wind data: {wind_data['error']}")
 else:
-    # Calculate reachable airports
+    # Calculate fuel policy and get trip fuel
+    cruise_fuel_burn = H145D2_PERFORMANCE['cruise']['fuel_burn_kgph']
+    alternate_required = False  # You can update this based on user input
+    alternate_fuel = 0  # You can update this based on user input
+    fuel_data, trip_fuel_kg = calculate_fuel_policy(total_fuel_kg, cruise_fuel_burn, alternate_required, alternate_fuel)
+
+    # Calculate reachable airports using trip fuel
     reachable_airports = get_reachable_airports(
-        selected_location, wind_data, total_fuel_kg, cruise_altitude_ft, H145D2_PERFORMANCE
+        selected_location, wind_data, trip_fuel_kg, cruise_altitude_ft, H145D2_PERFORMANCE
     )
 
     # Initialize map centered on the selected location
@@ -57,7 +67,7 @@ else:
     ).add_to(m)
     
     # Add optional layers
-    add_layers_to_map(m, show_nowcastmix_layer, show_lightning_layer, show_terrain_layer, auth)
+    add_layers_to_map(m, show_xml_layer, show_lightning_layer, show_terrain_layer, auth)
 
     reachable_airports_data = []
     airport_locations = []
