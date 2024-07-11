@@ -69,19 +69,19 @@ def xml_to_geojson(xml_data):
 def style_function(feature):
     status = feature['properties']['status']
     color = {
-        "default": "#0000FF",  # Blue as default
+        "default": "#00000000",  # Transparent for default
         "1": "#FFFF00",        # Yellow for status 1
         "2": "#FFA500",        # Orange for status 2
         "3": "#FF0000",        # Red for status 3
         "4": "#800080",        # Purple for status 4
         "reflectivity": "#0000FF"  # Blue for reflectivity
-    }.get(status, "#0000FF")  # Default to blue if not specified
+    }.get(status, "#00000000")  # Default to transparent if not specified
     
     return {
         "fillColor": color,
         "color": color,
         "weight": 1,
-        "fillOpacity": 0.5
+        "fillOpacity": 0.5 if color != "#00000000" else 0
     }
 
 def add_geojson_to_map(m, geojson_data):
