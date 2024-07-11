@@ -81,6 +81,10 @@ def xml_to_geojson(xml_data, layer_type):
             features.append(feature)
 
     feature_collection = geojson.FeatureCollection(features)
+    
+    st.write(f"GeoJSON Data for {layer_type}:")
+    st.json(feature_collection)
+    
     return feature_collection
 
 def style_function(feature):
