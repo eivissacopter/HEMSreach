@@ -14,6 +14,8 @@ def create_sidebar(helicopter_bases, airports):
             selected_airport_name = st.selectbox('Select Airport', airport_names)
             selected_location = next(airport for airport in airports if airport['name'] == selected_airport_name)
 
+        selected_base_elevation = selected_location['elevation_ft']
+
         st.markdown("")
         cruise_altitude_ft = st.slider(
             'Cruise Altitude',
@@ -26,10 +28,10 @@ def create_sidebar(helicopter_bases, airports):
             format="%d kg"
         )
 
-        selected_time = st.slider("Select time window (hours)", min_value=1, max_value=6, value=1)
+        selected_time = st.slider("Select time window (hours)", min_value=0, max_value=6, value=1)
 
         show_terrain_layer = st.checkbox("Terrain")
-        show_nowcastmix_layer = st.checkbox("NowCastMix")
+        show_xml_layer = st.checkbox("NowCastMix")
         show_lightning_layer = st.checkbox("Lightning")
 
-    return selected_location, total_fuel_kg, cruise_altitude_ft, selected_time, show_nowcastmix_layer, show_lightning_layer, show_terrain_layer
+    return selected_location, total_fuel_kg, cruise_altitude_ft, selected_time, show_xml_layer, show_terrain_layer, show_lightning_layer
