@@ -27,10 +27,7 @@ set_header()
 st_autorefresh(interval=1800 * 1000, key="data_refresh")
 
 # Create sidebar and get user inputs
-selected_location, total_fuel_kg, cruise_altitude_ft, selected_time, show_xml_layer, show_terrain_layer = create_sidebar(helicopter_bases, airports)
-
-# Add toggle switches for new layers
-show_lightning_layer = st.sidebar.checkbox("Show Lightning Layer")
+selected_location, total_fuel_kg, cruise_altitude_ft, selected_time, show_xml_layer, show_terrain_layer, show_lightning_layer = create_sidebar(helicopter_bases, airports)
 
 # Set default base to "Christoph 77"
 default_base = next((base for base in helicopter_bases if base['name'] == 'Christoph 77'), None)
