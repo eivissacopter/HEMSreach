@@ -4,24 +4,40 @@ import xml.etree.ElementTree as ET
 import folium
 import os
 import geojson
+import streamlit as st
 
-def get_latest_xml_url(base_url):
-    response = requests.get(base_url)
-    response.raise_for_status()
+def get_latest_xml_url(base_url, auth):
+    try:
+        response = requests.get(base_url, auth=auth)
+        response.raise_for_status()
+    except requests.exceptions.HTTPError as http_err:
+        st.error(f"HTTP error occurred: {http_err}")
+        return None
+    except Exception as err:
+        st.error(f"An error occurred: {err}")
+        return None
+    
     soup = BeautifulSoup(response.text, 'html.parser')
     
     # Find all links and identify the latest XML file
     xml_files = [a['href'] for a in soup.find_all('a') if a['href'].endswith('.xml')]
     if not xml_files:
-        raise ValueError("No XML files found in the directory.")
+        st.error("No XML files found in the directory.")
+        return None
     
     latest_file = max(xml_files, key=lambda x: x.split('/')[-1])
     return os.path.join(base_url, latest_file)
 
-def fetch_latest_xml(xml_url):
-    response = requests.get(xml_url)
-    response.raise_for_status()
-    return response.content
+def fetch_latest_xml(xml_url, auth):
+    try:
+        response = requests.get(xml_url, auth=auth)
+        response.raise_for_status()
+        return response.content
+    except requests.exceptions.HTTPError as http_err:
+        st.error(f"HTTP error occurred: {http_err}")
+    except Exception as err:
+        st.error(f"An error occurred: {err}")
+    return None
 
 def xml_to_geojson(xml_data):
     ns = {
@@ -48,7 +64,7 @@ def add_geojson_to_map(m, geojson_data):
     folium.GeoJson(geojson_data, name="XML Layer").add_to(m)
     return m
 
-def add_layers_to_map(m, show_xml_layer, show_terrain_layer):
+def add_layers_to_map(m, show_xml_layer, show_terrain_layer, auth):
     if show_terrain_layer:
         tile_url = "https://nginx.eivissacopter.com/ofma/original/merged/512/latest/{z}/{x}/{y}.png"
         folium.TileLayer(
@@ -60,9 +76,12 @@ def add_layers_to_map(m, show_xml_layer, show_terrain_layer):
         ).add_to(m)
     
     if show_xml_layer:
-        xml_url = get_latest_xml_url("https://data.dwd.de/aviation/Special_application/NCM-A/")
-        xml_data = fetch_latest_xml(xml_url)
-        geojson_data = xml_to_geojson(xml_data)
-        add_geojson_to_map(m, geojson_data)
+        base_url = "https://data.dwd.de/aviation/Special_application/NCM-A/"
+        xml_url = get_latest_xml_url(base_url, auth)
+        if xml_url:
+            xml_data = fetch_latest_xml(xml_url, auth)
+            if xml_data:
+                geojson_data = xml_to_geojson(xml_data)
+                add_geojson_to_map(m, geojson_data)
 
     return m
