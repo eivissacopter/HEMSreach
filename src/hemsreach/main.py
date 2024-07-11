@@ -34,21 +34,21 @@ else:
     m = folium.Map(location=[selected_location['lat'], selected_location['lon']], zoom_start=7, tiles=None, crs='EPSG3857')
 
     # Add custom tile layer
-    tile_url = "https://nginx.eivissacopter.com/ofma/original/merged/512/latest/{z}/{x}/{y}.png"
-    folium.TileLayer(
-        tiles=tile_url,
-        attr="Custom Tiles",
-        name="Openflightmaps Terrain",
-        overlay=False,
-        control=True
-    ).add_to(m)
-
-        # Add custom tile layer
     tile_url = "https://nginx.eivissacopter.com/ofma/original/aero/512/latest/{z}/{x}/{y}.png"
     folium.TileLayer(
         tiles=tile_url,
         attr="Custom Tiles",
         name="Openflightmaps Aero",
+        overlay=False,
+        control=True
+    ).add_to(m)
+    
+    # Add custom tile layer
+    tile_url = "https://nginx.eivissacopter.com/ofma/original/merged/512/latest/{z}/{x}/{y}.png"
+    folium.TileLayer(
+        tiles=tile_url,
+        attr="Custom Tiles",
+        name="Openflightmaps Terrain",
         overlay=False,
         control=True
     ).add_to(m)
