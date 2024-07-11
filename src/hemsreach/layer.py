@@ -107,7 +107,7 @@ def add_geojson_to_map(m, geojson_data):
                 lat, lon = geom['coordinates'][1], geom['coordinates'][0]
                 folium.Marker(
                     location=[lat, lon],
-                    icon=folium.Icon(icon='flash', prefix='fa', color='white')
+                    icon=folium.Icon(icon='bolt', prefix='fa', color='white')
                 ).add_to(m)
             else:
                 folium.GeoJson(
