@@ -29,7 +29,7 @@ def calculate_ground_speed(cruise_speed_kt, wind_speed, wind_direction, flight_d
     return ground_speed
 
 # Function to get reachable airports within a certain radius
-def get_reachable_airports(selected_location, wind_data, total_fuel_kg, cruise_altitude_ft, H145D2_PERFORMANCE):
+def get_reachable_airports(selected_location, wind_data, trip_fuel_kg, cruise_altitude_ft, H145D2_PERFORMANCE):
     base_lat = selected_location['lat']
     base_lon = selected_location['lon']
     wind_speed = wind_data['wind_speed']
@@ -47,7 +47,7 @@ def get_reachable_airports(selected_location, wind_data, total_fuel_kg, cruise_a
     climb_fuel_burn = climb_time_hours * climb_performance['fuel_burn_kgph']
 
     # Placeholder for remaining trip fuel, to be recalculated based on descent for each airport
-    remaining_trip_fuel_kg = total_fuel_kg - climb_fuel_burn
+    remaining_trip_fuel_kg = trip_fuel_kg - climb_fuel_burn
 
     # Calculate total flight time including climb, cruise, and descent
     descent_time_hours = 0  # Will be recalculated for each airport
