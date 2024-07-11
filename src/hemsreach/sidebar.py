@@ -51,5 +51,9 @@ def create_sidebar(helicopter_bases, airports):
             fuel_data, trip_fuel_kg = calculate_fuel_policy(total_fuel_kg, cruise_fuel_burn, alternate_required, alternate_fuel)
             df_fuel = pd.DataFrame(fuel_data)
             st.table(df_fuel)
+        
+        # Add toggle switches for XML layers
+        show_xml_layer = st.checkbox("Show XML Layer")
+        show_terrain_layer = st.checkbox("Show Terrain Layer")
 
-    return selected_location, total_fuel_kg, cruise_altitude_ft, selected_time, trip_fuel_kg
+    return selected_location, total_fuel_kg, cruise_altitude_ft, selected_time, trip_fuel_kg, show_xml_layer, show_terrain_layer
