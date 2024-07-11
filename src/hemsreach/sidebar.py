@@ -1,7 +1,4 @@
 import streamlit as st
-from wtaloft import get_wind_at_altitude
-from fuelpolicy import calculate_fuel_policy
-import pandas as pd
 
 def create_sidebar(helicopter_bases, airports):
     with st.sidebar:
@@ -31,29 +28,6 @@ def create_sidebar(helicopter_bases, airports):
             format="%d kg"
         )
 
-        alternate_required = st.checkbox("Alternate Required")
-        alternate_fuel = st.number_input("Alternate Fuel (kg)", value=0, step=10) if alternate_required else 0
-
         selected_time = st.slider("Select time window (hours)", min_value=0, max_value=6, value=1)
 
-        wind_data = get_wind_at_altitude(selected_location, selected_time)
-        if 'error' not in wind_data:
-            closest_airport = wind_data['closest_airport']
-            st.markdown(f"### Closest Airport for Wind Data: {closest_airport['name']} ({closest_airport['icao']})")
-            st.markdown(f"**ICAO Code:** {closest_airport['icao']}")
-            st.markdown(f"**Wind Direction:** {wind_data['wind_direction']}°")
-            st.markdown(f"**Wind Speed:** {wind_data['wind_speed']} knots")
-            st.markdown(f"**Freezing Level:** {wind_data['freezing_level']} ft")
-
-        cruise_fuel_burn = 250  # Adjust this value as needed
-
-        with st.expander("Fuel Policy"):
-            fuel_data, trip_fuel_kg = calculate_fuel_policy(total_fuel_kg, cruise_fuel_burn, alternate_required, alternate_fuel)
-            df_fuel = pd.DataFrame(fuel_data)
-            st.table(df_fuel)
-        
-        # Add toggle switches for XML layers
-        show_xml_layer = st.checkbox("Show XML Layer")
-        show_terrain_layer = st.checkbox("Show Terrain Layer")
-
-    return selected_location, total_fuel_kg, cruise_altitude_ft, selected_time, trip_fuel_kg, show_xml_layer, show_terrain_layer
+    return selected_location, total_fuel_kg, cruise_altitude_ft, selected_time
