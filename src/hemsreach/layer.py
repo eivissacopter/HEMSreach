@@ -52,8 +52,8 @@ def xml_to_geojson(xml_data):
         coords = [(float(pos_list[i]), float(pos_list[i+1])) for i in range(0, len(pos_list), 2)]
         
         # Determine the status from the parent elements or attributes (example implementation)
-        # You need to adjust this according to your actual XML structure
-        status = "default"  # Replace with the actual logic to determine the status
+        status_element = polygon.find('.//gml:status', ns)
+        status = status_element.text if status_element is not None else "default"
 
         feature = geojson.Feature(
             geometry=geojson.Polygon([coords]),
@@ -62,8 +62,6 @@ def xml_to_geojson(xml_data):
         features.append(feature)
 
     feature_collection = geojson.FeatureCollection(features)
-    st.write("GeoJSON Data:")
-    st.json(feature_collection)
     return feature_collection
 
 def style_function(feature):
