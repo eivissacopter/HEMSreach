@@ -19,15 +19,8 @@ auth = (data_server["user"], data_server["password"])
 set_page_config()
 apply_custom_css()
 
-# Add header and center it
-st.markdown(
-    """
-    <h1 style='text-align: center;'>
-        🚁 HEMSreach 🚁
-    </h1>
-    """, 
-    unsafe_allow_html=True
-)
+# Add header
+set_header()
 
 # Auto-refresh every 30 minutes (1800 seconds)
 st_autorefresh(interval=1800 * 1000, key="data_refresh")
