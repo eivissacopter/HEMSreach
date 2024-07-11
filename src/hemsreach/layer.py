@@ -5,7 +5,7 @@ import folium
 import geojson
 import streamlit as st
 
-def get_latest_xml_url(base_url, auth):
+def get_latest_xml_urls(base_url, auth, num_files=1):
     try:
         response = requests.get(base_url, auth=auth)
         response.raise_for_status()
@@ -18,14 +18,14 @@ def get_latest_xml_url(base_url, auth):
     
     soup = BeautifulSoup(response.text, 'html.parser')
     
-    # Find all links and identify the latest XML file
+    # Find all links and identify the latest XML files
     xml_files = [a['href'] for a in soup.find_all('a') if a['href'].endswith('.xml')]
     if not xml_files:
         st.error("No XML files found in the directory.")
         return None
     
-    latest_file = max(xml_files, key=lambda x: x.split('/')[-1])
-    return base_url + latest_file
+    latest_files = sorted(xml_files, key=lambda x: x.split('/')[-1], reverse=True)[:num_files]
+    return [base_url + file for file in latest_files]
 
 def fetch_latest_xml(xml_url, auth):
     try:
@@ -38,7 +38,7 @@ def fetch_latest_xml(xml_url, auth):
         st.error(f"An error occurred: {err}")
     return None
 
-def xml_to_geojson(xml_data, layer_type):
+def xml_to_geojson(xml_data, layer_type, color='orange'):
     ns = {
         'dwd': 'http://www.flugwetter.de/blitzdaten',
         'gml': 'http://www.opengis.net/gml/3.2',
@@ -66,32 +66,13 @@ def xml_to_geojson(xml_data, layer_type):
             lon = float(lightning.find('.//dwd:lon', ns).text)
             feature = geojson.Feature(
                 geometry=geojson.Point((lon, lat)),
-                properties={"status": "lightning"}
+                properties={"status": "lightning", "color": color}
             )
             features.append(feature)
 
     feature_collection = geojson.FeatureCollection(features)
     
     return feature_collection
-
-def style_function(feature):
-    status = feature['properties']['status']
-    color = {
-        "default": "#00000000",  # Transparent for default
-        "1": "#FFFF00",        # Yellow for status 1
-        "2": "#FFA500",        # Orange for status 2
-        "3": "#FF0000",        # Red for status 3
-        "4": "#800080",        # Purple for status 4
-        "reflectivity": "#0000FF",  # Blue for reflectivity
-        "lightning": "#FFFFFF"  # White for lightning
-    }.get(status, "#00000000")  # Default to transparent if not specified
-    
-    return {
-        "fillColor": color,
-        "color": color,
-        "weight": 1,
-        "fillOpacity": 0.5 if color != "#00000000" else 0
-    }
 
 def add_geojson_to_map(m, geojson_data):
     if geojson_data and geojson_data['features']:
@@ -101,12 +82,13 @@ def add_geojson_to_map(m, geojson_data):
             
             if geom['type'] == 'Point' and props.get('status') == 'lightning':
                 lat, lon = geom['coordinates'][1], geom['coordinates'][0]
+                color = props.get('color', 'orange')
                 folium.CircleMarker(
                     location=[lat, lon],
                     radius=5,
-                    color='orange',
+                    color=color,
                     fill=True,
-                    fill_color='orange',
+                    fill_color=color,
                     fill_opacity=0.7
                 ).add_to(m)
             else:
@@ -131,7 +113,7 @@ def add_layers_to_map(m, show_xml_layer, show_lightning_layer, show_terrain_laye
     
     if show_xml_layer:
         base_url = "https://data.dwd.de/aviation/Special_application/NCM-A/"
-        xml_url = get_latest_xml_url(base_url, auth)
+        xml_url = get_latest_xml_urls(base_url, auth)[0]
         if xml_url:
             xml_data = fetch_latest_xml(xml_url, auth)
             if xml_data:
@@ -140,11 +122,13 @@ def add_layers_to_map(m, show_xml_layer, show_lightning_layer, show_terrain_laye
 
     if show_lightning_layer:
         base_url = "https://data.dwd.de/aviation/Lightning_data/"
-        xml_url = get_latest_xml_url(base_url, auth)
-        if xml_url:
-            xml_data = fetch_latest_xml(xml_url, auth)
-            if xml_data:
-                geojson_data = xml_to_geojson(xml_data, 'Lightning')
-                add_geojson_to_map(m, geojson_data)
+        xml_urls = get_latest_xml_urls(base_url, auth, num_files=3)
+        colors = ['yellow', 'orange', 'red']
+        for xml_url, color in zip(xml_urls, colors):
+            if xml_url:
+                xml_data = fetch_latest_xml(xml_url, auth)
+                if xml_data:
+                    geojson_data = xml_to_geojson(xml_data, 'Lightning', color)
+                    add_geojson_to_map(m, geojson_data)
 
     return m
