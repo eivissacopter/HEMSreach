@@ -35,3 +35,13 @@ def apply_custom_css():
         """,
         unsafe_allow_html=True,
     )
+
+def set_header():
+    st.markdown(
+        """
+        <h1 style='text-align: center;'>
+            🚁 HEMSreach 🚁
+        </h1>
+        """, 
+        unsafe_allow_html=True
+    )
