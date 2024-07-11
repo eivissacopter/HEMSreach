@@ -38,7 +38,17 @@ else:
     folium.TileLayer(
         tiles=tile_url,
         attr="Custom Tiles",
-        name="Custom EPSG3857 Tiles",
+        name="Openflightmaps Terrain",
+        overlay=False,
+        control=True
+    ).add_to(m)
+
+        # Add custom tile layer
+    tile_url = "https://nginx.eivissacopter.com/ofma/original/aero/512/latest/{z}/{x}/{y}.png"
+    folium.TileLayer(
+        tiles=tile_url,
+        attr="Custom Tiles",
+        name="Openflightmaps Aero",
         overlay=False,
         control=True
     ).add_to(m)
