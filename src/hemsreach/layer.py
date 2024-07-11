@@ -48,12 +48,11 @@ def xml_to_geojson(xml_data, layer_type):
     root = ET.fromstring(xml_data)
     features = []
 
-    if layer_type == 'NowCastMix':
+    if layer_type == 'Show XML Layer':
         for polygon in root.findall('.//gml:Polygon', ns):
             pos_list = polygon.find('.//gml:posList', ns).text.strip().split()
             coords = [(float(pos_list[i]), float(pos_list[i+1])) for i in range(0, len(pos_list), 2)]
             
-            # Replace with correct path to the status element in your XML
             status_element = polygon.find('.//dwd:status', ns)
             status = status_element.text if status_element is not None else "default"
 
@@ -119,7 +118,7 @@ def add_geojson_to_map(m, geojson_data):
         st.warning("No valid GeoJSON data to add to the map.")
     return m
 
-def add_layers_to_map(m, show_nowcastmix_layer, show_lightning_layer, show_terrain_layer, auth):
+def add_layers_to_map(m, show_xml_layer, show_lightning_layer, show_terrain_layer, auth):
     if show_terrain_layer:
         tile_url = "https://nginx.eivissacopter.com/ofma/original/merged/512/latest/{z}/{x}/{y}.png"
         folium.TileLayer(
@@ -130,13 +129,13 @@ def add_layers_to_map(m, show_nowcastmix_layer, show_lightning_layer, show_terra
             control=True
         ).add_to(m)
     
-    if show_nowcastmix_layer:
+    if show_xml_layer:
         base_url = "https://data.dwd.de/aviation/Special_application/NCM-A/"
         xml_url = get_latest_xml_url(base_url, auth)
         if xml_url:
             xml_data = fetch_latest_xml(xml_url, auth)
             if xml_data:
-                geojson_data = xml_to_geojson(xml_data, 'NowCastMix')
+                geojson_data = xml_to_geojson(xml_data, 'Show XML Layer')
                 add_geojson_to_map(m, geojson_data)
 
     if show_lightning_layer:
