@@ -51,8 +51,13 @@ def xml_to_geojson(xml_data):
         pos_list = polygon.find('.//gml:posList', ns).text.strip().split()
         coords = [(float(pos_list[i]), float(pos_list[i+1])) for i in range(0, len(pos_list), 2)]
         
+        # Determine the status from the parent elements or attributes (example implementation)
+        # You need to adjust this according to your actual XML structure
+        status = "default"  # Replace with the actual logic to determine the status
+
         feature = geojson.Feature(
-            geometry=geojson.Polygon([coords])
+            geometry=geojson.Polygon([coords]),
+            properties={"status": status}
         )
         features.append(feature)
 
@@ -61,9 +66,31 @@ def xml_to_geojson(xml_data):
     st.json(feature_collection)
     return feature_collection
 
+def style_function(feature):
+    status = feature['properties']['status']
+    color = {
+        "default": "#0000FF",  # Blue as default
+        "1": "#FFFF00",        # Yellow for status 1
+        "2": "#FFA500",        # Orange for status 2
+        "3": "#FF0000",        # Red for status 3
+        "4": "#800080",        # Purple for status 4
+        "reflectivity": "#0000FF"  # Blue for reflectivity
+    }.get(status, "#0000FF")  # Default to blue if not specified
+    
+    return {
+        "fillColor": color,
+        "color": color,
+        "weight": 1,
+        "fillOpacity": 0.5
+    }
+
 def add_geojson_to_map(m, geojson_data):
     if geojson_data and geojson_data['features']:
-        folium.GeoJson(geojson_data, name="XML Layer").add_to(m)
+        folium.GeoJson(
+            geojson_data,
+            name="XML Layer",
+            style_function=style_function
+        ).add_to(m)
     else:
         st.warning("No valid GeoJSON data to add to the map.")
     return m
