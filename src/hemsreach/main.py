@@ -33,7 +33,11 @@ st.markdown(
 st_autorefresh(interval=1800 * 1000, key="data_refresh")
 
 # Create sidebar and get user inputs
-selected_location, total_fuel_kg, cruise_altitude_ft, selected_time, trip_fuel_kg, show_xml_layer, show_terrain_layer = create_sidebar(helicopter_bases, airports)
+selected_location, total_fuel_kg, cruise_altitude_ft, selected_time, trip_fuel_kg, show_nowcastmix_layer, show_terrain_layer = create_sidebar(helicopter_bases, airports)
+
+# Add toggle switches for new layers
+show_lightning_layer = st.sidebar.checkbox("Show Lightning Layer")
+show_konrad3d_layer = st.sidebar.checkbox("Show Konrad3D Layer")
 
 # Set default base to "Christoph 77"
 default_base = next((base for base in helicopter_bases if base['name'] == 'Christoph 77'), None)
@@ -64,7 +68,7 @@ else:
     ).add_to(m)
     
     # Add optional layers
-    add_layers_to_map(m, show_xml_layer, show_terrain_layer, auth)
+    add_layers_to_map(m, show_nowcastmix_layer, show_lightning_layer, show_konrad3d_layer, show_terrain_layer, auth)
 
     reachable_airports_data = []
     airport_locations = []
