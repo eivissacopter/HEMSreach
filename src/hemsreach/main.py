@@ -11,6 +11,10 @@ from streamlit_folium import folium_static
 import pandas as pd
 from layer import add_layers_to_map
 
+# Fetch authentication credentials from secrets
+data_server = st.secrets["data_server"]
+auth = (data_server["user"], data_server["password"])
+
 # Set page configuration and custom CSS
 set_page_config()
 apply_custom_css()
@@ -45,7 +49,7 @@ else:
     ).add_to(m)
     
     # Add optional layers
-    add_layers_to_map(m, show_xml_layer, show_terrain_layer)
+    add_layers_to_map(m, show_xml_layer, show_terrain_layer, auth)
 
     reachable_airports_data = []
     airport_locations = []
