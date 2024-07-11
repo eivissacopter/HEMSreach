@@ -23,7 +23,7 @@ apply_custom_css()
 st.markdown(
     """
     <h1 style='text-align: center;'>
-        :helicopter: HEMSreach :helicopter:
+        🚁 HEMSreach 🚁
     </h1>
     """, 
     unsafe_allow_html=True
