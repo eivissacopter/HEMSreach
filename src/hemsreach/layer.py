@@ -49,15 +49,15 @@ def xml_to_geojson(xml_data):
 
     for polygon in root.findall('.//gml:Polygon', ns):
         pos_list = polygon.find('.//gml:posList', ns).text.strip().split()
-        coords = [[(float(pos_list[i+1]), float(pos_list[i])) for i in range(0, len(pos_list), 2)]]
+        coords = [(float(pos_list[i]), float(pos_list[i+1])) for i in range(0, len(pos_list), 2)]
         
         feature = geojson.Feature(
-            geometry=geojson.Polygon(coords)
+            geometry=geojson.Polygon([coords])
         )
         features.append(feature)
 
     feature_collection = geojson.FeatureCollection(features)
-    st.write("GeoJSON Data:")  # Use Streamlit to output structured data
+    st.write("GeoJSON Data:")
     st.json(feature_collection)
     return feature_collection
 
