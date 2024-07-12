@@ -33,6 +33,11 @@ def fetch_latest_file(base_url):
                 return latest_file
             else:
                 st.error(f"Failed to download the file: {response.status_code}")
+                st.error(f"Response content: {response.content}")
+        else:
+            st.error("No .grib2 files found in the directory listing.")
+    else:
+        st.error("Failed to fetch directory listing.")
     return None
 
 # Function to decode the GRIB2 file and extract icing hazard data
@@ -81,17 +86,22 @@ st.title("Aviation Icing Hazard Data")
 base_url = "https://data.dwd.de/aviation/WAWFOR/data_set_ice/IconEU/"
 
 if st.button('Fetch Latest Icing Data'):
+    st.info("Fetching the latest file...")
     latest_file = fetch_latest_file(base_url)
     if latest_file:
         st.success(f"Downloaded the latest file: {latest_file}")
+        st.info("Decoding the file...")
         icing_df = decode_grib2(latest_file)
-        icing_summary = analyze_icing(icing_df)
-        
-        if icing_summary is not None:
-            st.subheader("Icing Hazard Summary")
-            st.dataframe(icing_summary)
+        if icing_df is not None:
+            st.info("Analyzing icing data...")
+            icing_summary = analyze_icing(icing_df)
+            if icing_summary is not None:
+                st.subheader("Icing Hazard Summary")
+                st.dataframe(icing_summary)
+            else:
+                st.warning("No icing data found.")
         else:
-            st.warning("No icing data found.")
+            st.error("Failed to decode the GRIB2 file.")
     else:
         st.error("Failed to download the latest GRIB2 file.")
 else:
