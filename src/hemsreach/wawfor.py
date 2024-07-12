@@ -21,11 +21,19 @@ def fetch_directory_listing(base_url):
 def fetch_latest_file(base_url):
     listing = fetch_directory_listing(base_url)
     if listing:
+        st.write("Directory listing fetched successfully.")
+        st.write("Directory listing content:")
+        st.code(listing)
+
         soup = BeautifulSoup(listing, 'html.parser')
         files = [a['href'] for a in soup.find_all('a', href=True) if a['href'].endswith('.grib2')]
         if files:
+            st.write("GRIB2 files found in the directory:")
+            st.write(files)
+
             latest_file = sorted(files, reverse=True)[0]
             file_url = base_url + latest_file
+            st.write(f"Latest file URL: {file_url}")
             response = requests.get(file_url, auth=(data_server["user"], data_server["password"]))
             if response.status_code == 200:
                 with open(latest_file, 'wb') as f:
