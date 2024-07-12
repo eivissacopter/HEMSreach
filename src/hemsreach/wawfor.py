@@ -4,17 +4,20 @@ from bs4 import BeautifulSoup
 import pygrib
 import pandas as pd
 
-# Function to fetch directory listing
+# Load secrets from Streamlit
+data_server = st.secrets["data_server"]
+
+# Function to fetch directory listing with authentication
 def fetch_directory_listing(base_url):
     try:
-        response = requests.get(base_url)
+        response = requests.get(base_url, auth=(data_server["user"], data_server["password"]))
         response.raise_for_status()
         return response.text
     except requests.exceptions.RequestException as e:
         st.error(f"Error fetching directory listing: {e}")
         return None
 
-# Function to fetch the latest file from the directory
+# Function to fetch the latest file from the directory with authentication
 def fetch_latest_file(base_url):
     listing = fetch_directory_listing(base_url)
     if listing:
@@ -23,10 +26,13 @@ def fetch_latest_file(base_url):
         if files:
             latest_file = sorted(files, reverse=True)[0]
             file_url = base_url + latest_file
-            response = requests.get(file_url)
-            with open(latest_file, 'wb') as f:
-                f.write(response.content)
-            return latest_file
+            response = requests.get(file_url, auth=(data_server["user"], data_server["password"]))
+            if response.status_code == 200:
+                with open(latest_file, 'wb') as f:
+                    f.write(response.content)
+                return latest_file
+            else:
+                st.error(f"Failed to download the file: {response.status_code}")
     return None
 
 # Function to decode the GRIB2 file and extract icing hazard data
