@@ -4,6 +4,7 @@ from bs4 import BeautifulSoup
 import pygrib
 import pandas as pd
 from datetime import datetime
+import os
 
 # Load secrets from Streamlit
 data_server = st.secrets["data_server"]
@@ -21,7 +22,7 @@ def fetch_latest_file(base_url):
             st.write(f"Latest file URL: {file_url}")
             response = requests.get(file_url, auth=(data_server["user"], data_server["password"]))
             if response.status_code == 200:
-                file_path = f"/mnt/data/{latest_file}"
+                file_path = os.path.join("/tmp", latest_file)
                 with open(file_path, 'wb') as f:
                     f.write(response.content)
                 return file_path
@@ -32,6 +33,8 @@ def fetch_latest_file(base_url):
             st.error("No .grb2 files found in the directory listing.")
     except requests.exceptions.RequestException as e:
         st.error(f"Error fetching latest file: {e}")
+    except Exception as e:
+        st.error(f"An unexpected error occurred: {e}")
     return None
 
 # Function to decode the GRIB2 file and extract icing hazard data
