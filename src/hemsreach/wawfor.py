@@ -6,6 +6,7 @@ import pandas as pd
 import folium
 from streamlit_folium import folium_static
 import os
+from datetime import datetime, timedelta
 
 # Load secrets from Streamlit
 data_server = st.secrets["data_server"]
@@ -49,6 +50,7 @@ def decode_grib2(file_path):
                 data = grb.values
                 lat, lon = grb.latlons()
                 levels = grb.level
+                timestamp = grb.validDate
 
                 for i in range(data.shape[0]):
                     for j in range(data.shape[1]):
@@ -57,7 +59,8 @@ def decode_grib2(file_path):
                                 'latitude': lat[i, j],
                                 'longitude': lon[i, j],
                                 'level': levels,
-                                'severity': data[i, j]
+                                'severity': data[i, j],
+                                'time': timestamp
                             })
 
         df = pd.DataFrame(icing_data)
@@ -91,7 +94,7 @@ def create_icing_map(df):
             fill=True,
             fill_color=severity_colors.get(row['severity'], 'black'),
             fill_opacity=0.7,
-            popup=f"Level: {row['level']}<br>Severity: {row['severity']}"
+            popup=f"Level: {row['level']}<br>Severity: {row['severity']}<br>Time: {row['time']}"
         ).add_to(icing_map)
 
     return icing_map
@@ -120,19 +123,29 @@ if st.button('Fetch Latest Icing Data'):
                 folium_static(icing_map)
 
                 st.subheader("Check Icing Hazard on Your Route")
-                lat = st.number_input("Enter Latitude", format="%.6f")
-                lon = st.number_input("Enter Longitude", format="%.6f")
+                start_lat = st.number_input("Enter Start Latitude", format="%.6f")
+                start_lon = st.number_input("Enter Start Longitude", format="%.6f")
+                end_lat = st.number_input("Enter End Latitude", format="%.6f")
+                end_lon = st.number_input("Enter End Longitude", format="%.6f")
                 altitude = st.number_input("Enter Altitude (level)", format="%.1f")
+                hours_ahead = st.number_input("Enter Hours Ahead", min_value=0, max_value=24, value=5)
                 check_button = st.button("Check Icing Hazard")
 
                 if check_button:
-                    route_icing = icing_df[(icing_df['latitude'].round(2) == round(lat, 2)) & 
-                                           (icing_df['longitude'].round(2) == round(lon, 2)) & 
-                                           (icing_df['level'] == altitude)]
+                    current_time = datetime.utcnow()
+                    end_time = current_time + timedelta(hours=hours_ahead)
+                    route_icing = icing_df[
+                        (icing_df['time'] >= current_time) &
+                        (icing_df['time'] <= end_time) &
+                        (icing_df['level'] == altitude) &
+                        ((icing_df['latitude'] >= min(start_lat, end_lat)) & (icing_df['latitude'] <= max(start_lat, end_lat))) &
+                        ((icing_df['longitude'] >= min(start_lon, end_lon)) & (icing_df['longitude'] <= max(start_lon, end_lon)))
+                    ]
                     if not route_icing.empty:
-                        st.write(f"Icing hazard detected: {route_icing.iloc[0]['severity']}")
+                        st.write(f"Icing hazards detected along the route:")
+                        st.dataframe(route_icing[['latitude', 'longitude', 'level', 'severity', 'time']])
                     else:
-                        st.write("No icing hazard detected at this location and altitude.")
+                        st.write("No icing hazards detected along this route and altitude within the specified time frame.")
             else:
                 st.warning("No icing data found.")
         else:
