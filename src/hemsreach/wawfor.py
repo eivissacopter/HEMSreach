@@ -1,5 +1,6 @@
 import streamlit as st
 import requests
+from bs4 import BeautifulSoup
 import pygrib
 import pandas as pd
 from datetime import datetime
