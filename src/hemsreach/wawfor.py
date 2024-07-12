@@ -3,7 +3,8 @@ import requests
 from bs4 import BeautifulSoup
 import pygrib
 import pandas as pd
-from datetime import datetime
+import folium
+from streamlit_folium import folium_static
 import os
 
 # Load secrets from Streamlit
@@ -77,6 +78,24 @@ def analyze_icing(df):
     else:
         return None
 
+# Function to create a map with icing data
+def create_icing_map(df):
+    icing_map = folium.Map(location=[50, 10], zoom_start=4)
+    severity_colors = {'Light': 'blue', 'Moderate': 'orange', 'Severe': 'red'}
+
+    for _, row in df.iterrows():
+        folium.CircleMarker(
+            location=(row['latitude'], row['longitude']),
+            radius=5,
+            color=severity_colors.get(row['severity'], 'black'),
+            fill=True,
+            fill_color=severity_colors.get(row['severity'], 'black'),
+            fill_opacity=0.7,
+            popup=f"Level: {row['level']}<br>Severity: {row['severity']}"
+        ).add_to(icing_map)
+
+    return icing_map
+
 # Streamlit app layout
 st.title("Aviation Icing Hazard Data")
 
@@ -95,6 +114,25 @@ if st.button('Fetch Latest Icing Data'):
             if icing_summary is not None:
                 st.subheader("Icing Hazard Summary")
                 st.dataframe(icing_summary)
+
+                st.subheader("Icing Hazard Map")
+                icing_map = create_icing_map(icing_df)
+                folium_static(icing_map)
+
+                st.subheader("Check Icing Hazard on Your Route")
+                lat = st.number_input("Enter Latitude", format="%.6f")
+                lon = st.number_input("Enter Longitude", format="%.6f")
+                altitude = st.number_input("Enter Altitude (level)", format="%.1f")
+                check_button = st.button("Check Icing Hazard")
+
+                if check_button:
+                    route_icing = icing_df[(icing_df['latitude'].round(2) == round(lat, 2)) & 
+                                           (icing_df['longitude'].round(2) == round(lon, 2)) & 
+                                           (icing_df['level'] == altitude)]
+                    if not route_icing.empty:
+                        st.write(f"Icing hazard detected: {route_icing.iloc[0]['severity']}")
+                    else:
+                        st.write("No icing hazard detected at this location and altitude.")
             else:
                 st.warning("No icing data found.")
         else:
