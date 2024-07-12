@@ -1,51 +1,36 @@
 import streamlit as st
 import requests
-from bs4 import BeautifulSoup
 import pygrib
 import pandas as pd
+from datetime import datetime
 
 # Load secrets from Streamlit
 data_server = st.secrets["data_server"]
 
-# Function to fetch directory listing with authentication
-def fetch_directory_listing(base_url):
+# Function to fetch the latest file from the directory with authentication
+def fetch_latest_file(base_url):
     try:
         response = requests.get(base_url, auth=(data_server["user"], data_server["password"]))
         response.raise_for_status()
-        return response.text
-    except requests.exceptions.RequestException as e:
-        st.error(f"Error fetching directory listing: {e}")
-        return None
-
-# Function to fetch the latest file from the directory with authentication
-def fetch_latest_file(base_url):
-    listing = fetch_directory_listing(base_url)
-    if listing:
-        st.write("Directory listing fetched successfully.")
-        st.write("Directory listing content:")
-        st.code(listing)
-
-        soup = BeautifulSoup(listing, 'html.parser')
-        files = [a['href'] for a in soup.find_all('a', href=True) if a['href'].endswith('.grib2')]
+        soup = BeautifulSoup(response.text, 'html.parser')
+        files = [a['href'] for a in soup.find_all('a', href=True) if a['href'].endswith('.grb2')]
         if files:
-            st.write("GRIB2 files found in the directory:")
-            st.write(files)
-
             latest_file = sorted(files, reverse=True)[0]
             file_url = base_url + latest_file
             st.write(f"Latest file URL: {file_url}")
             response = requests.get(file_url, auth=(data_server["user"], data_server["password"]))
             if response.status_code == 200:
-                with open(latest_file, 'wb') as f:
+                file_path = f"/mnt/data/{latest_file}"
+                with open(file_path, 'wb') as f:
                     f.write(response.content)
-                return latest_file
+                return file_path
             else:
                 st.error(f"Failed to download the file: {response.status_code}")
                 st.error(f"Response content: {response.content}")
         else:
-            st.error("No .grib2 files found in the directory listing.")
-    else:
-        st.error("Failed to fetch directory listing.")
+            st.error("No .grb2 files found in the directory listing.")
+    except requests.exceptions.RequestException as e:
+        st.error(f"Error fetching latest file: {e}")
     return None
 
 # Function to decode the GRIB2 file and extract icing hazard data
